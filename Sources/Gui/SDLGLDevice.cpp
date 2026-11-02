@@ -239,8 +239,13 @@ namespace spades {
 		}
 
 		void SDLGLDevice::Swap() {
-			// glFinish();
-			CheckErrorAlways();
+			// Ensure default backbuffer before swap
+			if (glBindFramebuffer)
+				glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			else if (glBindFramebufferEXT)
+				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+
+			CheckError();
 			SDL_GL_SwapWindow(window);
 #if 0
 			Uint32 t = SDL_GetTicks();
