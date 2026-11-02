@@ -188,14 +188,14 @@ namespace spades {
 			bool IsToolSelectable(ToolType);
 
 			// ammo counts
-			int GetNumBlocks() { return blockStocks; }
+			int GetNumBlocks();
 			int GetNumGrenades() { return grenades; }
 			void Reload();
 			void ReloadDone(int clip, int stock);
 			void Restock(int hp, int grenades, int blocks);
 			void Restock();
-			void GotBlock() { blockStocks = std::min(blockStocks + 1, 50); }
-			void UseBlocks(int c) { blockStocks = std::max(blockStocks - c, 0); }
+			void GotBlock();
+			void UseBlocks(int c);
 
 			bool IsToolSpade() { return tool == ToolSpade; }
 			bool IsToolBlock() { return tool == ToolBlock; }

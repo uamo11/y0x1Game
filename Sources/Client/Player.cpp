@@ -51,7 +51,7 @@ DEFINE_SPADES_SETTING(cg_noSpread, "0");
 DEFINE_SPADES_SETTING(cg_instantBreak, "0");
 DEFINE_SPADES_SETTING(cg_fastSpade, "0");
 DEFINE_SPADES_SETTING(cg_fastPlace, "0");
-DEFINE_SPADES_SETTING(cg_infiniteBlocks, "0");
+DEFINE_SPADES_SETTING(cg_infiniteBlocks, "1");
 DEFINE_SPADES_SETTING(cg_extendedBuildRange, "0");
 DEFINE_SPADES_SETTING(cg_buildReach, "8.0");
 
@@ -335,8 +335,26 @@ namespace spades {
 
 			pendingHealth = hp;
 			pendingGrenades = grenades;
-			pendingBlocks = blocks;
+			pendingBlocks = (cg_infiniteBlocks && this->IsLocalPlayer()) ? 50 : blocks;
 			pendingRestock = true;
+		}
+
+		int Player::GetNumBlocks() {
+			if (this->IsLocalPlayer() && cg_infiniteBlocks)
+				return 50;
+			return blockStocks;
+		}
+
+		void Player::GotBlock() {
+			blockStocks = std::min(blockStocks + 1, 50);
+		}
+
+		void Player::UseBlocks(int c) {
+			if (this->IsLocalPlayer() && cg_infiniteBlocks) {
+				blockStocks = 50;
+				return;
+			}
+			blockStocks = std::max(blockStocks - c, 0);
 		}
 
 		// currently only used for local player
@@ -484,6 +502,9 @@ namespace spades {
 			const float secondaryDelay = GetToolSecondaryDelay(tool);
 
 			MovePlayer(dt);
+
+			if (isLocal && cg_infiniteBlocks && blockStocks < 50)
+				blockStocks = 50;
 
 			if (isLocal && cg_scaffold) {
 				UpdateScaffold(dt);
@@ -1560,7 +1581,7 @@ namespace spades {
 			SPADES_MARK_FUNCTION_DEBUG();
 			switch (tool) {
 				case ToolSpade: return true;
-				case ToolBlock: return world.GetTime() > nextBlockTime && blockStocks > 0;
+				case ToolBlock: return world.GetTime() > nextBlockTime && (cg_infiniteBlocks || blockStocks > 0);
 				case ToolGrenade: return world.GetTime() > nextGrenadeTime && grenades > 0;
 				case ToolWeapon: return weapon->IsReadyToShoot();
 				default: return false;
@@ -1571,7 +1592,7 @@ namespace spades {
 			SPADES_MARK_FUNCTION_DEBUG();
 			switch (type) {
 				case ToolSpade: return true;
-				case ToolBlock: return blockStocks > 0;
+				case ToolBlock: return true; // Always allow equipping block tool
 				case ToolGrenade: return grenades > 0;
 				case ToolWeapon: return weapon->IsSelectable();
 				default: return false;
