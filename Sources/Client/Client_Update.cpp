@@ -650,6 +650,7 @@ namespace spades {
 
 
 			bool isToolWeapon = player.IsToolWeapon();
+			bool isToolBlock = player.IsToolBlock();
 			bool isWeaponShotgun = weapon.IsReloadSlow();
 			bool isToggleADSMode = isToolWeapon && !cg_holdAimDownSight;
 
