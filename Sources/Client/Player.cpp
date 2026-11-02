@@ -55,6 +55,12 @@ DEFINE_SPADES_SETTING(cg_infiniteBlocks, "0");
 DEFINE_SPADES_SETTING(cg_extendedBuildRange, "0");
 DEFINE_SPADES_SETTING(cg_buildReach, "8.0");
 
+DEFINE_SPADES_SETTING(cg_scaffold, "0");
+DEFINE_SPADES_SETTING(cg_scaffoldClickConfirm, "1");
+DEFINE_SPADES_SETTING(cg_scaffoldPreview, "1");
+DEFINE_SPADES_SETTING(cg_scaffoldRequireBlock, "1");
+DEFINE_SPADES_SETTING(cg_scaffoldDistance, "1.0");
+
 namespace spades {
 	namespace client {
 
@@ -114,6 +120,9 @@ namespace spades {
 			blockCursorDragging = false;
 			pendingPlaceBlock = false;
 			canPending = false;
+
+			scaffoldActive = false;
+			scaffoldPos = MakeIntVector3(0, 0, 0);
 
 			respawnTime = 0.0F;
 		}
@@ -242,13 +251,32 @@ namespace spades {
 					if (newInput.primary) {
 						if (!weapInput.primary)
 							lastSingleBlockBuildSeqDone = false;
-						if ((cg_infiniteBlocks || blockStocks > 0) && blockCursorActive) {
+
+						bool canPlace = (cg_infiniteBlocks || blockStocks > 0);
+						bool didPlace = false;
+
+						// Walk Building / Scaffold click confirmation ("con click confirmo")
+						if (cg_scaffold && scaffoldActive && canPlace) {
+							if (listener)
+								listener->LocalPlayerBlockAction(scaffoldPos, BlockActionCreate);
+							if (!cg_infiniteBlocks)
+								blockStocks--;
+							lastSingleBlockBuildSeqDone = true;
+							float bDelay = cg_fastPlace ? 0.02F : blockPrimaryDelay;
+							nextBlockTime = world.GetTime() + bDelay;
+							scaffoldActive = false;
+							didPlace = true;
+						}
+
+						if (!didPlace && canPlace && blockCursorActive) {
 							if (listener)
 								listener->LocalPlayerBlockAction(blockCursorPos, BlockActionCreate);
-
+							if (!cg_infiniteBlocks)
+								blockStocks--;
 							lastSingleBlockBuildSeqDone = true;
-							nextBlockTime = world.GetTime() + blockPrimaryDelay;
-						} else if ((cg_infiniteBlocks || blockStocks > 0) && airborne && canPending) {
+							nextBlockTime = world.GetTime() + (cg_fastPlace ? 0.02F : blockPrimaryDelay);
+							didPlace = true;
+						} else if (!didPlace && canPlace && airborne && canPending) {
 							pendingPlaceBlock = true;
 							pendingPlaceBlockPos = blockCursorPos;
 						}
@@ -346,6 +374,7 @@ namespace spades {
 			if (IsLocalPlayer()) {
 				blockCursorActive = false;
 				blockCursorDragging = false;
+				scaffoldActive = false;
 			}
 
 			if (world.GetListener())
@@ -450,6 +479,12 @@ namespace spades {
 			const float secondaryDelay = GetToolSecondaryDelay(tool);
 
 			MovePlayer(dt);
+
+			if (isLocal && cg_scaffold) {
+				UpdateScaffold(dt);
+			} else {
+				scaffoldActive = false;
+			}
 
 			if (tool == ToolSpade) {
 				float spadeDelay = primaryDelay;
@@ -1696,6 +1731,145 @@ namespace spades {
 			if (IsLocalPlayer() && cg_extendedBuildRange)
 				maxRange = static_cast<float>(cg_buildReach);
 			return GetDistanceToBlock(v) < maxRange;
+		}
+
+		void Player::UpdateScaffold(float dt) {
+			SPADES_MARK_FUNCTION();
+
+			scaffoldActive = false;
+
+			if (!alive)
+				return;
+
+			if (cg_scaffoldRequireBlock && tool != ToolBlock)
+				return;
+
+			const Handle<GameMap>& map = world.GetMap();
+			if (!map)
+				return;
+
+			int maxDepth = map->GroundDepth();
+
+			Vector3 pos = position;
+			float feetZ = pos.z + (input.crouch ? 1.8F : 2.25F);
+			int scaffoldZ = static_cast<int>(floorf(feetZ + 0.1F));
+
+			if (scaffoldZ < 0 || scaffoldZ >= maxDepth)
+				return;
+
+			// Priority 1: Check under feet if stepping off an edge or airborne / jumping
+			// ("se pondra un bloque debajo mio")
+			IntVector3 underFeet(static_cast<int>(floorf(pos.x)), static_cast<int>(floorf(pos.y)), scaffoldZ);
+			if (map->IsValidMapCoord(underFeet.x, underFeet.y, underFeet.z)
+				&& !map->IsSolid(underFeet.x, underFeet.y, underFeet.z)
+				&& map->HasNeighbors(underFeet)
+				&& InBuildRange(underFeet)) {
+				scaffoldPos = underFeet;
+				scaffoldActive = true;
+			} else {
+				// Priority 2: Bridging / walk building ahead along movement or look direction
+				// ("adelante se ponga en blanco")
+				Vector3 front2D = GetFront2D();
+				Vector3 right = GetRight();
+				right.z = 0.0F;
+				if (right.GetSquaredLength() > 0.001F)
+					right = right.Normalize();
+
+				Vector3 moveDir(0.0F, 0.0F, 0.0F);
+				if (input.moveForward) moveDir += front2D;
+				if (input.moveBackward) moveDir -= front2D;
+				if (input.moveRight) moveDir += right;
+				if (input.moveLeft) moveDir -= right;
+
+				if (moveDir.GetSquaredLength() > 0.01F) {
+					moveDir = moveDir.Normalize();
+				} else if (velocity.GetSquaredLength2D() > 0.005F) {
+					float len = velocity.GetLength2D();
+					moveDir = Vector3(velocity.x / len, velocity.y / len, 0.0F);
+				} else {
+					// Stationary: project in front look direction
+					moveDir = front2D;
+				}
+
+				float baseDist = static_cast<float>(cg_scaffoldDistance);
+				if (baseDist < 0.2F) baseDist = 1.0F;
+
+				// Check primary level, and if pitch is steep, adapt up/down
+				int zOffsets[2] = { 0, 0 };
+				if (GetFront().z > 0.5F)
+					zOffsets[1] = 1; // looking down -> stair down
+				else if (GetFront().z < -0.5F)
+					zOffsets[1] = -1; // looking up -> stair up
+
+				float testDists[] = { baseDist, baseDist * 0.7F, baseDist * 1.3F, 0.6F, 1.5F, 1.9F };
+				bool found = false;
+
+				for (int zOff : zOffsets) {
+					int targetZ = scaffoldZ + zOff;
+					if (targetZ < 0 || targetZ >= maxDepth)
+						continue;
+
+					for (float d : testDists) {
+						float cx = pos.x + moveDir.x * d;
+						float cy = pos.y + moveDir.y * d;
+						IntVector3 candidate(static_cast<int>(floorf(cx)), static_cast<int>(floorf(cy)), targetZ);
+
+						if (candidate == underFeet && zOff == 0)
+							continue;
+
+						if (map->IsValidMapCoord(candidate.x, candidate.y, candidate.z)
+							&& !map->IsSolid(candidate.x, candidate.y, candidate.z)
+							&& map->HasNeighbors(candidate)
+							&& InBuildRange(candidate)) {
+							scaffoldPos = candidate;
+							scaffoldActive = true;
+							found = true;
+							break;
+						}
+
+						// Handle diagonal transitions if primary diagonal has no orthogonal neighbor yet
+						if (candidate.x != underFeet.x && candidate.y != underFeet.y) {
+							IntVector3 candX(candidate.x, underFeet.y, targetZ);
+							if (map->IsValidMapCoord(candX.x, candX.y, candX.z)
+								&& !map->IsSolid(candX.x, candX.y, candX.z)
+								&& map->HasNeighbors(candX)
+								&& InBuildRange(candX)) {
+								scaffoldPos = candX;
+								scaffoldActive = true;
+								found = true;
+								break;
+							}
+
+							IntVector3 candY(underFeet.x, candidate.y, targetZ);
+							if (map->IsValidMapCoord(candY.x, candY.y, candY.z)
+								&& !map->IsSolid(candY.x, candY.y, candY.z)
+								&& map->HasNeighbors(candY)
+								&& InBuildRange(candY)) {
+								scaffoldPos = candY;
+								scaffoldActive = true;
+								found = true;
+								break;
+							}
+						}
+					}
+					if (found)
+						break;
+				}
+			}
+
+			// Auto-place mode: If Click to Confirm is disabled, place automatically while moving
+			if (scaffoldActive && !cg_scaffoldClickConfirm) {
+				if (world.GetTime() > nextBlockTime && (cg_infiniteBlocks || blockStocks > 0)) {
+					auto* listener = world.GetListener();
+					if (listener)
+						listener->LocalPlayerBlockAction(scaffoldPos, BlockActionCreate);
+					if (!cg_infiniteBlocks)
+						blockStocks--;
+					float bDelay = cg_fastPlace ? 0.02F : GetToolPrimaryDelay(ToolBlock);
+					nextBlockTime = world.GetTime() + bDelay;
+					scaffoldActive = false;
+				}
+			}
 		}
 	} // namespace client
 } // namespace spades

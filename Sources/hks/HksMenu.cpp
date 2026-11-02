@@ -110,15 +110,28 @@ namespace spades {
 				    Handle<StandardPreferenceLayouter>::New(panel.GetPointerOrNull(), &ui->GetFontManager());
 				layouter->headingNav = nav;
 
-				layouter->AddHeading(_Tr("Preferences", "Digging & Mining"));
+				layouter->AddHeading(_Tr("Preferences", "Walk Building (Scaffold)"));
 
-				layouter->AddToggleField(_Tr("Preferences", "Instant Break (1-Hit)"), "cg_instantBreak");
+				layouter->AddToggleField(_Tr("Preferences", "Walk Building (Scaffold)"), "cg_scaffold");
 				layouter->AddHelp(_Tr("Preferences",
-				    "Destroys blocks with a single spade strike. Mine and clear terrain instantly on building servers."));
+				    "Enables walk building (scaffold). Automatically targets blocks under your feet or directly ahead as you walk across gaps and open air."));
 
-				layouter->AddToggleField(_Tr("Preferences", "Fast Spade"), "cg_fastSpade");
+				layouter->AddToggleField(_Tr("Preferences", "Click to Confirm"), "cg_scaffoldClickConfirm");
 				layouter->AddHelp(_Tr("Preferences",
-				    "Dramatically accelerates spade swing rate and right-click 3-block trench excavation to 20 hits/sec."));
+				    "When enabled (default), highlights the block ahead in white and places on left click. When disabled, automatically places blocks continuously while walking."));
+
+				layouter->AddToggleField(_Tr("Preferences", "White Preview Box"), "cg_scaffoldPreview");
+				layouter->AddHelp(_Tr("Preferences",
+				    "Displays a glowing white preview cube and wireframe ahead showing the exact placement target."));
+
+				layouter->AddToggleField(_Tr("Preferences", "Require Block Tool"), "cg_scaffoldRequireBlock");
+				layouter->AddHelp(_Tr("Preferences",
+				    "Only activate scaffold walk-building when holding the Block tool in your hands."));
+
+				layouter->AddSliderField(_Tr("Preferences", "Ahead Distance"), "cg_scaffoldDistance",
+				                         0.5F, 2.0F, 0.1F, NumberFormatter(1, " blocks"));
+				layouter->AddHelp(_Tr("Preferences",
+				    "Distance ahead in movement direction to project and build the next bridge block (default 1.0 block)."));
 
 				layouter->AddHeading(_Tr("Preferences", "Block Construction"));
 
@@ -141,8 +154,18 @@ namespace spades {
 				layouter->AddHelp(_Tr("Preferences",
 				    "Maximum reach in blocks when Extended Reach is enabled (Default 8 blocks, up to 24)."));
 
+				layouter->AddHeading(_Tr("Preferences", "Digging & Mining"));
+
+				layouter->AddToggleField(_Tr("Preferences", "Instant Break (1-Hit)"), "cg_instantBreak");
+				layouter->AddHelp(_Tr("Preferences",
+				    "Destroys blocks with a single spade strike. Mine and clear terrain instantly on building servers."));
+
+				layouter->AddToggleField(_Tr("Preferences", "Fast Spade"), "cg_fastSpade");
+				layouter->AddHelp(_Tr("Preferences",
+				    "Dramatically accelerates spade swing rate and right-click 3-block trench excavation to 20 hits/sec."));
+
 				layouter->FinishLayout();
-				AddTab(panel.GetPointerOrNull(), _Tr("Preferences", "Building"), nav.GetPointerOrNull(),
+				AddTab(panel.GetPointerOrNull(), _Tr("Preferences", "Build"), nav.GetPointerOrNull(),
 				       gui::GuiIconType::Building);
 			}
 

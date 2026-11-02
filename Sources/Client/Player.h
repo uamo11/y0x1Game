@@ -130,6 +130,11 @@ namespace spades {
 			bool canPending;
 			IntVector3 pendingPlaceBlockPos;
 
+			// Scaffold / Walk Building
+			bool scaffoldActive;
+			IntVector3 scaffoldPos;
+			void UpdateScaffold(float dt);
+
 			float respawnTime;
 
 			void MoveCorpse(float fsynctics);
@@ -176,6 +181,8 @@ namespace spades {
 			void SetBlockCursorDragging(bool value) { blockCursorDragging = value; }
 			IntVector3 GetBlockCursorPos() { return blockCursorPos; }
 			IntVector3 GetBlockCursorDragPos() { return blockCursorDragPos; }
+			bool IsScaffoldActive() const { return scaffoldActive; }
+			IntVector3 GetScaffoldPos() const { return scaffoldPos; }
 			bool IsReadyToUseTool();
 			bool IsToolSelectable(ToolType);
 

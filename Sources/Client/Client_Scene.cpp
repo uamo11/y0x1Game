@@ -57,6 +57,8 @@ DEFINE_SPADES_SETTING(cg_debugPlayerHitboxes, "0");
 SPADES_SETTING(cg_ragdoll);
 SPADES_SETTING(cg_hurtScreenEffects);
 SPADES_SETTING(cg_orientationSmoothing);
+SPADES_SETTING(cg_scaffold);
+SPADES_SETTING(cg_scaffoldPreview);
 
 namespace spades {
 	namespace client {
@@ -749,6 +751,25 @@ namespace spades {
 								renderer->RenderModel(*blockCursorModel, param);
 							}
 						}
+					}
+
+					// Scaffold White Preview Box ("adelante se ponga en blanco")
+					if (cg_scaffold && cg_scaffoldPreview && p.IsScaffoldActive()) {
+						IntVector3 scPos = p.GetScaffoldPos();
+						Vector3 blockF = MakeVector3(scPos);
+
+						ModelRenderParam param;
+						param.ghost = true;
+						param.opacity = 0.65F;
+						param.customColor = Vector3(1.0F, 1.0F, 1.0F); // Pure white
+						param.matrix = Matrix4::Translate(blockF + 0.5F);
+
+						renderer->RenderModel(*blockCursorModel, param);
+
+						// Sharp white wireframe outline
+						AddDebugObjectToScene(
+						  AABB3(blockF.x, blockF.y, blockF.z, 1.0F, 1.0F, 1.0F),
+						  MakeVector4(1.0F, 1.0F, 1.0F, 0.95F));
 					}
 				}
 
