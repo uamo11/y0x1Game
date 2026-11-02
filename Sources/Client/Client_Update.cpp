@@ -79,6 +79,7 @@ SPADES_SETTING(cg_damageIndicators);
 SPADES_SETTING(cg_corpseDisableGravity);
 
 SPADES_SETTING(cg_killfeedFadeTime);
+SPADES_SETTING(cg_maintainBlockSelection);
 
 namespace spades {
 	namespace client {
@@ -109,8 +110,10 @@ namespace spades {
 			stmp::optional<ClientPlayer&> clientPlayer = GetLocalClientPlayer();
 
 			// Player is unable to use a tool while/soon after sprinting
-			if (clientPlayer->GetSprintState() > 0 || p->GetInput().sprint)
-				return false;
+			if (clientPlayer->GetSprintState() > 0 || p->GetInput().sprint) {
+				if (!cg_maintainBlockSelection || !p->IsToolBlock())
+					return false;
+			}
 
 			// Player is unable to use a tool while switching to another tool
 			if (clientPlayer->IsChangingTool())
@@ -676,9 +679,11 @@ namespace spades {
 			// can't use a tool while sprinting or switching to another tool, etc.
 			if (!CanLocalPlayerUseTool()) {
 				winp.primary = false;
-				winp.secondary = false;
+				if (!cg_maintainBlockSelection || !isToolBlock)
+					winp.secondary = false;
 				aimingDownSight = false;
-				player.SetBlockCursorDragging(false);
+				if (!cg_maintainBlockSelection || !isToolBlock)
+					player.SetBlockCursorDragging(false);
 			}
 
 			if (isToolWeapon) {

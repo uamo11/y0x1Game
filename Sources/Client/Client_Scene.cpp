@@ -59,6 +59,7 @@ SPADES_SETTING(cg_hurtScreenEffects);
 SPADES_SETTING(cg_orientationSmoothing);
 SPADES_SETTING(cg_scaffold);
 SPADES_SETTING(cg_scaffoldPreview);
+SPADES_SETTING(cg_maintainBlockSelection);
 
 namespace spades {
 	namespace client {
@@ -709,7 +710,7 @@ namespace spades {
 					Player& p = maybePlayer.value();
 
 					// draw block cursor
-					if (p.IsToolBlock() && p.IsReadyToUseTool() && CanLocalPlayerUseTool()) {
+					if (p.IsToolBlock() && (p.IsReadyToUseTool() || cg_maintainBlockSelection) && (CanLocalPlayerUseTool() || cg_maintainBlockSelection)) {
 						bool blockCursorActive = p.IsBlockCursorActive();
 						bool blockCursorDragging = p.IsBlockCursorDragging();
 

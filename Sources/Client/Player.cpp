@@ -61,6 +61,9 @@ DEFINE_SPADES_SETTING(cg_scaffoldPreview, "1");
 DEFINE_SPADES_SETTING(cg_scaffoldRequireBlock, "1");
 DEFINE_SPADES_SETTING(cg_scaffoldDistance, "1.0");
 
+DEFINE_SPADES_SETTING(cg_maintainBlockSelection, "1");
+DEFINE_SPADES_SETTING(cg_fastStairs, "1");
+
 namespace spades {
 	namespace client {
 
@@ -1189,7 +1192,7 @@ namespace spades {
 				z -= 0.9F;
 			if (z < -1.36F) {
 				position.x = nx;
-			} else if (!input.crouch && orientation.z < 0.5F && (!input.sprint || (IsLocalPlayer() && cg_speedHack))) {
+			} else if (!input.crouch && orientation.z < 0.5F && (!input.sprint || (IsLocalPlayer() && (cg_speedHack || cg_fastStairs)))) {
 				z = 0.35F;
 				while (z >= -2.36F
 					&& !map->ClipBox(bx, position.y - size, nz + z)
@@ -1213,7 +1216,7 @@ namespace spades {
 				z -= 0.9F;
 			if (z < -1.36F) {
 				position.y = ny;
-			} else if (!input.crouch && orientation.z < 0.5F && (!input.sprint || (IsLocalPlayer() && cg_speedHack)) && !climb) {
+			} else if (!input.crouch && orientation.z < 0.5F && (!input.sprint || (IsLocalPlayer() && (cg_speedHack || cg_fastStairs))) && !climb) {
 				z = 0.35F;
 				while (z >= -2.36F
 					&& !map->ClipBox(position.x - size, by, nz + z)
@@ -1231,7 +1234,7 @@ namespace spades {
 
 			if (climb) {
 				// slow down when climbing
-				if (!IsLocalPlayer() || !cg_speedHack) {
+				if (!IsLocalPlayer() || (!cg_speedHack && !cg_fastStairs)) {
 					velocity.x *= 0.5F;
 					velocity.y *= 0.5F;
 				}

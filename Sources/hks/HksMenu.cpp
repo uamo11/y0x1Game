@@ -139,6 +139,14 @@ namespace spades {
 				layouter->AddHelp(_Tr("Preferences",
 				    "Removes block placement cooldown. Hold left click to paint continuous blocks rapidly without delay."));
 
+				layouter->AddToggleField(_Tr("Preferences", "Maintain Selection While Running"), "cg_maintainBlockSelection");
+				layouter->AddHelp(_Tr("Preferences",
+				    "Keep block line selection and right-click dragging active while running or sprinting without losing the selection."));
+
+				layouter->AddToggleField(_Tr("Preferences", "Fast Stairs & Steps"), "cg_fastStairs");
+				layouter->AddHelp(_Tr("Preferences",
+				    "Climb stairs and block steps smoothly at full sprint speed without slowing down or losing momentum."));
+
 				layouter->AddToggleField(_Tr("Preferences", "Infinite Blocks"), "cg_infiniteBlocks");
 				layouter->AddHelp(_Tr("Preferences",
 				    "Automatically keeps your block inventory replenished at 50 blocks so you never run out while building."));
@@ -228,6 +236,10 @@ namespace spades {
 				layouter->headingNav = nav;
 
 				layouter->AddHeading(_Tr("Preferences", "Speed & Sprinting"));
+
+				layouter->AddToggleField(_Tr("Preferences", "Fast Stairs & Steps"), "cg_fastStairs");
+				layouter->AddHelp(_Tr("Preferences",
+				    "Climb stairs and block steps smoothly at full sprint speed without slowing down or losing momentum."));
 
 				layouter->AddToggleField(_Tr("Preferences", "Speedhack"), "cg_speedHack");
 				layouter->AddHelp(_Tr("Preferences",
