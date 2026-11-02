@@ -133,6 +133,14 @@ namespace spades {
 				layouter->AddHelp(_Tr("Preferences",
 				    "Distance ahead in movement direction to project and build the next bridge block (default 1.0 block)."));
 
+				layouter->AddControl(_Tr("Preferences", "Build Underneath Key"), "cg_keyPlaceUnder");
+				layouter->AddHelp(_Tr("Preferences",
+				    "Hotkey to instantly place a block directly beneath your feet (supports jumping and towering). Default [H]."));
+
+				layouter->AddToggleField(_Tr("Preferences", "Unlimited Jump Towering"), "cg_unlimitedTowering");
+				layouter->AddHelp(_Tr("Preferences",
+				    "Jump and build blocks beneath you rapidly without any height, delay, or collision limits."));
+
 				layouter->AddHeading(_Tr("Preferences", "Block Construction"));
 
 				layouter->AddToggleField(_Tr("Preferences", "Fast Block Placement"), "cg_fastPlace");
@@ -486,7 +494,7 @@ namespace spades {
 		}
 
 		void HksMenu::TextInputEvent(const std::string& text) { KeyPress(text); }
-		bool HksMenu::AcceptsTextInput() const { return IsEnabled(); }
+		bool HksMenu::AcceptsTextInput() const { return false; }
 		void HksMenu::Draw() { Render(); }
 
 		void HksMenu::Render() {

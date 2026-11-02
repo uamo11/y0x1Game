@@ -58,9 +58,11 @@ namespace spades {
 #define CheckErrorAlways()																		   \
 	do {																						   \
 		GLenum err;																				   \
-		err = glGetError();																		   \
-		if (err != GL_NO_ERROR)																	   \
-			ReportError(err, __LINE__, __PRETTY_FUNCTION__);									   \
+		if (!r_ignoreGLErrors) {																   \
+			err = glGetError();																	   \
+			if (err != GL_NO_ERROR)																   \
+				ReportError(err, __LINE__, __PRETTY_FUNCTION__);								   \
+		}																						   \
 	} while (0)
 
 		// lm: The macro would not work on windows, the application simply fails to start if

@@ -768,6 +768,7 @@ namespace spades {
 			l.AddControl(_Tr("Preferences", "Reload"), "cg_keyReloadWeapon");
 			l.AddControl(_Tr("Preferences", "Equip Spade"), "cg_keyToolSpade");
 			l.AddControl(_Tr("Preferences", "Equip Block"), "cg_keyToolBlock");
+			l.AddControl(_Tr("Preferences", "Build Block Underneath"), "cg_keyPlaceUnder");
 			l.AddControl(_Tr("Preferences", "Equip Weapon"), "cg_keyToolWeapon");
 			l.AddControl(_Tr("Preferences", "Equip Grenade"), "cg_keyToolGrenade");
 			l.AddControl(_Tr("Preferences", "Last Used Tool"), "cg_keyLastTool");

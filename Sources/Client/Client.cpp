@@ -119,6 +119,7 @@ namespace spades {
 			  grenadeKills(0),
 			  placedBlocks(0),
 			  reloadKeyPressed(false),
+			  placeUnderKeyPressed(false),
 			  localFireVibrationTime(-1.0F),
 			  grenadeVibration(0.0F),
 			  grenadeVibrationSlow(0.0F),
@@ -242,6 +243,7 @@ namespace spades {
 				staffSpectating = false;
 			aimingDownSight = false;
 			reloadKeyPressed = false;
+			placeUnderKeyPressed = false;
 			scoreboardVisible = false;
 			flashlightOn = false;
 			debugHitTestZoom = false;

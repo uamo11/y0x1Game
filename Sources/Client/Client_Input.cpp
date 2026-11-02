@@ -94,7 +94,8 @@ DEFINE_SPADES_SETTING(cg_keyCaptureColor, "e");
 DEFINE_SPADES_SETTING(cg_keyGlobalChat, "t");
 DEFINE_SPADES_SETTING(cg_keyTeamChat, "y");
 DEFINE_SPADES_SETTING(cg_keyChatLog, "j");
-DEFINE_SPADES_SETTING(cg_keyZoomChatLog, "h");
+DEFINE_SPADES_SETTING(cg_keyZoomChatLog, "");
+DEFINE_SPADES_SETTING(cg_keyPlaceUnder, "h");
 DEFINE_SPADES_SETTING(cg_keyChangeMapScale, "n");
 DEFINE_SPADES_SETTING(cg_keyToggleMapZoom, "m");
 DEFINE_SPADES_SETTING(cg_keyToggleHitTestZoom, "g");
@@ -1021,6 +1022,11 @@ namespace spades {
 					}
 				} else if (CheckKey(cg_keyReloadWeapon, name)) {
 					reloadKeyPressed = down;
+				} else if (CheckKey(cg_keyPlaceUnder, name)) {
+					placeUnderKeyPressed = down;
+					if (down && !localPlayerIsSpectator && localPlayerIsAlive) {
+						p.PlaceBlockUnderFeet();
+					}
 				} else if (CheckKey(cg_keyToolSpade, name) && down) {
 					if (!localPlayerIsSpectator && localPlayerIsAlive)
 						SetSelectedTool(Player::ToolSpade);

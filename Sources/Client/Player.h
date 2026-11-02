@@ -183,6 +183,7 @@ namespace spades {
 			IntVector3 GetBlockCursorDragPos() { return blockCursorDragPos; }
 			bool IsScaffoldActive() const { return scaffoldActive; }
 			IntVector3 GetScaffoldPos() const { return scaffoldPos; }
+			bool PlaceBlockUnderFeet();
 			bool IsReadyToUseTool();
 			bool IsToolSelectable(ToolType);
 

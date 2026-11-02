@@ -63,6 +63,8 @@ DEFINE_SPADES_SETTING(cg_scaffoldDistance, "1.0");
 
 DEFINE_SPADES_SETTING(cg_maintainBlockSelection, "1");
 DEFINE_SPADES_SETTING(cg_fastStairs, "1");
+DEFINE_SPADES_SETTING(cg_unlimitedTowering, "1");
+DEFINE_SPADES_SETTING(cg_towerJumpBoost, "1");
 
 namespace spades {
 	namespace client {
@@ -558,16 +560,29 @@ namespace spades {
 						pendingPlaceBlock = false;
 						lastSingleBlockBuildSeqDone = true;
 					} else if (InBuildRange(mapResult.hitBlock + mapResult.normal)
-						&& !OverlapsWithBlock(pendingPlaceBlockPos)
+						&& (!OverlapsWithBlock(pendingPlaceBlockPos) || cg_unlimitedTowering)
 						&& map->IsValidMapCoord(pendingPlaceBlockPos.x, pendingPlaceBlockPos.y, pendingPlaceBlockPos.z)
 						&& pendingPlaceBlockPos.z < maxDepth) {
 						// now building became possible.
 						if (listener)
 							listener->LocalPlayerBlockAction(pendingPlaceBlockPos, BlockActionCreate);
 
+						if (cg_unlimitedTowering) {
+							float topOfBlock = static_cast<float>(pendingPlaceBlockPos.z);
+							float desiredEyeZ = topOfBlock - (input.crouch ? 1.8F : 2.25F) - 0.01F;
+							if (position.z > desiredEyeZ) {
+								position.z = desiredEyeZ;
+								eye.z = desiredEyeZ;
+								RepositionPlayer(position);
+							}
+							if (input.jump && velocity.z > -0.32F)
+								velocity.z = -0.36F;
+							airborne = false;
+						}
+
 						pendingPlaceBlock = false;
 						lastSingleBlockBuildSeqDone = true;
-						float bDelay = cg_fastPlace ? 0.02F : primaryDelay;
+						float bDelay = (cg_fastPlace || cg_unlimitedTowering) ? 0.02F : primaryDelay;
 						nextBlockTime = world.GetTime() + bDelay;
 					}
 				} else {
@@ -1873,6 +1888,87 @@ namespace spades {
 					scaffoldActive = false;
 				}
 			}
+		}
+
+		bool Player::PlaceBlockUnderFeet() {
+			SPADES_MARK_FUNCTION();
+
+			if (!alive)
+				return false;
+
+			if (!IsLocalPlayer())
+				return false;
+
+			const Handle<GameMap>& map = world.GetMap();
+			if (!map)
+				return false;
+
+			int maxDepth = map->GroundDepth();
+
+			if (!cg_infiniteBlocks && blockStocks <= 0) {
+				auto* listener = world.GetListener();
+				if (listener)
+					listener->LocalPlayerBuildError(BuildFailureReason::InsufficientBlocks);
+				return false;
+			}
+
+			Vector3 pos = position;
+			float feetZ = pos.z + (input.crouch ? 1.8F : 2.25F);
+			int targetZ = static_cast<int>(floorf(feetZ + 0.1F));
+			int targetX = static_cast<int>(floorf(pos.x));
+			int targetY = static_cast<int>(floorf(pos.y));
+
+			// If target block is already solid (player standing firmly on ground):
+			// Target the block right at foot level to lift the player up!
+			if (map->IsValidMapCoord(targetX, targetY, targetZ) && map->IsSolid(targetX, targetY, targetZ)) {
+				targetZ -= 1;
+			}
+
+			if (targetZ < 0 || targetZ >= maxDepth)
+				return false;
+
+			IntVector3 placePos(targetX, targetY, targetZ);
+
+			if (!map->IsValidMapCoord(placePos.x, placePos.y, placePos.z))
+				return false;
+
+			if (map->IsSolid(placePos.x, placePos.y, placePos.z))
+				return false;
+
+			if (!map->HasNeighbors(placePos))
+				return false;
+
+			auto* listener = world.GetListener();
+			if (listener)
+				listener->LocalPlayerBlockAction(placePos, BlockActionCreate);
+
+			if (!cg_infiniteBlocks)
+				blockStocks--;
+
+			// Elevate player cleanly on top of the newly placed block
+			float topOfBlock = static_cast<float>(targetZ);
+			float desiredEyeZ = topOfBlock - (input.crouch ? 1.8F : 2.25F) - 0.01F;
+			if (position.z > desiredEyeZ) {
+				position.z = desiredEyeZ;
+				eye.z = desiredEyeZ;
+				RepositionPlayer(position);
+			}
+
+			// If holding jump or jumping, give upward momentum so towering is completely limitless
+			if (input.jump && cg_towerJumpBoost) {
+				velocity.z = -0.36F;
+				if (cg_superJump) {
+					float mult = static_cast<float>(cg_jumpMultiplier);
+					if (mult > 0.1F)
+						velocity.z = -0.36F * mult;
+				}
+			} else {
+				if (velocity.z > 0.0F)
+					velocity.z = 0.0F;
+			}
+
+			airborne = false;
+			return true;
 		}
 	} // namespace client
 } // namespace spades

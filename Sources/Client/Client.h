@@ -267,6 +267,7 @@ namespace spades {
 			float worldSetTime;
 
 			bool reloadKeyPressed;
+			bool placeUnderKeyPressed;
 
 			struct HurtSprite {
 				float angle;

@@ -948,6 +948,15 @@ namespace spades {
 				activeNet->SendReload();
 			}
 
+			// Place block directly under feet continuously while hotkey is held
+			if (placeUnderKeyPressed && !localPlayerIsSpectator && localPlayerIsAlive) {
+				static float lastPlaceUnderTime = 0.0F;
+				if (world->GetTime() - lastPlaceUnderTime > 0.05F) {
+					if (player.PlaceBlockUnderFeet())
+						lastPlaceUnderTime = world->GetTime();
+				}
+			}
+
 			// is the selected tool no longer usable (ex. out of ammo)?
 			if (!player.IsToolSelectable(player.GetTool())) {
 				// release mouse buttons before auto-switching tools
