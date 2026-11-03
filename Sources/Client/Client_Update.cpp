@@ -80,6 +80,7 @@ SPADES_SETTING(cg_corpseDisableGravity);
 
 SPADES_SETTING(cg_killfeedFadeTime);
 SPADES_SETTING(cg_maintainBlockSelection);
+SPADES_SETTING(cg_infiniteBlocks);
 
 namespace spades {
 	namespace client {
@@ -1009,7 +1010,7 @@ namespace spades {
 					int blocks = world->CubeLineCount(player.GetBlockCursorDragPos(),
 													  player.GetBlockCursorPos());
 					auto msg = _TrN("Client", "{0} block", "{0} blocks", blocks);
-					auto type = (blocks > player.GetNumBlocks())
+					auto type = (!cg_infiniteBlocks && blocks > player.GetNumBlocks())
 						? AlertType::Warning : AlertType::Notice;
 					ShowAlert(msg, type, 0.0F, true);
 				} else { // invalid

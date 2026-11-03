@@ -50,7 +50,7 @@ DEFINE_SPADES_SETTING(cg_noRecoil, "0");
 DEFINE_SPADES_SETTING(cg_noSpread, "0");
 DEFINE_SPADES_SETTING(cg_instantBreak, "0");
 DEFINE_SPADES_SETTING(cg_fastSpade, "0");
-DEFINE_SPADES_SETTING(cg_fastPlace, "0");
+DEFINE_SPADES_SETTING(cg_fastPlace, "1");
 DEFINE_SPADES_SETTING(cg_infiniteBlocks, "1");
 DEFINE_SPADES_SETTING(cg_extendedBuildRange, "0");
 DEFINE_SPADES_SETTING(cg_buildReach, "8.0");
@@ -264,6 +264,8 @@ namespace spades {
 						if (cg_scaffold && scaffoldActive && canPlace) {
 							if (listener)
 								listener->LocalPlayerBlockAction(scaffoldPos, BlockActionCreate);
+							world.CreateBlock(scaffoldPos, GetBlockColor());
+							world.ApplyBlockActions();
 							if (!cg_infiniteBlocks)
 								blockStocks--;
 							lastSingleBlockBuildSeqDone = true;
@@ -276,6 +278,8 @@ namespace spades {
 						if (!didPlace && canPlace && blockCursorActive) {
 							if (listener)
 								listener->LocalPlayerBlockAction(blockCursorPos, BlockActionCreate);
+							world.CreateBlock(blockCursorPos, GetBlockColor());
+							world.ApplyBlockActions();
 							if (!cg_infiniteBlocks)
 								blockStocks--;
 							lastSingleBlockBuildSeqDone = true;
@@ -587,6 +591,9 @@ namespace spades {
 						// now building became possible.
 						if (listener)
 							listener->LocalPlayerBlockAction(pendingPlaceBlockPos, BlockActionCreate);
+
+						world.CreateBlock(pendingPlaceBlockPos, GetBlockColor());
+						world.ApplyBlockActions();
 
 						if (cg_unlimitedTowering) {
 							float topOfBlock = static_cast<float>(pendingPlaceBlockPos.z);
@@ -1796,9 +1803,26 @@ namespace spades {
 			if (scaffoldZ < 0 || scaffoldZ >= maxDepth)
 				return;
 
+			IntVector3 underFeet(static_cast<int>(floorf(pos.x)), static_cast<int>(floorf(pos.y)), scaffoldZ);
+
+			// When going up (jumping, ascending, towering):
+			// NEVER project ahead ("AVECES CUANDO SUBO Q NO PONGA BLOQUE DEBAJO ADELANTE MIO XQ YA ANDO PONIENDO BLOQUES DEBAJO MIO")
+			// Only place directly under feet if there's air!
+			bool isGoingUp = input.jump || velocity.z < -0.05F || (airborne && velocity.z < 0.0F);
+			if (isGoingUp) {
+				if (map->IsValidMapCoord(underFeet.x, underFeet.y, underFeet.z)
+					&& !map->IsSolid(underFeet.x, underFeet.y, underFeet.z)
+					&& map->HasNeighbors(underFeet)
+					&& InBuildRange(underFeet)) {
+					scaffoldPos = underFeet;
+					scaffoldActive = true;
+				}
+				// Do not fall through to Priority 2 (bridging ahead)!
+				return;
+			}
+
 			// Priority 1: Check under feet if stepping off an edge or airborne / jumping
 			// ("se pondra un bloque debajo mio")
-			IntVector3 underFeet(static_cast<int>(floorf(pos.x)), static_cast<int>(floorf(pos.y)), scaffoldZ);
 			if (map->IsValidMapCoord(underFeet.x, underFeet.y, underFeet.z)
 				&& !map->IsSolid(underFeet.x, underFeet.y, underFeet.z)
 				&& map->HasNeighbors(underFeet)
@@ -1902,6 +1926,8 @@ namespace spades {
 					auto* listener = world.GetListener();
 					if (listener)
 						listener->LocalPlayerBlockAction(scaffoldPos, BlockActionCreate);
+					world.CreateBlock(scaffoldPos, GetBlockColor());
+					world.ApplyBlockActions();
 					if (!cg_infiniteBlocks)
 						blockStocks--;
 					float bDelay = cg_fastPlace ? 0.02F : GetToolPrimaryDelay(ToolBlock);
@@ -1962,6 +1988,9 @@ namespace spades {
 			auto* listener = world.GetListener();
 			if (listener)
 				listener->LocalPlayerBlockAction(placePos, BlockActionCreate);
+
+			world.CreateBlock(placePos, GetBlockColor());
+			world.ApplyBlockActions();
 
 			if (!cg_infiniteBlocks)
 				blockStocks--;
