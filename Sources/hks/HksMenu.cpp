@@ -370,6 +370,18 @@ namespace spades {
 				layouter->AddHelp(_Tr("Preferences",
 				    "Smoothness of aim correction. 0.00 = Instant snap, higher values = smooth gentle assist."));
 
+				layouter->AddToggleField(_Tr("Preferences", "Target Specific Player Only"), "cg_aimbotTargetOnly");
+				layouter->AddHelp(_Tr("Preferences",
+				    "When enabled, the aimbot will exclusively track and lock onto the specified target player."));
+
+				layouter->AddInputField(_Tr("Preferences", "Target Player Name"), "cg_aimbotTargetName");
+				layouter->AddHelp(_Tr("Preferences",
+				    "Name or substring of the specific player to target. Leave blank to target by hotkey."));
+
+				layouter->AddControl(_Tr("Preferences", "Lock Target Key"), "cg_keyLockTarget");
+				layouter->AddHelp(_Tr("Preferences",
+				    "Aim at an enemy and press this key to lock onto them specifically. Press looking at the sky to reset to all enemies. Default [X]."));
+
 				layouter->AddHeading(_Tr("Preferences", "Triggerbot & Automatic Actions"));
 
 				layouter->AddToggleField(_Tr("Preferences", "Triggerbot"), "cg_triggerbot");

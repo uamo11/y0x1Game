@@ -772,6 +772,7 @@ namespace spades {
 			l.AddControl(_Tr("Preferences", "Equip Weapon"), "cg_keyToolWeapon");
 			l.AddControl(_Tr("Preferences", "Equip Grenade"), "cg_keyToolGrenade");
 			l.AddControl(_Tr("Preferences", "Last Used Tool"), "cg_keyLastTool");
+			l.AddControl(_Tr("Preferences", "Lock Aimbot Target"), "cg_keyLockTarget");
 			l.AddPlusMinusField(_Tr("Preferences", "Switch Tools by Wheel"), "cg_switchToolByWheel");
 
 			l.AddHeading(_Tr("Preferences", "Movement"));

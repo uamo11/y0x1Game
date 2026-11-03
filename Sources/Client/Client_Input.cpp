@@ -96,6 +96,10 @@ DEFINE_SPADES_SETTING(cg_keyTeamChat, "y");
 DEFINE_SPADES_SETTING(cg_keyChatLog, "j");
 DEFINE_SPADES_SETTING(cg_keyZoomChatLog, "");
 DEFINE_SPADES_SETTING(cg_keyPlaceUnder, "h");
+DEFINE_SPADES_SETTING(cg_keyLockTarget, "x");
+SPADES_SETTING(cg_aimbotTargetOnly);
+SPADES_SETTING(cg_aimbotTargetName);
+SPADES_SETTING(cg_aimbotTargetId);
 DEFINE_SPADES_SETTING(cg_keyChangeMapScale, "n");
 DEFINE_SPADES_SETTING(cg_keyToggleMapZoom, "m");
 DEFINE_SPADES_SETTING(cg_keyToggleHitTestZoom, "g");
@@ -1026,6 +1030,52 @@ namespace spades {
 					placeUnderKeyPressed = down;
 					if (down && !localPlayerIsSpectator && localPlayerIsAlive) {
 						p.PlaceBlockUnderFeet();
+					}
+				} else if (CheckKey(cg_keyLockTarget, name)) {
+					if (down && !localPlayerIsSpectator && localPlayerIsAlive && world) {
+						Vector3 eye = p.GetEye();
+						Vector3 front = p.GetFront();
+						int bestId = -1;
+						float bestAngle = DEG2RAD(45.0F);
+						std::string bestName;
+
+						for (size_t i = 0; i < world->GetNumPlayerSlots(); ++i) {
+							auto maybeTarget = world->GetPlayer(static_cast<unsigned int>(i));
+							if (!maybeTarget)
+								continue;
+							Player& target = maybeTarget.value();
+							if (!target.IsAlive() || &target == &p || p.IsTeammate(target))
+								continue;
+
+							Vector3 headPos = target.GetEye();
+							Vector3 diff = headPos - eye;
+							float dist = diff.GetLength();
+							if (dist < 0.1F || dist > 160.0F)
+								continue;
+
+							Vector3 dir = diff * (1.0F / dist);
+							float dot = Vector3::Dot(front, dir);
+							float angle = acosf(Clamp(dot, -1.0F, 1.0F));
+							if (angle < bestAngle) {
+								bestAngle = angle;
+								bestId = static_cast<int>(i);
+								bestName = world->GetPlayerName(static_cast<int>(i));
+							}
+						}
+
+						if (bestId >= 0) {
+							cg_aimbotTargetId = bestId;
+							cg_aimbotTargetName = bestName;
+							cg_aimbotTargetOnly = 1;
+							ShowAlert(_Tr("Client", "Aimbot Target: {0}", bestName), AlertType::Notice, 2.5F, true);
+						} else {
+							if (cg_aimbotTargetOnly) {
+								cg_aimbotTargetOnly = 0;
+								cg_aimbotTargetId = -1;
+								cg_aimbotTargetName = "";
+								ShowAlert(_Tr("Client", "Aimbot Target: All Enemies"), AlertType::Notice, 2.0F, true);
+							}
+						}
 					}
 				} else if (CheckKey(cg_keyToolSpade, name) && down) {
 					if (!localPlayerIsSpectator && localPlayerIsAlive)

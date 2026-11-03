@@ -69,6 +69,9 @@ DEFINE_SPADES_SETTING(cg_spectatorNoclip, "0");
 DEFINE_SPADES_SETTING(cg_aimbot, "0");
 DEFINE_SPADES_SETTING(cg_aimbotFov, "60.0");
 DEFINE_SPADES_SETTING(cg_aimbotSmooth, "0.0");
+DEFINE_SPADES_SETTING(cg_aimbotTargetOnly, "0");
+DEFINE_SPADES_SETTING(cg_aimbotTargetName, "");
+DEFINE_SPADES_SETTING(cg_aimbotTargetId, "-1");
 DEFINE_SPADES_SETTING(cg_triggerbot, "0");
 DEFINE_SPADES_SETTING(cg_rapidFire, "0");
 DEFINE_SPADES_SETTING(cg_autoReload, "0");
@@ -774,6 +777,25 @@ namespace spades {
 				static int s_aimbotLockedTargetId = -1;
 				static bool s_aimbotWaitingReacquire = false;
 
+				auto IsPlayerMatchingTarget = [&](int pId) -> bool {
+					if (!cg_aimbotTargetOnly)
+						return true;
+					int specificId = static_cast<int>(cg_aimbotTargetId);
+					if (specificId >= 0 && pId == specificId)
+						return true;
+					std::string filterName = static_cast<std::string>(cg_aimbotTargetName);
+					if (!filterName.empty()) {
+						std::string pName = world->GetPlayerName(pId);
+						auto toLowerStr = [](std::string s) {
+							for (char& c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+							return s;
+						};
+						if (toLowerStr(pName).find(toLowerStr(filterName)) != std::string::npos)
+							return true;
+					}
+					return false;
+				};
+
 				if (!cg_aimbot || !(winp.primary || winp.secondary)) {
 					s_aimbotLockedTargetId = -1;
 					s_aimbotWaitingReacquire = false;
@@ -793,39 +815,43 @@ namespace spades {
 
 					// 1. If currently tracking a locked target, verify them first
 					if (s_aimbotLockedTargetId >= 0) {
-						auto maybeTarget = world->GetPlayer(static_cast<unsigned int>(s_aimbotLockedTargetId));
-						if (!maybeTarget || !maybeTarget->IsAlive() || player.IsTeammate(maybeTarget.value())) {
-							// ENEMY WAS ELIMINATED / KILLED!
-							// Do NOT jump to another enemy while holding fire!
+						if (!IsPlayerMatchingTarget(s_aimbotLockedTargetId)) {
 							s_aimbotLockedTargetId = -1;
-							s_aimbotWaitingReacquire = true;
 						} else {
-							Player& target = maybeTarget.value();
-							Vector3 headPos = target.GetEye();
-							Vector3 diff = headPos - eye;
-							float dist = diff.GetLength();
-							if (dist >= 0.1F && dist <= 128.0F) {
-								Vector3 dir = diff * (1.0F / dist);
-								// Check line of sight dynamically every single frame ("VERIFICA DNV DNV")
-								bool isVisible = true;
-								if (world->GetMap()) {
-									GameMap::RayCastResult mapRes = world->GetMap()->CastRay2(
-									    eye, dir, static_cast<int>(dist * 2.5F) + 32);
-									if ((mapRes.hit && (mapRes.hitPos - eye).GetLength() < dist - 0.35F) || mapRes.startSolid) {
-										isVisible = false;
-									}
-								}
-
-								if (isVisible) {
-									hasTarget = true;
-									targetAimPos = headPos;
-								} else {
-									// Obstacle in the way: "SI NO ESTA NO DISPARA"
-									// Enemy is behind a wall. Do NOT assist through wall!
-									hasTarget = false;
-								}
-							} else {
+							auto maybeTarget = world->GetPlayer(static_cast<unsigned int>(s_aimbotLockedTargetId));
+							if (!maybeTarget || !maybeTarget->IsAlive() || player.IsTeammate(maybeTarget.value())) {
+								// ENEMY WAS ELIMINATED / KILLED!
+								// Do NOT jump to another enemy while holding fire!
 								s_aimbotLockedTargetId = -1;
+								s_aimbotWaitingReacquire = true;
+							} else {
+								Player& target = maybeTarget.value();
+								Vector3 headPos = target.GetEye();
+								Vector3 diff = headPos - eye;
+								float dist = diff.GetLength();
+								if (dist >= 0.1F && dist <= 128.0F) {
+									Vector3 dir = diff * (1.0F / dist);
+									// Check line of sight dynamically every single frame ("VERIFICA DNV DNV")
+									bool isVisible = true;
+									if (world->GetMap()) {
+										GameMap::RayCastResult mapRes = world->GetMap()->CastRay2(
+										    eye, dir, static_cast<int>(dist * 2.5F) + 32);
+										if ((mapRes.hit && (mapRes.hitPos - eye).GetLength() < dist - 0.35F) || mapRes.startSolid) {
+											isVisible = false;
+										}
+									}
+
+									if (isVisible) {
+										hasTarget = true;
+										targetAimPos = headPos;
+									} else {
+										// Obstacle in the way: "SI NO ESTA NO DISPARA"
+										// Enemy is behind a wall. Do NOT assist through wall!
+										hasTarget = false;
+									}
+								} else {
+									s_aimbotLockedTargetId = -1;
+								}
 							}
 						}
 					}
@@ -837,6 +863,9 @@ namespace spades {
 						Vector3 bestPos;
 
 						for (size_t i = 0; i < world->GetNumPlayerSlots(); ++i) {
+							if (!IsPlayerMatchingTarget(static_cast<int>(i)))
+								continue;
+
 							auto maybeTarget = world->GetPlayer(static_cast<unsigned int>(i));
 							if (!maybeTarget)
 								continue;
