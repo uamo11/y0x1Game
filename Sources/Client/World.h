@@ -88,8 +88,6 @@ namespace spades {
 			std::unordered_map<IntVector3, std::multimap<float, IntVector3>::iterator>
 			  damagedBlocksQueueMap;
 
-			void ApplyBlockActions();
-
 		public:
 			World(const std::shared_ptr<GameProperties>&);
 			~World();
@@ -153,6 +151,7 @@ namespace spades {
 
 			void CreateBlock(IntVector3 pos, IntVector3 color);
 			void DestroyBlock(std::vector<IntVector3>& pos);
+			void ApplyBlockActions();
 
 			struct WeaponRayCastResult {
 				bool hit, startSolid;
