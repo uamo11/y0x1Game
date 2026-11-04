@@ -87,17 +87,22 @@ namespace spades {
 					gui::ui::SetColorNP(r, borderCol);
 					r.DrawOutlinedRect(pos.x, pos.y, pos.x + sz.x, pos.y + sz.y);
 
+					float iconX = (sz.y < 30.0F) ? 14.0F : 20.0F;
+					float iconScale = (sz.y < 30.0F) ? 0.90F : 1.15F;
+					float textX = (sz.y < 30.0F) ? 30.0F : 42.0F;
+					float textScale = (sz.y < 30.0F) ? 0.85F : 1.0F;
+
 					if (iconType != gui::GuiIconType::None) {
-						gui::DrawGuiIcon(r, iconType, MakeVector2(pos.x + 20.0F, pos.y + sz.y * 0.5F), icCol, 1.15F);
+						gui::DrawGuiIcon(r, iconType, MakeVector2(pos.x + iconX, pos.y + sz.y * 0.5F), icCol, iconScale);
 					}
 
 					client::IFont* font = GetFont();
 					if (font && !caption.empty()) {
 						Vector4 textCol = hover ? MakeVector4(1.0F, 1.0F, 1.0F, 1.0F)
 						                        : MakeVector4(0.92F, 0.92F, 0.92F, 0.95F);
-						Vector2 textSize = font->Measure(caption);
-						Vector2 textPos = MakeVector2(pos.x + 42.0F, pos.y + (sz.y - textSize.y) * 0.5F);
-						font->DrawShadow(caption, textPos, 1.0F, textCol, MakeVector4(0.0F, 0.0F, 0.0F, 0.75F));
+						Vector2 textSize = font->Measure(caption) * textScale;
+						Vector2 textPos = MakeVector2(pos.x + textX, pos.y + (sz.y - textSize.y) * 0.5F);
+						font->DrawShadow(caption, textPos, textScale, textCol, MakeVector4(0.0F, 0.0F, 0.0F, 0.75F));
 					}
 				}
 			};
@@ -111,20 +116,22 @@ namespace spades {
 			float sw = manager->screenWidth;
 			float sh = manager->screenHeight;
 
-			float winW = 240.0F;
-			float btnH = 34.0F;
-			float spacing = 6.0F;
-			float headerH = 34.0F;
-			float cardPadX = 14.0F;
-			float cardPadY = 12.0F;
+			bool isSpectator = ui->IsLocalPlayerSpectator();
+
+			float winW = isSpectator ? 170.0F : 240.0F;
+			float btnH = isSpectator ? 25.0F : 34.0F;
+			float spacing = isSpectator ? 4.0F : 6.0F;
+			float headerH = isSpectator ? 24.0F : 34.0F;
+			float cardPadX = isSpectator ? 8.0F : 14.0F;
+			float cardPadY = isSpectator ? 8.0F : 12.0F;
 
 			// winH encompasses title header + 4 buttons + spacing
 			float winH = headerH + 2.0F + (btnH + spacing) * 3.0F + btnH;
-			float winX = (sw - winW) * 0.5F;
-			float winY = (sh - winH) * 0.5F;
+			float winX = isSpectator ? 16.0F : (sw - winW) * 0.5F;
+			float winY = isSpectator ? 16.0F : (sh - winH) * 0.5F;
 
-			// draw full background overlay (dim 3D gameplay)
-			{
+			// draw full background overlay (dim 3D gameplay) ONLY when NOT in spectator mode
+			if (!isSpectator) {
 				Handle<Label> overlay = Handle<Label>::New(manager);
 				overlay->backgroundColor = MakeVector4(0.0F, 0.0F, 0.0F, 0.70F);
 				overlay->SetBounds(AABB2(0.0F, 0.0F, sw, sh));
@@ -134,7 +141,8 @@ namespace spades {
 			// modal menu card background in HD transparent black (strictly surrounds all content)
 			{
 				Handle<Label> label = Handle<Label>::New(manager);
-				label->backgroundColor = MakeVector4(0.02F, 0.02F, 0.02F, 0.90F);
+				label->backgroundColor = isSpectator ? MakeVector4(0.02F, 0.02F, 0.02F, 0.75F)
+				                                     : MakeVector4(0.02F, 0.02F, 0.02F, 0.90F);
 				label->outlineColor = MakeVector4(0.0F, 0.0F, 0.0F, 0.95F);
 				label->SetBounds(AABB2(winX - cardPadX, winY - cardPadY, winW + cardPadX * 2.0F, winH + cardPadY * 2.0F));
 				AddChild(label.GetPointerOrNull());
@@ -143,7 +151,7 @@ namespace spades {
 			// menu title header
 			{
 				Handle<Label> title = Handle<Label>::New(manager);
-				title->text = _Tr("Client", "ySpades - Menu");
+				title->text = isSpectator ? _Tr("Client", "Spectator Menu") : _Tr("Client", "ySpades - Menu");
 				title->textColor = MakeVector4(1.0F, 1.0F, 1.0F, 0.95F);
 				title->alignment = MakeVector2(0.5F, 0.5F);
 				title->SetBounds(AABB2(winX, winY, winW, headerH));

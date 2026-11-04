@@ -145,6 +145,7 @@ namespace spades {
 			                              const std::string& language = "");
 
 			bool IsChatEnabled();
+			bool IsLocalPlayerSpectator() const;
 
 			void EnterClientMenu();
 			void EnterHksMenu();

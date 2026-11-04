@@ -300,7 +300,7 @@ namespace spades {
 							didPlace = true;
 
 							// Towering centering & anti-pushback: If placing a block underneath feet while jumping / towering
-							IntVector3 underFeet(static_cast<int>(floorf(pos.x)), static_cast<int>(floorf(pos.y)), static_cast<int>(floorf(pos.z + (input.crouch ? 1.8F : 2.25F) + 0.1F)));
+							IntVector3 underFeet(static_cast<int>(floorf(position.x)), static_cast<int>(floorf(position.y)), static_cast<int>(floorf(position.z + (input.crouch ? 1.8F : 2.25F) + 0.1F)));
 							if (blockCursorPos.x == underFeet.x && blockCursorPos.y == underFeet.y) {
 								float topOfBlock = static_cast<float>(blockCursorPos.z);
 								float desiredEyeZ = topOfBlock - (input.crouch ? 1.8F : 2.25F) - 0.01F;

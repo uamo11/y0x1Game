@@ -26,6 +26,8 @@
 #include "ClientUIHelper.h"
 #include "NetClient.h"
 #include <Client/Client.h>
+#include <Client/World.h>
+#include <Client/Player.h>
 #include <Client/Fonts.h>
 #include <Core/Exception.h>
 #include <Gui/UI/Framework/UIManager.h>
@@ -213,11 +215,23 @@ namespace spades {
 			return !helper->IsDemoMode() && helper->HasLocalPlayer();
 		}
 
+		bool ClientUI::IsLocalPlayerSpectator() const {
+			if (!client)
+				return false;
+			if (client->staffSpectating)
+				return true;
+			World* w = client->GetWorld();
+			if (!w)
+				return false;
+			auto maybePlayer = w->GetLocalPlayer();
+			if (!maybePlayer)
+				return true;
+			return maybePlayer->IsSpectator();
+		}
+
 		void ClientUI::EnterClientMenu() {
-			if (!clientMenu) {
-				clientMenu = Handle<ClientMenu>::New(this);
-				clientMenu->SetBounds(manager->GetRootElement().GetBounds());
-			}
+			clientMenu = Handle<ClientMenu>::New(this);
+			clientMenu->SetBounds(manager->GetRootElement().GetBounds());
 			SetActiveUI(clientMenu.GetPointerOrNull());
 		}
 
