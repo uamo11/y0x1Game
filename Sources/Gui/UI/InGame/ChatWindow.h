@@ -115,9 +115,12 @@ namespace spades {
 
 			void OnSetGlobal(gui::ui::UIElement& sender);
 			void OnSetTeam(gui::ui::UIElement& sender);
+			void OnToggleTranslate(gui::ui::UIElement& sender);
+			void UpdateTranslateButtonState();
 			void OnFieldChanged(gui::ui::UIElement& sender);
 			void OnCancel(gui::ui::UIElement& sender);
 			bool CheckAndSetConfigVariable();
+			bool HandleChatCommand(const std::string& text);
 			void OnSay(gui::ui::UIElement& sender);
 
 		protected:
@@ -129,6 +132,7 @@ namespace spades {
 			gui::ui::Button* sayButton = nullptr;
 			gui::ui::SimpleButton* teamButton = nullptr;
 			gui::ui::SimpleButton* globalButton = nullptr;
+			gui::ui::SimpleButton* translateButton = nullptr;
 
 			ClientChatWindow(ClientUI* ui, bool isTeamChat,
 			                 ChatWindowMode mode = ChatWindowMode::Centered);

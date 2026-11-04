@@ -24,9 +24,11 @@
 #include <list>
 #include <array>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <tuple>
 #include <unordered_map>
+#include <vector>
 
 #include "ClientCameraMode.h"
 #include "DemoNetClient.h"
@@ -577,6 +579,17 @@ namespace spades {
 
 			/** Ingame team indicator badge */
 			void DrawTeamIndicator();
+
+			// Player blocklist / mute system
+			std::vector<std::string> blockedPlayers;
+			mutable std::mutex blockedPlayersMutex;
+			bool BlockPlayer(const std::string& nameOrSlot);
+			bool UnblockPlayer(const std::string& nameOrSlot);
+			void ClearBlockedPlayers();
+			bool IsPlayerBlocked(const std::string& name) const;
+			bool IsPlayerSlotBlocked(int slot) const;
+			std::vector<std::string> GetBlockedPlayers() const;
+			void AddLocalChatMessage(const std::string& msg);
 
 			bool staffSpectating;
 			bool spectatorPlayerNames;

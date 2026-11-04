@@ -107,11 +107,21 @@ namespace spades {
 				// The local player is dead or a spectator
 				if (followCameraState.enabled) {
 					auto followedPlayer = world->GetPlayer(followedPlayerId);
-					bool isAlive = followedPlayer && followedPlayer->IsAlive();
-					if (followCameraState.firstPerson && isAlive)
-						return ClientCameraMode::FirstPersonFollow;
-					else
-						return ClientCameraMode::ThirdPersonFollow;
+					if (followedPlayer) {
+						bool isAlive = followedPlayer->IsAlive();
+						if (followCameraState.firstPerson && isAlive)
+							return ClientCameraMode::FirstPersonFollow;
+						else
+							return ClientCameraMode::ThirdPersonFollow;
+					} else {
+						// Followed player no longer exists or disconnected! Safely reset
+						followCameraState.enabled = false;
+						if (localPlayerIsSpectating) {
+							return ClientCameraMode::Free;
+						} else {
+							return ClientCameraMode::ThirdPersonLocal;
+						}
+					}
 				} else {
 					if (localPlayerIsSpectating) {
 						return ClientCameraMode::Free;
@@ -133,13 +143,19 @@ namespace spades {
 					if (IsDemoMode()) {
 						if (followedPlayerId >= 0 && world->GetPlayer(followedPlayerId))
 							return followedPlayerId;
-						return demoNet->GetRecordedLocalPlayerId();
+						return demoNet ? demoNet->GetRecordedLocalPlayerId() : 0;
 					}
-					return world->GetLocalPlayerIndex().value();
+					if (world->GetLocalPlayerIndex())
+						return static_cast<int>(world->GetLocalPlayerIndex().value());
+					if (followedPlayerId >= 0 && world->GetPlayer(followedPlayerId))
+						return followedPlayerId;
+					return 0;
 				case ClientCameraMode::FirstPersonLocal:
 				case ClientCameraMode::ThirdPersonLocal:
 					SPAssert(world);
-					return world->GetLocalPlayerIndex().value();
+					if (world->GetLocalPlayerIndex())
+						return static_cast<int>(world->GetLocalPlayerIndex().value());
+					return 0;
 				case ClientCameraMode::FirstPersonFollow:
 				case ClientCameraMode::ThirdPersonFollow:
 					return followedPlayerId;
@@ -148,7 +164,21 @@ namespace spades {
 		}
 
 		Player& Client::GetCameraTargetPlayer() {
-			return world->GetPlayer(GetCameraTargetPlayerId()).value();
+			int targetId = GetCameraTargetPlayerId();
+			if (world) {
+				auto maybeP = world->GetPlayer(targetId);
+				if (maybeP)
+					return maybeP.value();
+				auto maybeLoc = world->GetLocalPlayer();
+				if (maybeLoc)
+					return maybeLoc.value();
+				for (size_t i = 0; i < world->GetNumPlayerSlots(); ++i) {
+					auto p = world->GetPlayer(static_cast<unsigned int>(i));
+					if (p)
+						return p.value();
+				}
+			}
+			return world->GetPlayer(targetId).value();
 		}
 
 		bool Client::IsPlayerInFirstPerson(int playerId) {

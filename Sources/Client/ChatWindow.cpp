@@ -41,6 +41,7 @@ DEFINE_SPADES_SETTING(cg_killfeedFadeTime, "6");
 
 SPADES_SETTING(cg_stats);
 SPADES_SETTING(cg_statsSmallFont);
+SPADES_SETTING(cg_chatTranslate);
 
 namespace spades {
 	namespace client {
@@ -355,7 +356,7 @@ namespace spades {
 		}
 
 		void ChatWindow::Update(float dt) {
-			if (!killfeed && ChatTranslator::GetInstance().HasCompletedTranslations()) {
+			if (cg_chatTranslate && !killfeed && ChatTranslator::GetInstance().HasCompletedTranslations()) {
 				auto completed = ChatTranslator::GetInstance().PopCompletedTranslations();
 				for (const auto& item : completed) {
 					UpdateMessage(item.msgId, item.fullTranslatedText);
@@ -522,6 +523,59 @@ namespace spades {
 						// Teeth slits
 						renderer.DrawFilledRect(iconX + 4.5F, iconY + 8.5F, iconX + 5.5F, iconY + 11.0F);
 						renderer.DrawFilledRect(iconX + iconW - 5.5F, iconY + 8.5F, iconX + iconW - 4.5F, iconY + 11.0F);
+
+						tx += iconW + 4.0F;
+					} else if (msg[i] == MsgSpecIcon) {
+						// Clean vector spectator eye icon 👁️
+						float iconW = 15.0F;
+						float iconH = 10.0F;
+						float iconX = tx + curPosX;
+						float iconY = ty + winY + (lh - iconH) * 0.5F;
+
+						// Shadow
+						Vector4 eyeShadow = MakeVector4(0.0F, 0.0F, 0.0F, 0.70F * fade).Premultiplied();
+						renderer.SetColorAlphaPremultiplied(eyeShadow);
+						renderer.DrawFilledRect(iconX + 1.0F, iconY + 1.0F, iconX + iconW + 1.0F, iconY + iconH + 1.0F);
+
+						// Outer eye contour / sclera (pure clean white with slight soft cyan tint)
+						Vector4 scleraCol = MakeVector4(0.95F, 0.98F, 1.0F, 0.95F * fade).Premultiplied();
+						Vector4 irisCol = MakeVector4(0.20F, 0.75F, 1.0F, 0.95F * fade).Premultiplied(); // Azure cyan iris
+						Vector4 pupilCol = MakeVector4(0.08F, 0.10F, 0.15F, 0.95F * fade).Premultiplied(); // Dark pupil
+						Vector4 glintCol = MakeVector4(1.0F, 1.0F, 1.0F, 0.95F * fade).Premultiplied(); // Specular highlight
+
+						// Almond eye sclera (tapered shape)
+						renderer.SetColorAlphaPremultiplied(scleraCol);
+						renderer.DrawFilledRect(iconX + 2.0F, iconY, iconX + iconW - 2.0F, iconY + iconH);
+						renderer.DrawFilledRect(iconX, iconY + 2.5F, iconX + iconW, iconY + iconH - 2.5F);
+						renderer.DrawFilledRect(iconX + 1.0F, iconY + 1.2F, iconX + iconW - 1.0F, iconY + iconH - 1.2F);
+
+						// Iris (centered circle/rect)
+						float irisW = 6.0F;
+						float irisH = 6.0F;
+						float irisX = iconX + (iconW - irisW) * 0.5F;
+						float irisY = iconY + (iconH - irisH) * 0.5F;
+						renderer.SetColorAlphaPremultiplied(irisCol);
+						renderer.DrawFilledRect(irisX, irisY, irisX + irisW, irisY + irisH);
+
+						// Pupil (centered)
+						float pupilW = 3.0F;
+						float pupilH = 3.0F;
+						float pupilX = iconX + (iconW - pupilW) * 0.5F;
+						float pupilY = iconY + (iconH - pupilH) * 0.5F;
+						renderer.SetColorAlphaPremultiplied(pupilCol);
+						renderer.DrawFilledRect(pupilX, pupilY, pupilX + pupilW, pupilY + pupilH);
+
+						// Specular glint
+						renderer.SetColorAlphaPremultiplied(glintCol);
+						renderer.DrawFilledRect(pupilX + 1.5F, pupilY - 0.5F, pupilX + 2.7F, pupilY + 0.7F);
+
+						// Thin dark eyelid / border outlines
+						Vector4 outlineCol = MakeVector4(0.15F, 0.20F, 0.30F, 0.85F * fade).Premultiplied();
+						renderer.SetColorAlphaPremultiplied(outlineCol);
+						renderer.DrawFilledRect(iconX + 2.0F, iconY, iconX + iconW - 2.0F, iconY + 1.0F); // top lid
+						renderer.DrawFilledRect(iconX + 2.0F, iconY + iconH - 1.0F, iconX + iconW - 2.0F, iconY + iconH); // bottom lid
+						renderer.DrawFilledRect(iconX, iconY + 2.0F, iconX + 1.0F, iconY + iconH - 2.0F); // left corner
+						renderer.DrawFilledRect(iconX + iconW - 1.0F, iconY + 2.0F, iconX + iconW, iconY + iconH - 2.0F); // right corner
 
 						tx += iconW + 4.0F;
 					} else if ((msg[i] == '\r' || msg[i] == '\n') && !killfeed) {

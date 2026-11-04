@@ -1248,11 +1248,15 @@ namespace spades {
 			if (!p.IsAlive()) {
 				state = std::string(1, ChatWindow::MsgDeadIcon);
 			} else if (p.IsSpectator()) {
-				state = _Tr("Client", "(SPEC)");
+				state = std::string(1, ChatWindow::MsgSpecIcon);
 			}
 
 			// filters chat messages (but they can still be found in logs)
 			if (cg_ignoreChatMessages && !p.IsLocalPlayer())
+				return;
+
+			// Blocklist check: do not show any messages, sounds, or records from blocked players
+			if (!p.IsLocalPlayer() && IsPlayerBlocked(playerNameStr))
 				return;
 
 			{
@@ -1342,6 +1346,10 @@ namespace spades {
 				? _Tr("Client", "The server")
 				: world ? world->GetPlayerName(playerId) : std::string();
 
+			// Suppress pings from blocked players
+			if (!who.empty() && IsPlayerBlocked(who))
+				return;
+
 			NetLog("[Ping] %s @ (%.1f, %.1f, %.1f) for %.1fs: %s", who.c_str(),
 				   position.x, position.y, position.z, duration, reason.c_str());
 
@@ -1375,6 +1383,9 @@ namespace spades {
 												  uint8_t flags, const IntVector3& color,
 												  std::string reason) {
 			SPADES_MARK_FUNCTION();
+
+			if (IsPlayerSlotBlocked(playerId))
+				return;
 
 			NetLog("[ESP Mark] player %d, duration %.1f, surfaces 0x%02x, flags 0x%02x, "
 				   "colour (%d, %d, %d): %s", playerId, duration, (unsigned int)surfaces,
@@ -1521,6 +1532,13 @@ namespace spades {
 				if (cg_ignorePrivateMessages)
 					return;
 
+				size_t colon = msg.find(':', 8);
+				if (colon != std::string::npos) {
+					std::string sender = msg.substr(8, colon - 8);
+					if (IsPlayerBlocked(sender))
+						return;
+				}
+
 				// play chat sound
 				if (!IsMuted()) {
 					Handle<IAudioChunk> c = audioDevice->RegisterSound("Sounds/Feedback/Chat.opus");
@@ -1565,6 +1583,7 @@ namespace spades {
 			if (nextId < 0 || nextId >= static_cast<int>(slots))
 				nextId = 0;
 
+			bool found = false;
 			int startId = nextId;
 			do {
 				reverse ? --nextId : ++nextId;
@@ -1586,11 +1605,123 @@ namespace spades {
 				if (p->GetFront().GetSquaredLength() < 0.01F)
 					continue;
 
+				found = true;
 				break;
 			} while (nextId != startId);
 
-			followedPlayerId = nextId;
-			followCameraState.enabled = IsDemoMode() || staffSpectating || (followedPlayerId != localPlayerId);
+			if (found) {
+				followedPlayerId = nextId;
+				followCameraState.enabled = IsDemoMode() || staffSpectating || (followedPlayerId != localPlayerId);
+			} else {
+				followCameraState.enabled = false;
+			}
+		}
+
+#pragma mark - Player Blocklist System
+
+		bool Client::BlockPlayer(const std::string& nameOrSlot) {
+			std::string target = nameOrSlot;
+			while (!target.empty() && (unsigned char)target.front() <= ' ') target.erase(target.begin());
+			while (!target.empty() && (unsigned char)target.back() <= ' ') target.pop_back();
+			if (target.empty())
+				return false;
+
+			// Check if slot index given (e.g. "#3" or "3")
+			int slot = -1;
+			if (target.front() == '#' && target.size() > 1 && isdigit((unsigned char)target[1])) {
+				slot = atoi(target.c_str() + 1);
+			} else if (isdigit((unsigned char)target.front())) {
+				bool allDigits = true;
+				for (char c : target) { if (!isdigit((unsigned char)c)) { allDigits = false; break; } }
+				if (allDigits) slot = atoi(target.c_str());
+			}
+
+			if (slot >= 0 && world && slot < (int)world->GetNumPlayerSlots()) {
+				std::string slotName = world->GetPlayerName(slot);
+				if (!slotName.empty())
+					target = slotName;
+			} else if (world) {
+				// Search for matching player in current world
+				for (size_t s = 0; s < world->GetNumPlayerSlots(); ++s) {
+					std::string pName = world->GetPlayerName(static_cast<int>(s));
+					if (!pName.empty()) {
+						if (EqualsIgnoringCase(pName, target)) {
+							target = pName;
+							break;
+						}
+					}
+				}
+			}
+
+			// Don't allow blocking yourself
+			auto maybeLocal = world ? world->GetLocalPlayer() : stmp::nullopt;
+			if (maybeLocal && EqualsIgnoringCase(maybeLocal->GetName(), target))
+				return false;
+
+			std::lock_guard<std::mutex> lock(blockedPlayersMutex);
+			for (const auto& b : blockedPlayers) {
+				if (EqualsIgnoringCase(b, target))
+					return false; // already blocked
+			}
+
+			blockedPlayers.push_back(target);
+			return true;
+		}
+
+		bool Client::UnblockPlayer(const std::string& nameOrSlot) {
+			std::string target = nameOrSlot;
+			while (!target.empty() && (unsigned char)target.front() <= ' ') target.erase(target.begin());
+			while (!target.empty() && (unsigned char)target.back() <= ' ') target.pop_back();
+			if (target.empty())
+				return false;
+
+			std::lock_guard<std::mutex> lock(blockedPlayersMutex);
+			for (auto it = blockedPlayers.begin(); it != blockedPlayers.end(); ++it) {
+				if (EqualsIgnoringCase(*it, target) || (target.front() == '#' && atoi(target.c_str() + 1) >= 0 && world && EqualsIgnoringCase(*it, world->GetPlayerName(atoi(target.c_str() + 1))))) {
+					blockedPlayers.erase(it);
+					return true;
+				}
+			}
+			return false;
+		}
+
+		void Client::ClearBlockedPlayers() {
+			std::lock_guard<std::mutex> lock(blockedPlayersMutex);
+			blockedPlayers.clear();
+		}
+
+		bool Client::IsPlayerBlocked(const std::string& name) const {
+			if (name.empty())
+				return false;
+			std::lock_guard<std::mutex> lock(blockedPlayersMutex);
+			if (blockedPlayers.empty())
+				return false;
+
+			std::string lowerName = ToLowerCase(name);
+			for (const auto& b : blockedPlayers) {
+				std::string lowerB = ToLowerCase(b);
+				if (lowerName == lowerB || lowerName.find(lowerB) != std::string::npos)
+					return true;
+			}
+			return false;
+		}
+
+		bool Client::IsPlayerSlotBlocked(int slot) const {
+			if (!world || slot < 0 || slot >= (int)world->GetNumPlayerSlots())
+				return false;
+			std::string name = world->GetPlayerName(slot);
+			return IsPlayerBlocked(name);
+		}
+
+		std::vector<std::string> Client::GetBlockedPlayers() const {
+			std::lock_guard<std::mutex> lock(blockedPlayersMutex);
+			return blockedPlayers;
+		}
+
+		void Client::AddLocalChatMessage(const std::string& msg) {
+			if (chatWindow) {
+				chatWindow->AddMessage(msg);
+			}
 		}
 	} // namespace client
 } // namespace spades

@@ -22,6 +22,9 @@
 #include <cmath>
 
 #include "ChatWindow.h"
+#include <Client/Client.h>
+#include <Client/ChatWindow.h>
+#include <Client/ChatTranslator.h>
 #include <Client/ClientUI.h>
 #include <Client/ClientUIHelper.h>
 #include <Client/IFont.h>
@@ -36,6 +39,7 @@
 #include <Gui/UI/Widgets/TextViewer.h>
 
 SPADES_SETTING(cg_killfeedHeight);
+SPADES_SETTING(cg_chatTranslate);
 
 namespace spades {
 	namespace client {
@@ -273,6 +277,16 @@ namespace spades {
 				AddChild(button.GetPointerOrNull());
 				teamButton = button.GetPointerOrNull();
 			}
+			{
+				Handle<SimpleButton> button = Handle<SimpleButton>::New(manager);
+				button->toggle = true;
+				button->toggled = (bool)cg_chatTranslate;
+				button->caption = (bool)cg_chatTranslate ? _Tr("Client", "Traducir: ON") : _Tr("Client", "Traducir: OFF");
+				button->SetBounds(AABB2(winX + 70.0F * 2.0F + 4.0F, winY + 36.0F, 110.0F, 30.0F));
+				button->activated = [this](UIElement& s) { OnToggleTranslate(s); };
+				AddChild(button.GetPointerOrNull());
+				translateButton = button.GetPointerOrNull();
+			}
 
 			{
 				std::string switchHint = _Tr("Client", "[Tab] Switch");
@@ -282,7 +296,7 @@ namespace spades {
 				Handle<Label> label = Handle<Label>::New(manager);
 				label->text = switchHint;
 				label->textColor = MakeVector4(1.0F, 1.0F, 1.0F, 0.5F);
-				label->SetBounds(AABB2(winX + 70.0F * 2.0F + 1.0F + 8.0F, winY + 36.0F + 5.0F,
+				label->SetBounds(AABB2(winX + 70.0F * 2.0F + 4.0F + 110.0F + 8.0F, winY + 36.0F + 5.0F,
 									   switchW + 2.0F, 20.0F));
 				AddChild(label.GetPointerOrNull());
 			}
@@ -367,10 +381,21 @@ namespace spades {
 				AddChild(button.GetPointerOrNull());
 				teamButton = button.GetPointerOrNull();
 			}
+			const float transW = 100.0F;
+			{
+				Handle<SimpleButton> button = Handle<SimpleButton>::New(manager);
+				button->toggle = true;
+				button->toggled = (bool)cg_chatTranslate;
+				button->caption = (bool)cg_chatTranslate ? _Tr("Client", "Traducir: ON") : _Tr("Client", "Traducir: OFF");
+				button->SetBounds(AABB2(contentX + toggleW * 2.0F + 4.0F, headerY, transW, headerH));
+				button->activated = [this](UIElement& s) { OnToggleTranslate(s); };
+				AddChild(button.GetPointerOrNull());
+				translateButton = button.GetPointerOrNull();
+			}
 
 			// draw hints
 			if (font) {
-				const float toggleEnd = contentX + toggleW * 2.0F + 1.0F;
+				const float toggleEnd = contentX + toggleW * 2.0F + 4.0F + transW;
 				const float hintGap = 8.0F;
 
 				// right aligned: the keys of the composer
@@ -620,6 +645,25 @@ namespace spades {
 
 		void ClientChatWindow::OnSetGlobal(UIElement&) { SetIsTeamChat(false); }
 		void ClientChatWindow::OnSetTeam(UIElement&) { SetIsTeamChat(true); }
+
+		void ClientChatWindow::OnToggleTranslate(UIElement&) {
+			bool cur = (bool)cg_chatTranslate;
+			bool next = !cur;
+			Settings::ItemHandle("cg_chatTranslate", nullptr) = next ? "1" : "0";
+			UpdateTranslateButtonState();
+			if (!next) {
+				ChatTranslator::GetInstance().ClearCache();
+			}
+		}
+
+		void ClientChatWindow::UpdateTranslateButtonState() {
+			if (!translateButton)
+				return;
+			bool enabled = (bool)cg_chatTranslate;
+			translateButton->toggled = enabled;
+			translateButton->caption = enabled ? _Tr("Client", "Traducir: ON") : _Tr("Client", "Traducir: OFF");
+		}
+
 		void ClientChatWindow::OnFieldChanged(UIElement&) { UpdateState(); }
 
 		void ClientChatWindow::Close() { ui->SetActiveUI(nullptr); }
@@ -656,13 +700,103 @@ namespace spades {
 			return false;
 		}
 
+		bool ClientChatWindow::HandleChatCommand(const std::string& text) {
+			std::string trimmed = TrimSpaces(text);
+			if (trimmed.empty() || trimmed[0] != '/')
+				return false;
+
+			size_t spacePos = trimmed.find(' ');
+			std::string cmd = (spacePos == std::string::npos) ? trimmed.substr(1) : trimmed.substr(1, spacePos - 1);
+			std::string arg = (spacePos == std::string::npos) ? "" : TrimSpaces(trimmed.substr(spacePos + 1));
+			cmd = ToLowerCase(cmd);
+
+			auto notify = [this](const std::string& msg, Vector4 col = MakeVector4(1.0F, 0.85F, 0.20F, 1.0F)) {
+				if (ui) {
+					ui->RecordChatLog(msg, col);
+					if (ui->client) {
+						ui->client->AddLocalChatMessage(ChatWindow::ColoredMessage(msg, MsgColorYellow));
+					}
+				}
+			};
+
+			if (cmd == "block" || cmd == "bloquear" || cmd == "ignore" || cmd == "mutear") {
+				if (arg.empty()) {
+					notify("[ySpades] Uso: /block <nombre o #slot>");
+					return true;
+				}
+				if (ui && ui->client) {
+					if (ui->client->BlockPlayer(arg)) {
+						notify("[ySpades] Jugador '" + arg + "' bloqueado. Ya no veras sus mensajes ni alertas.");
+					} else {
+						notify("[ySpades] No se pudo bloquear a '" + arg + "' (o ya estaba bloqueado).", MakeVector4(1.0F, 0.4F, 0.4F, 1.0F));
+					}
+				}
+				return true;
+			}
+
+			if (cmd == "unblock" || cmd == "desbloquear" || cmd == "unignore" || cmd == "desmutear") {
+				if (arg.empty()) {
+					notify("[ySpades] Uso: /unblock <nombre o #slot>");
+					return true;
+				}
+				if (ui && ui->client) {
+					if (ui->client->UnblockPlayer(arg)) {
+						notify("[ySpades] Jugador '" + arg + "' desbloqueado.");
+					} else {
+						notify("[ySpades] El jugador '" + arg + "' no estaba en la lista de bloqueados.", MakeVector4(1.0F, 0.4F, 0.4F, 1.0F));
+					}
+				}
+				return true;
+			}
+
+			if (cmd == "blocklist" || cmd == "bloqueados" || cmd == "ignored" || cmd == "mutes") {
+				if (ui && ui->client) {
+					auto blocked = ui->client->GetBlockedPlayers();
+					if (blocked.empty()) {
+						notify("[ySpades] No tienes ningun jugador bloqueado.");
+					} else {
+						std::string list;
+						for (size_t i = 0; i < blocked.size(); ++i) {
+							if (i > 0) list += ", ";
+							list += blocked[i];
+						}
+						notify("[ySpades] Jugadores bloqueados: " + list);
+					}
+				}
+				return true;
+			}
+
+			if (cmd == "clearblocks" || cmd == "unblockall" || cmd == "desbloqueartodos") {
+				if (ui && ui->client) {
+					ui->client->ClearBlockedPlayers();
+					notify("[ySpades] Todos los jugadores han sido desbloqueados.");
+				}
+				return true;
+			}
+
+			if (cmd == "translate" || cmd == "traductor" || cmd == "traducir") {
+				bool cur = (bool)cg_chatTranslate;
+				bool next = !cur;
+				Settings::ItemHandle("cg_chatTranslate", nullptr) = next ? "1" : "0";
+				UpdateTranslateButtonState();
+				if (!next) {
+					ChatTranslator::GetInstance().ClearCache();
+				}
+				notify(std::string("[ySpades] Traductor de chat: ") + (next ? "ACTIVADO" : "DESACTIVADO (0 consumo de recursos)"));
+				return true;
+			}
+
+			return false;
+		}
+
 		void ClientChatWindow::OnSay(UIElement&) {
 			field->CommandSent();
-			if (!CheckAndSetConfigVariable()) {
+			std::string text = field->GetText();
+			if (!HandleChatCommand(text) && !CheckAndSetConfigVariable()) {
 				if (isTeamChat)
-					helper->SayTeam(field->GetText());
+					helper->SayTeam(text);
 				else
-					helper->SayGlobal(field->GetText());
+					helper->SayGlobal(text);
 			}
 
 			Close();

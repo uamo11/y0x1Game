@@ -373,16 +373,39 @@ namespace spades {
 				// Draw spectator badge next to player name if someone is watching them
 				if (watchingMap.count(ent.id)) {
 					const auto& watchers = watchingMap[ent.id];
-					std::string badge = "[ojo " + watchers[0];
-					if (watchers.size() > 1) {
-						badge += " +" + ToString(watchers.size() - 1);
-					}
-					badge += "]";
 					Vector2 nameSize = font.Measure(ent.name);
 					Vector4 badgeColor = isLocal
 					    ? MakeVector4(0.20F, 1.0F, 0.40F, 1.0F)
 					    : MakeVector4(1.0F, 0.85F, 0.20F, 0.95F);
-					font.Draw(badge, MakeVector2(colX + 46.0F + nameSize.x, rowY), 1.0F, badgeColor);
+
+					float eyeX = colX + 44.0F + nameSize.x;
+					float eyeY = rowY + 3.0F;
+					float eyeW = 13.0F;
+					float eyeH = 9.0F;
+
+					// Draw clean vector spectator eye icon
+					renderer.SetColorAlphaPremultiplied(MakeVector4(0.0F, 0.0F, 0.0F, 0.50F).Premultiplied());
+					renderer.DrawFilledRect(eyeX + 1.0F, eyeY + 1.0F, eyeX + eyeW + 1.0F, eyeY + eyeH + 1.0F);
+
+					Vector4 scleraCol = MakeVector4(0.95F, 0.98F, 1.0F, 0.95F).Premultiplied();
+					Vector4 irisCol = (badgeColor * 0.9F).Premultiplied();
+					Vector4 pupilCol = MakeVector4(0.08F, 0.10F, 0.15F, 0.95F).Premultiplied();
+
+					renderer.SetColorAlphaPremultiplied(scleraCol);
+					renderer.DrawFilledRect(eyeX + 1.5F, eyeY, eyeX + eyeW - 1.5F, eyeY + eyeH);
+					renderer.DrawFilledRect(eyeX, eyeY + 2.0F, eyeX + eyeW, eyeY + eyeH - 2.0F);
+
+					renderer.SetColorAlphaPremultiplied(irisCol);
+					renderer.DrawFilledRect(eyeX + 3.5F, eyeY + 1.5F, eyeX + eyeW - 3.5F, eyeY + eyeH - 1.5F);
+
+					renderer.SetColorAlphaPremultiplied(pupilCol);
+					renderer.DrawFilledRect(eyeX + 5.0F, eyeY + 2.5F, eyeX + eyeW - 5.0F, eyeY + eyeH - 2.5F);
+
+					std::string badge = " " + watchers[0];
+					if (watchers.size() > 1) {
+						badge += " +" + ToString(watchers.size() - 1);
+					}
+					font.Draw(badge, MakeVector2(eyeX + eyeW + 2.0F, rowY), 1.0F, badgeColor);
 				}
 
 				// draw player score
@@ -475,7 +498,27 @@ namespace spades {
 			  _TrN("Client", "Spectator{1}", "Spectators{1}", numSpectators, numSpectators);
 
 			auto sizeSpecString = spectatorFont->Measure(specLabel);
-			Vector2 pos = MakeVector2(centerX, top + 10.0F) - sizeSpecString * 0.5F;
+			float totalHeaderW = sizeSpecString.x + 22.0F;
+			Vector2 pos = MakeVector2(centerX - totalHeaderW * 0.5F + 22.0F, top + 10.0F);
+
+			// Draw spectator eye icon next to header
+			float hEyeX = centerX - totalHeaderW * 0.5F;
+			float hEyeY = top + 12.0F;
+			float hEyeW = 16.0F;
+			float hEyeH = 11.0F;
+			renderer.SetColorAlphaPremultiplied(MakeVector4(0.0F, 0.0F, 0.0F, 0.60F).Premultiplied());
+			renderer.DrawFilledRect(hEyeX + 1.0F, hEyeY + 1.0F, hEyeX + hEyeW + 1.0F, hEyeY + hEyeH + 1.0F);
+
+			renderer.SetColorAlphaPremultiplied(MakeVector4(0.95F, 0.98F, 1.0F, 0.95F).Premultiplied());
+			renderer.DrawFilledRect(hEyeX + 2.0F, hEyeY, hEyeX + hEyeW - 2.0F, hEyeY + hEyeH);
+			renderer.DrawFilledRect(hEyeX, hEyeY + 2.5F, hEyeX + hEyeW, hEyeY + hEyeH - 2.5F);
+
+			renderer.SetColorAlphaPremultiplied(MakeVector4(0.20F, 0.75F, 1.0F, 0.95F).Premultiplied());
+			renderer.DrawFilledRect(hEyeX + 5.0F, hEyeY + 2.5F, hEyeX + hEyeW - 5.0F, hEyeY + hEyeH - 2.5F);
+
+			renderer.SetColorAlphaPremultiplied(MakeVector4(0.08F, 0.10F, 0.15F, 0.95F).Premultiplied());
+			renderer.DrawFilledRect(hEyeX + 6.5F, hEyeY + 4.0F, hEyeX + hEyeW - 6.5F, hEyeY + hEyeH - 4.0F);
+
 			spectatorFont->Draw(specLabel, pos + MakeVector2(1, 2), 1.0F,
 			                    MakeVector4(0, 0, 0, 0.5));
 			spectatorFont->Draw(specLabel, pos, 1.0F, spectatorTextColor);

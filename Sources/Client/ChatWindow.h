@@ -43,7 +43,8 @@ namespace spades {
 		static const char MsgImage = 9;
 		static const char MsgTranslateIcon = 14;
 		static const char MsgDeadIcon = 15;
-		static const char MsgColorMax = MsgDeadIcon;
+		static const char MsgSpecIcon = 16;
+		static const char MsgColorMax = MsgSpecIcon;
 		static const char MsgColorFriendlyFire = MsgColorRed;
 		static const char MsgColorSysInfo = MsgColorYellow;
 
@@ -79,6 +80,7 @@ namespace spades {
 		public:
 			static const char MsgTranslateIcon = spades::client::MsgTranslateIcon;
 			static const char MsgDeadIcon = spades::client::MsgDeadIcon;
+			static const char MsgSpecIcon = spades::client::MsgSpecIcon;
 			ChatWindow(Client*, IFont* font, bool killfeed);
 			~ChatWindow();
 
