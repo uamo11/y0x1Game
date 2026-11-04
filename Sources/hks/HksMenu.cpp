@@ -180,6 +180,19 @@ namespace spades {
 				layouter->AddHelp(_Tr("Preferences",
 				    "Dramatically accelerates spade swing rate and right-click 3-block trench excavation to 20 hits/sec."));
 
+				layouter->AddToggleField(_Tr("Preferences", "Spade Dig Preview"), "cg_spadeDigPreview");
+				layouter->AddHelp(_Tr("Preferences",
+				    "Shows a translucent preview highlighting the 3 blocks (or 1 center block) that will be excavated on right-click."));
+
+				layouter->AddToggleField(_Tr("Preferences", "Spade Dig Red Color"), "cg_spadeDigPreviewRed");
+				layouter->AddHelp(_Tr("Preferences",
+				    "Highlights spade excavation in translucent red (uncheck for translucent white glass)."));
+
+				layouter->AddSliderField(_Tr("Preferences", "Right-Click Dig Delay"), "cg_spadeDigDelay",
+				                         0.10F, 1.00F, 0.05F, NumberFormatter(2, " s"));
+				layouter->AddHelp(_Tr("Preferences",
+				    "Excavation delay when right-clicking with spade. Default 0.60s (faster than vanilla 1.00s)."));
+
 				layouter->FinishLayout();
 				AddTab(panel.GetPointerOrNull(), _Tr("Preferences", "Build"), nav.GetPointerOrNull(),
 				       gui::GuiIconType::Building);

@@ -135,6 +135,12 @@ namespace spades {
 			IntVector3 scaffoldPos;
 			void UpdateScaffold(float dt);
 
+			// Spade Dig Preview
+			bool spadeDigTargetActive;
+			IntVector3 spadeDigTarget;
+			std::vector<IntVector3> spadeDigBlocks;
+			void UpdateSpadeDigPreview();
+
 			float respawnTime;
 
 			void MoveCorpse(float fsynctics);
@@ -183,6 +189,9 @@ namespace spades {
 			IntVector3 GetBlockCursorDragPos() { return blockCursorDragPos; }
 			bool IsScaffoldActive() const { return scaffoldActive; }
 			IntVector3 GetScaffoldPos() const { return scaffoldPos; }
+			bool IsSpadeDigTargetActive() const { return spadeDigTargetActive; }
+			IntVector3 GetSpadeDigTarget() const { return spadeDigTarget; }
+			const std::vector<IntVector3>& GetSpadeDigBlocks() const { return spadeDigBlocks; }
 			bool PlaceBlockUnderFeet();
 			bool IsReadyToUseTool();
 			bool IsToolSelectable(ToolType);

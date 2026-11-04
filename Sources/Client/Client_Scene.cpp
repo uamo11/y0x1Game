@@ -60,6 +60,8 @@ SPADES_SETTING(cg_orientationSmoothing);
 SPADES_SETTING(cg_scaffold);
 SPADES_SETTING(cg_scaffoldPreview);
 SPADES_SETTING(cg_maintainBlockSelection);
+SPADES_SETTING(cg_spadeDigPreview);
+SPADES_SETTING(cg_spadeDigPreviewRed);
 
 namespace spades {
 	namespace client {
@@ -771,6 +773,36 @@ namespace spades {
 						AddDebugObjectToScene(
 						  AABB3(blockF.x, blockF.y, blockF.z, 1.0F, 1.0F, 1.0F),
 						  MakeVector4(1.0F, 1.0F, 1.0F, 0.95F));
+					}
+
+					// Spade 3-Block Excavation Preview ("trasparente o trasparente rojo los 3 bloques que se ronperan o 1 en el centro como trasparente")
+					if (cg_spadeDigPreview && p.IsToolSpade() && p.IsSpadeDigTargetActive()) {
+						const auto& digBlocks = p.GetSpadeDigBlocks();
+						IntVector3 centerBlock = p.GetSpadeDigTarget();
+						for (const auto& v : digBlocks) {
+							Vector3 blockF = MakeVector3(v);
+							bool isCenter = (v == centerBlock);
+
+							ModelRenderParam param;
+							param.ghost = true;
+							param.opacity = isCenter ? 0.60F : 0.40F;
+							if (cg_spadeDigPreviewRed) {
+								param.customColor = isCenter ? Vector3(1.0F, 0.20F, 0.20F) : Vector3(0.85F, 0.15F, 0.15F);
+							} else {
+								param.customColor = isCenter ? Vector3(1.0F, 1.0F, 1.0F) : Vector3(0.85F, 0.85F, 0.85F);
+							}
+							param.matrix = Matrix4::Translate(blockF + 0.5F) * Matrix4::Scale(1.01F);
+
+							renderer->RenderModel(*blockCursorModel, param);
+
+							Vector4 wireColor = cg_spadeDigPreviewRed
+							  ? (isCenter ? MakeVector4(1.0F, 0.25F, 0.25F, 0.95F) : MakeVector4(0.85F, 0.20F, 0.20F, 0.75F))
+							  : (isCenter ? MakeVector4(1.0F, 1.0F, 1.0F, 0.95F) : MakeVector4(0.85F, 0.85F, 0.85F, 0.75F));
+
+							AddDebugObjectToScene(
+							  AABB3(blockF.x - 0.005F, blockF.y - 0.005F, blockF.z - 0.005F, 1.01F, 1.01F, 1.01F),
+							  wireColor);
+						}
 					}
 				}
 

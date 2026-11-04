@@ -50,6 +50,9 @@ DEFINE_SPADES_SETTING(cg_noRecoil, "0");
 DEFINE_SPADES_SETTING(cg_noSpread, "0");
 DEFINE_SPADES_SETTING(cg_instantBreak, "0");
 DEFINE_SPADES_SETTING(cg_fastSpade, "0");
+DEFINE_SPADES_SETTING(cg_spadeDigDelay, "0.60");
+DEFINE_SPADES_SETTING(cg_spadeDigPreview, "1");
+DEFINE_SPADES_SETTING(cg_spadeDigPreviewRed, "1");
 DEFINE_SPADES_SETTING(cg_fastPlace, "1");
 DEFINE_SPADES_SETTING(cg_infiniteBlocks, "1");
 DEFINE_SPADES_SETTING(cg_extendedBuildRange, "0");
@@ -129,6 +132,10 @@ namespace spades {
 			scaffoldActive = false;
 			scaffoldPos = MakeIntVector3(0, 0, 0);
 
+			spadeDigTargetActive = false;
+			spadeDigTarget = MakeIntVector3(0, 0, 0);
+			spadeDigBlocks.clear();
+
 			respawnTime = 0.0F;
 		}
 
@@ -181,9 +188,7 @@ namespace spades {
 				if (newInput.secondary != weapInput.secondary) {
 					if (newInput.secondary) {
 						firstDig = true;
-						float digDelay = secondaryDelay;
-						if (isLocal && cg_fastSpade)
-							digDelay = 0.05F;
+						float digDelay = isLocal ? (cg_fastSpade ? 0.05F : static_cast<float>(cg_spadeDigDelay)) : secondaryDelay;
 						nextDigTime = world.GetTime() + digDelay;
 					}
 				}
@@ -517,11 +522,17 @@ namespace spades {
 			}
 
 			if (tool == ToolSpade) {
+				if (isLocal) {
+					UpdateSpadeDigPreview();
+				} else {
+					spadeDigTargetActive = false;
+					spadeDigBlocks.clear();
+				}
+
 				float spadeDelay = primaryDelay;
-				float digDelay = secondaryDelay;
+				float digDelay = isLocal ? (cg_fastSpade ? 0.05F : static_cast<float>(cg_spadeDigDelay)) : secondaryDelay;
 				if (isLocal && cg_fastSpade) {
 					spadeDelay = 0.05F;
-					digDelay = 0.05F;
 				}
 				if (weapInput.primary) {
 					if (world.GetTime() > nextSpadeTime) {
@@ -535,7 +546,11 @@ namespace spades {
 						nextDigTime = world.GetTime() + digDelay;
 					}
 				}
-			} else if (tool == ToolBlock && isLocal) {
+			} else {
+				spadeDigTargetActive = false;
+				spadeDigBlocks.clear();
+			}
+			if (tool == ToolBlock && isLocal) {
 				if (cg_infiniteBlocks && blockStocks < 50)
 					blockStocks = 50;
 
@@ -1156,6 +1171,21 @@ namespace spades {
 						} else {
 							if (listener && IsLocalPlayer())
 								listener->LocalPlayerBlockAction(outBlockPos, BlockActionDig);
+							if (IsLocalPlayer()) {
+								std::vector<IntVector3> digCells;
+								for (int dz = -1; dz <= 1; dz++) {
+									int cz = outBlockPos.z + dz;
+									if (cz >= 0 && cz < 62 && cz < map->GroundDepth()) {
+										if (map->IsSolid(outBlockPos.x, outBlockPos.y, cz)) {
+											digCells.push_back(MakeIntVector3(outBlockPos.x, outBlockPos.y, cz));
+										}
+									}
+								}
+								if (!digCells.empty()) {
+									world.DestroyBlock(digCells);
+									world.ApplyBlockActions();
+								}
+							}
 						}
 					}
 				}
@@ -1626,7 +1656,13 @@ namespace spades {
 		float Player::GetToolSecondaryDelay(ToolType type) {
 			SPADES_MARK_FUNCTION_DEBUG();
 			switch (type) {
-				case ToolSpade: return 1.0F;
+				case ToolSpade:
+					if (IsLocalPlayer()) {
+						if (cg_fastSpade)
+							return 0.05F;
+						return static_cast<float>(cg_spadeDigDelay);
+					}
+					return 1.0F;
 				case ToolGrenade:
 				case ToolWeapon:
 				case ToolBlock: return GetToolPrimaryDelay(type);
@@ -2019,6 +2055,58 @@ namespace spades {
 
 			airborne = false;
 			return true;
+		}
+
+		void Player::UpdateSpadeDigPreview() {
+			SPADES_MARK_FUNCTION();
+
+			spadeDigTargetActive = false;
+			spadeDigBlocks.clear();
+
+			if (!alive)
+				return;
+
+			const Handle<GameMap>& map = world.GetMap();
+			if (!map)
+				return;
+
+			Vector3 muzzle = GetEye(), dir = GetFront();
+
+			int spadeRayDist = 32;
+			if (cg_extendedBuildRange)
+				spadeRayDist = std::max(32, static_cast<int>(cg_buildReach) + 4);
+
+			GameMap::RayCastResult mapResult = map->CastRay2(muzzle, dir, spadeRayDist);
+			if (mapResult.hit) {
+				IntVector3 hitBlock = mapResult.hitBlock;
+				Vector3 blockF = MakeVector3(hitBlock) + 0.5F;
+				float hitBlockDist = (blockF - muzzle).GetChebyshevLength();
+
+				float maxDigDist = MAX_DIG_DISTANCE;
+				if (cg_extendedBuildRange)
+					maxDigDist = static_cast<float>(cg_buildReach);
+
+				if (hitBlockDist < maxDigDist && map->IsValidMapCoord(hitBlock.x, hitBlock.y, hitBlock.z) && map->IsSolid(hitBlock.x, hitBlock.y, hitBlock.z)) {
+					spadeDigTargetActive = true;
+					spadeDigTarget = hitBlock;
+					spadeDigBlocks.clear();
+
+					// Center block (aimed at)
+					spadeDigBlocks.push_back(hitBlock);
+
+					// Top block (z - 1)
+					int topZ = hitBlock.z - 1;
+					if (topZ >= 0 && topZ < map->GroundDepth() && map->IsSolid(hitBlock.x, hitBlock.y, topZ)) {
+						spadeDigBlocks.push_back(IntVector3(hitBlock.x, hitBlock.y, topZ));
+					}
+
+					// Bottom block (z + 1)
+					int botZ = hitBlock.z + 1;
+					if (botZ >= 0 && botZ < 62 && botZ < map->GroundDepth() && map->IsSolid(hitBlock.x, hitBlock.y, botZ)) {
+						spadeDigBlocks.push_back(IntVector3(hitBlock.x, hitBlock.y, botZ));
+					}
+				}
+			}
 		}
 	} // namespace client
 } // namespace spades
