@@ -298,6 +298,29 @@ namespace spades {
 							lastSingleBlockBuildSeqDone = true;
 							nextBlockTime = world.GetTime() + (cg_fastPlace ? 0.02F : blockPrimaryDelay);
 							didPlace = true;
+
+							// Towering centering & anti-pushback: If placing a block underneath feet while jumping / towering
+							IntVector3 underFeet(static_cast<int>(floorf(pos.x)), static_cast<int>(floorf(pos.y)), static_cast<int>(floorf(pos.z + (input.crouch ? 1.8F : 2.25F) + 0.1F)));
+							if (blockCursorPos.x == underFeet.x && blockCursorPos.y == underFeet.y) {
+								float topOfBlock = static_cast<float>(blockCursorPos.z);
+								float desiredEyeZ = topOfBlock - (input.crouch ? 1.8F : 2.25F) - 0.01F;
+								if (position.z > desiredEyeZ) {
+									position.z = desiredEyeZ;
+									eye.z = desiredEyeZ;
+								}
+								if (!input.moveForward && !input.moveBackward && !input.moveLeft && !input.moveRight) {
+									position.x = static_cast<float>(blockCursorPos.x) + 0.5F;
+									position.y = static_cast<float>(blockCursorPos.y) + 0.5F;
+									velocity.x = 0.0F;
+									velocity.y = 0.0F;
+								}
+								RepositionPlayer(position);
+								if (input.jump && cg_towerJumpBoost) {
+									if (velocity.z > -0.32F)
+										velocity.z = -0.36F;
+								}
+								airborne = false;
+							}
 						} else if (!didPlace && canPlace && airborne && canPending) {
 							pendingPlaceBlock = true;
 							pendingPlaceBlockPos = blockCursorPos;
@@ -631,8 +654,14 @@ namespace spades {
 							if (position.z > desiredEyeZ) {
 								position.z = desiredEyeZ;
 								eye.z = desiredEyeZ;
-								RepositionPlayer(position);
 							}
+							if (!input.moveForward && !input.moveBackward && !input.moveLeft && !input.moveRight) {
+								position.x = static_cast<float>(pendingPlaceBlockPos.x) + 0.5F;
+								position.y = static_cast<float>(pendingPlaceBlockPos.y) + 0.5F;
+								velocity.x = 0.0F;
+								velocity.y = 0.0F;
+							}
+							RepositionPlayer(position);
 							if (input.jump && velocity.z > -0.32F)
 								velocity.z = -0.36F;
 							airborne = false;
@@ -1984,6 +2013,23 @@ namespace spades {
 					float bDelay = cg_fastPlace ? 0.02F : GetToolPrimaryDelay(ToolBlock);
 					nextBlockTime = world.GetTime() + bDelay;
 					scaffoldActive = false;
+
+					// If placing directly beneath while going up: elevate and center so not pushed sideways
+					if (isGoingUp && scaffoldPos.x == underFeet.x && scaffoldPos.y == underFeet.y) {
+						float topOfBlock = static_cast<float>(scaffoldPos.z);
+						float desiredEyeZ = topOfBlock - (input.crouch ? 1.8F : 2.25F) - 0.01F;
+						if (position.z > desiredEyeZ) {
+							position.z = desiredEyeZ;
+							eye.z = desiredEyeZ;
+						}
+						if (!input.moveForward && !input.moveBackward && !input.moveLeft && !input.moveRight) {
+							position.x = static_cast<float>(scaffoldPos.x) + 0.5F;
+							position.y = static_cast<float>(scaffoldPos.y) + 0.5F;
+							velocity.x = 0.0F;
+							velocity.y = 0.0F;
+						}
+						RepositionPlayer(position);
+					}
 				}
 			}
 		}
@@ -2052,8 +2098,15 @@ namespace spades {
 			if (position.z > desiredEyeZ) {
 				position.z = desiredEyeZ;
 				eye.z = desiredEyeZ;
-				RepositionPlayer(position);
 			}
+			// Center player on the pillar and cancel horizontal drift so they are never pushed sideways off the column!
+			if (!input.moveForward && !input.moveBackward && !input.moveLeft && !input.moveRight) {
+				position.x = static_cast<float>(targetX) + 0.5F;
+				position.y = static_cast<float>(targetY) + 0.5F;
+				velocity.x = 0.0F;
+				velocity.y = 0.0F;
+			}
+			RepositionPlayer(position);
 
 			// If holding jump or jumping, give upward momentum so towering is completely limitless
 			if (input.jump && cg_towerJumpBoost) {

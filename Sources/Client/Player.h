@@ -145,7 +145,6 @@ namespace spades {
 			bool autoBridge3Active;
 			int autoBridge3LockedZ;
 			std::vector<IntVector3> autoBridge3PreviewBlocks;
-			void ResetAutoBridge3();
 			void UpdateAutoBridge3(float dt);
 
 			float respawnTime;
@@ -201,6 +200,7 @@ namespace spades {
 			const std::vector<IntVector3>& GetSpadeDigBlocks() const { return spadeDigBlocks; }
 			bool IsAutoBridge3Active() const { return autoBridge3Active; }
 			const std::vector<IntVector3>& GetAutoBridge3PreviewBlocks() const { return autoBridge3PreviewBlocks; }
+			void ResetAutoBridge3();
 			bool PlaceBlockUnderFeet();
 			bool IsReadyToUseTool();
 			bool IsToolSelectable(ToolType);
