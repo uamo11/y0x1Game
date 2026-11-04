@@ -1654,9 +1654,11 @@ namespace spades {
 			}
 
 			// Don't allow blocking yourself
-			auto maybeLocal = world ? world->GetLocalPlayer() : stmp::nullopt;
-			if (maybeLocal && EqualsIgnoringCase(maybeLocal->GetName(), target))
-				return false;
+			if (world) {
+				auto maybeLocal = world->GetLocalPlayer();
+				if (maybeLocal && EqualsIgnoringCase(maybeLocal->GetName(), target))
+					return false;
+			}
 
 			std::lock_guard<std::mutex> lock(blockedPlayersMutex);
 			for (const auto& b : blockedPlayers) {
