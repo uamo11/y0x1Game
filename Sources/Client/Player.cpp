@@ -64,6 +64,10 @@ DEFINE_SPADES_SETTING(cg_scaffoldPreview, "1");
 DEFINE_SPADES_SETTING(cg_scaffoldRequireBlock, "1");
 DEFINE_SPADES_SETTING(cg_scaffoldDistance, "1.0");
 
+DEFINE_SPADES_SETTING(cg_autoBridge3, "0");
+DEFINE_SPADES_SETTING(cg_autoBridge3LockHeight, "1");
+DEFINE_SPADES_SETTING(cg_autoBridge3Preview, "1");
+
 DEFINE_SPADES_SETTING(cg_maintainBlockSelection, "1");
 DEFINE_SPADES_SETTING(cg_fastStairs, "1");
 DEFINE_SPADES_SETTING(cg_unlimitedTowering, "1");
@@ -135,6 +139,10 @@ namespace spades {
 			spadeDigTargetActive = false;
 			spadeDigTarget = MakeIntVector3(0, 0, 0);
 			spadeDigBlocks.clear();
+
+			autoBridge3Active = false;
+			autoBridge3LockedZ = -1;
+			autoBridge3PreviewBlocks.clear();
 
 			respawnTime = 0.0F;
 		}
@@ -519,6 +527,13 @@ namespace spades {
 				UpdateScaffold(dt);
 			} else {
 				scaffoldActive = false;
+			}
+
+			if (isLocal && cg_autoBridge3) {
+				UpdateAutoBridge3(dt);
+			} else {
+				autoBridge3Active = false;
+				autoBridge3PreviewBlocks.clear();
 			}
 
 			if (tool == ToolSpade) {
@@ -2104,6 +2119,139 @@ namespace spades {
 					int botZ = hitBlock.z + 1;
 					if (botZ >= 0 && botZ < 62 && botZ < map->GroundDepth() && map->IsSolid(hitBlock.x, hitBlock.y, botZ)) {
 						spadeDigBlocks.push_back(IntVector3(hitBlock.x, hitBlock.y, botZ));
+					}
+				}
+			}
+		}
+
+		void Player::ResetAutoBridge3() {
+			autoBridge3LockedZ = -1;
+			autoBridge3PreviewBlocks.clear();
+		}
+
+		void Player::UpdateAutoBridge3(float dt) {
+			SPADES_MARK_FUNCTION();
+
+			autoBridge3Active = false;
+			autoBridge3PreviewBlocks.clear();
+
+			if (!alive)
+				return;
+
+			const Handle<GameMap>& map = world.GetMap();
+			if (!map)
+				return;
+
+			int maxDepth = map->GroundDepth();
+
+			Vector3 pos = position;
+			float feetZ = pos.z + (input.crouch ? 1.8F : 2.25F);
+			int currentFloorZ = static_cast<int>(floorf(feetZ + 0.1F));
+
+			if (currentFloorZ < 0 || currentFloorZ >= maxDepth)
+				return;
+
+			int targetZ = currentFloorZ;
+			if (cg_autoBridge3LockHeight) {
+				if (autoBridge3LockedZ < 0) {
+					autoBridge3LockedZ = currentFloorZ;
+				} else {
+					// If the player jumped and climbed on top of a higher block, update altitude
+					if (currentFloorZ < autoBridge3LockedZ && (pos.z + 2.25F) <= static_cast<float>(autoBridge3LockedZ)) {
+						autoBridge3LockedZ = currentFloorZ;
+					}
+				}
+				targetZ = autoBridge3LockedZ;
+			} else {
+				autoBridge3LockedZ = currentFloorZ;
+			}
+
+			if (targetZ < 0 || targetZ >= maxDepth)
+				return;
+
+			Vector3 front2D = GetFront2D();
+			Vector3 right = GetRight();
+			right.z = 0.0F;
+			if (right.GetSquaredLength() > 0.001F)
+				right = right.Normalize();
+
+			Vector3 moveDir(0.0F, 0.0F, 0.0F);
+			if (input.moveForward) moveDir += front2D;
+			if (input.moveBackward) moveDir -= front2D;
+			if (input.moveRight) moveDir += right;
+			if (input.moveLeft) moveDir -= right;
+
+			if (moveDir.GetSquaredLength() > 0.01F) {
+				moveDir = moveDir.Normalize();
+			} else if (velocity.GetSquaredLength2D() > 0.005F) {
+				moveDir = MakeVector3(velocity.x, velocity.y, 0.0F).Normalize();
+			} else {
+				moveDir = front2D;
+			}
+
+			int px = static_cast<int>(floorf(pos.x));
+			int py = static_cast<int>(floorf(pos.y));
+
+			IntVector3 forwardStep(0, 0, 0);
+			IntVector3 crossStep(0, 0, 0);
+
+			if (std::abs(moveDir.x) >= std::abs(moveDir.y)) {
+				forwardStep.x = (moveDir.x >= 0.0F) ? 1 : -1;
+				forwardStep.y = 0;
+				crossStep.x = 0;
+				crossStep.y = 1;
+			} else {
+				forwardStep.x = 0;
+				forwardStep.y = (moveDir.y >= 0.0F) ? 1 : -1;
+				crossStep.x = 1;
+				crossStep.y = 0;
+			}
+
+			// Build list of target candidate positions for 3-block wide road
+			// We check row 0 (under feet), row 1 (1 step ahead), row 2 (2 steps ahead)
+			std::vector<IntVector3> candidates;
+			IntVector3 centerBase(px, py, targetZ);
+
+			for (int r = 0; r <= 2; r++) {
+				IntVector3 c = centerBase + (forwardStep * r);
+				candidates.push_back(c);
+				candidates.push_back(c + crossStep);
+				candidates.push_back(c - crossStep);
+			}
+
+			// Store valid non-solid candidates for holographic preview
+			for (const auto& b : candidates) {
+				if (map->IsValidMapCoord(b.x, b.y, b.z) && !map->IsSolid(b.x, b.y, b.z)) {
+					autoBridge3PreviewBlocks.push_back(b);
+				}
+			}
+
+			if (!autoBridge3PreviewBlocks.empty())
+				autoBridge3Active = true;
+
+			// Automatic placement of missing blocks in the 3-wide road
+			int blocksPlaced = 0;
+			for (const auto& b : candidates) {
+				if (!map->IsValidMapCoord(b.x, b.y, b.z))
+					continue;
+				if (map->IsSolid(b.x, b.y, b.z))
+					continue;
+
+				if (map->HasNeighbors(b) && InBuildRange(b)) {
+					if (cg_infiniteBlocks || blockStocks > 0) {
+						auto* listener = world.GetListener();
+						if (listener)
+							listener->LocalPlayerBlockAction(b, BlockActionCreate);
+
+						world.CreateBlock(b, GetBlockColor());
+						world.ApplyBlockActions();
+
+						if (!cg_infiniteBlocks)
+							blockStocks--;
+
+						blocksPlaced++;
+						if (blocksPlaced >= 3)
+							break; // Place up to 3 blocks per frame for smooth connection
 					}
 				}
 			}

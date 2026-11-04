@@ -141,6 +141,24 @@ namespace spades {
 				layouter->AddHelp(_Tr("Preferences",
 				    "Jump and build blocks beneath you rapidly without any height, delay, or collision limits."));
 
+				layouter->AddHeading(_Tr("Preferences", "Auto Road 3x (Skybridge)"));
+
+				layouter->AddToggleField(_Tr("Preferences", "Auto Road 3x"), "cg_autoBridge3");
+				layouter->AddHelp(_Tr("Preferences",
+				    "Automatically builds a 3-block wide continuous road/bridge beneath and ahead of you as you walk or sprint across the sky."));
+
+				layouter->AddControl(_Tr("Preferences", "Auto Road 3x Toggle Key"), "cg_keyAutoBridge3");
+				layouter->AddHelp(_Tr("Preferences",
+				    "Hotkey to toggle automatic 3-block wide road building on and off. Default [J]."));
+
+				layouter->AddToggleField(_Tr("Preferences", "Lock Skybridge Height"), "cg_autoBridge3LockHeight");
+				layouter->AddHelp(_Tr("Preferences",
+				    "Keeps the road flat at the same altitude even while running or jumping in the air."));
+
+				layouter->AddToggleField(_Tr("Preferences", "Road 3x Preview"), "cg_autoBridge3Preview");
+				layouter->AddHelp(_Tr("Preferences",
+				    "Shows a translucent holographic preview of the 3-block wide road ahead."));
+
 				layouter->AddHeading(_Tr("Preferences", "Block Construction"));
 
 				layouter->AddToggleField(_Tr("Preferences", "Fast Block Placement"), "cg_fastPlace");

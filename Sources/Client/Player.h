@@ -141,6 +141,13 @@ namespace spades {
 			std::vector<IntVector3> spadeDigBlocks;
 			void UpdateSpadeDigPreview();
 
+			// Auto 3-Block Path / Skybridge Maker ("Camino 3x")
+			bool autoBridge3Active;
+			int autoBridge3LockedZ;
+			std::vector<IntVector3> autoBridge3PreviewBlocks;
+			void ResetAutoBridge3();
+			void UpdateAutoBridge3(float dt);
+
 			float respawnTime;
 
 			void MoveCorpse(float fsynctics);
@@ -192,6 +199,8 @@ namespace spades {
 			bool IsSpadeDigTargetActive() const { return spadeDigTargetActive; }
 			IntVector3 GetSpadeDigTarget() const { return spadeDigTarget; }
 			const std::vector<IntVector3>& GetSpadeDigBlocks() const { return spadeDigBlocks; }
+			bool IsAutoBridge3Active() const { return autoBridge3Active; }
+			const std::vector<IntVector3>& GetAutoBridge3PreviewBlocks() const { return autoBridge3PreviewBlocks; }
 			bool PlaceBlockUnderFeet();
 			bool IsReadyToUseTool();
 			bool IsToolSelectable(ToolType);

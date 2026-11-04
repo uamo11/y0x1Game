@@ -93,10 +93,12 @@ DEFINE_SPADES_SETTING(cg_keySneak, "v");
 DEFINE_SPADES_SETTING(cg_keyCaptureColor, "e");
 DEFINE_SPADES_SETTING(cg_keyGlobalChat, "t");
 DEFINE_SPADES_SETTING(cg_keyTeamChat, "y");
-DEFINE_SPADES_SETTING(cg_keyChatLog, "j");
+DEFINE_SPADES_SETTING(cg_keyChatLog, "");
 DEFINE_SPADES_SETTING(cg_keyZoomChatLog, "");
 DEFINE_SPADES_SETTING(cg_keyPlaceUnder, "h");
 DEFINE_SPADES_SETTING(cg_keyLockTarget, "x");
+DEFINE_SPADES_SETTING(cg_keyAutoBridge3, "j");
+SPADES_SETTING(cg_autoBridge3);
 SPADES_SETTING(cg_aimbotTargetOnly);
 SPADES_SETTING(cg_aimbotTargetName);
 SPADES_SETTING(cg_aimbotTargetId);
@@ -1076,6 +1078,14 @@ namespace spades {
 								ShowAlert(_Tr("Client", "Aimbot Target: All Enemies"), AlertType::Notice, 2.0F, true);
 							}
 						}
+					}
+				} else if (CheckKey(cg_keyAutoBridge3, name)) {
+					if (down && !localPlayerIsSpectator && localPlayerIsAlive) {
+						bool enabled = !((int)cg_autoBridge3 != 0);
+						cg_autoBridge3 = enabled ? "1" : "0";
+						p.ResetAutoBridge3();
+						ShowAlert(_Tr("Client", enabled ? "Camino 3x (Skybridge): ACTIVADO [J]" : "Camino 3x (Skybridge): DESACTIVADO [J]"),
+						          AlertType::Notice, 2.0F, true);
 					}
 				} else if (CheckKey(cg_keyToolSpade, name) && down) {
 					if (!localPlayerIsSpectator && localPlayerIsAlive)

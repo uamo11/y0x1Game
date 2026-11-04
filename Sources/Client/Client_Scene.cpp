@@ -62,6 +62,8 @@ SPADES_SETTING(cg_scaffoldPreview);
 SPADES_SETTING(cg_maintainBlockSelection);
 SPADES_SETTING(cg_spadeDigPreview);
 SPADES_SETTING(cg_spadeDigPreviewRed);
+SPADES_SETTING(cg_autoBridge3);
+SPADES_SETTING(cg_autoBridge3Preview);
 
 namespace spades {
 	namespace client {
@@ -802,6 +804,26 @@ namespace spades {
 							AddDebugObjectToScene(
 							  AABB3(blockF.x - 0.005F, blockF.y - 0.005F, blockF.z - 0.005F, 1.01F, 1.01F, 1.01F),
 							  wireColor);
+						}
+					}
+
+					// Auto Road 3x Preview ("camino de forma automatica de 3 bloques")
+					if (cg_autoBridge3 && cg_autoBridge3Preview && p.IsAutoBridge3Active()) {
+						const auto& roadBlocks = p.GetAutoBridge3PreviewBlocks();
+						for (const auto& v : roadBlocks) {
+							Vector3 blockF = MakeVector3(v);
+
+							ModelRenderParam param;
+							param.ghost = true;
+							param.opacity = 0.50F;
+							param.customColor = Vector3(0.25F, 0.85F, 1.0F); // Vivid holographic cyan
+							param.matrix = Matrix4::Translate(blockF + 0.5F);
+
+							renderer->RenderModel(*blockCursorModel, param);
+
+							AddDebugObjectToScene(
+							  AABB3(blockF.x, blockF.y, blockF.z, 1.0F, 1.0F, 1.0F),
+							  MakeVector4(0.25F, 0.85F, 1.0F, 0.85F));
 						}
 					}
 				}
