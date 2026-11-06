@@ -950,10 +950,14 @@ namespace spades {
 				PlayerInput sentInput = inp;
 				WeaponInput sentWeaponInput = winp;
 
-				static bool rapidFireToggle = false;
-				if (cg_rapidFire && isToolWeapon && winp.primary) {
-					rapidFireToggle = !rapidFireToggle;
-					sentWeaponInput.primary = rapidFireToggle;
+				if (cg_rapidFire && isToolWeapon && player.GetWeaponType() != SMG_WEAPON && winp.primary) {
+					// Semi-auto rapid fire: only pulse the trigger when the weapon has finished its cyclic cooldown.
+					// Never alternate every frame, which floods packets and causes servers to disconnect for rapid-fire hack.
+					if (weapon.GetTimeToNextFire() > 0.05F) {
+						sentWeaponInput.primary = false;
+					} else {
+						sentWeaponInput.primary = true;
+					}
 				}
 
 				activeNet->SendPlayerInput(sentInput);

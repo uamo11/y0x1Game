@@ -1738,7 +1738,6 @@ namespace spades {
 			NetPacketWriter w(PacketTypePositionData);
 			w.WriteVector3(v);
 			enet_peer_send(peer, 0, w.CreatePacket());
-			enet_host_flush(host);
 		}
 
 		void NetClient::SendOrientation(spades::Vector3 v) {
@@ -1747,7 +1746,6 @@ namespace spades {
 			NetPacketWriter w(PacketTypeOrientationData);
 			w.WriteVector3(v);
 			enet_peer_send(peer, 0, w.CreatePacket());
-			enet_host_flush(host);
 		}
 
 		void NetClient::SendPlayerInput(PlayerInput inp) {
@@ -1779,7 +1777,6 @@ namespace spades {
 			}
 
 			enet_peer_send(peer, 0, w.CreatePacket());
-			enet_host_flush(host);
 		}
 
 		void NetClient::SendWeaponInput(WeaponInput inp) {
@@ -1803,7 +1800,6 @@ namespace spades {
 			}
 
 			enet_peer_send(peer, 0, w.CreatePacket());
-			enet_host_flush(host);
 		}
 
 		void NetClient::SendHit(int targetPlayerId, HitType type) {
@@ -1820,7 +1816,6 @@ namespace spades {
 				default: SPInvalidEnum("type", type);
 			}
 			enet_peer_send(peer, 0, w.CreatePacket());
-			enet_host_flush(host);
 		}
 
 		void NetClient::SendGrenade(const Grenade& g) {
@@ -1839,7 +1834,6 @@ namespace spades {
 			}
 
 			enet_peer_send(peer, 0, w.CreatePacket());
-			enet_host_flush(host);
 		}
 
 		void NetClient::SendTool() {
@@ -1888,7 +1882,6 @@ namespace spades {
 			}
 			w.WriteIntVector3(v);
 			enet_peer_send(peer, 0, w.CreatePacket());
-			enet_host_flush(host);
 		}
 
 		void NetClient::SendBlockLine(spades::IntVector3 v1, spades::IntVector3 v2) {
@@ -1899,7 +1892,6 @@ namespace spades {
 			w.WriteIntVector3(v1);
 			w.WriteIntVector3(v2);
 			enet_peer_send(peer, 0, w.CreatePacket());
-			enet_host_flush(host);
 		}
 
 		void NetClient::SendChat(std::string text, bool global) {
@@ -1911,7 +1903,6 @@ namespace spades {
 			w.WriteString(text);
 			w.WriteByte((uint8_t)0);
 			enet_peer_send(peer, 0, w.CreatePacket());
-			enet_host_flush(host);
 		}
 
 		void NetClient::SendReload() {
@@ -1929,7 +1920,6 @@ namespace spades {
 			}
 
 			enet_peer_send(peer, 0, w.CreatePacket());
-			enet_host_flush(host);
 		}
 
 		void NetClient::SendTeamChange(int team) {
