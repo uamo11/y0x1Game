@@ -541,8 +541,8 @@ namespace spades {
 				"Configuración idéntica a la pantalla clásica de inicio: resoluciones nativas, modo de pantalla, renderizador, antialiasing y HDR."));
 
 			l.AddChoiceField(_Tr("Preferences", "Resolución de Pantalla"), "r_videoPreset",
-			                 {"1080p", "900p", "768p", "720p"},
-			                 {0, 1, 2, 3});
+			                 {"1080p (1920x1080)", "900p (1600x900)", "768p (1366x768)", "720p (1280x720)", "1024x768", "800x600"},
+			                 {0, 1, 2, 3, 4, 5});
 			l.AddHelp(_Tr("Preferences", "Selecciona una resolución nativa común. Pulsa '¡GUARDAR Y APLICAR CAMBIOS!' al final para aplicarla de inmediato."));
 
 			l.AddToggleField(_Tr("Preferences", "Pantalla Completa (Fullscreen)"), "r_fullscreen");

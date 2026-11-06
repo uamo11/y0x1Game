@@ -94,6 +94,8 @@ namespace spades {
 			device.EnableVertexAttribArray((*colorAttribute)(), true);
 			device.EnableVertexAttribArray((*textureCoordAttribute)(), true);
 
+			invScreenWidthFactored = 2.0F / static_cast<float>(device.ScreenWidth());
+			invScreenHeightFactored = -2.0F / static_cast<float>(device.ScreenHeight());
 			screenSize->SetValue(invScreenWidthFactored, invScreenHeightFactored);
 			textureSize->SetValue(image->GetInvWidth(), image->GetInvHeight());
 			texture->SetValue(0);

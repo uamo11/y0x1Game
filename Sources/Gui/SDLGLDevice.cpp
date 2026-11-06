@@ -249,6 +249,8 @@ namespace spades {
 
 			CheckError();
 			SDL_GL_SwapWindow(window);
+			if (window)
+				SDL_GetWindowSize(window, &w, &h);
 #if 0
 			Uint32 t = SDL_GetTicks();
 			if(lastFrame == 0) t = lastFrame - 30;
@@ -2158,8 +2160,16 @@ namespace spades {
 			CheckErrorAlways();
 		}
 
-		IGLDevice::Integer SDLGLDevice::ScreenWidth() { return w; }
+		IGLDevice::Integer SDLGLDevice::ScreenWidth() {
+			if (window)
+				SDL_GetWindowSize(window, &w, &h);
+			return w;
+		}
 
-		IGLDevice::Integer SDLGLDevice::ScreenHeight() { return h; }
+		IGLDevice::Integer SDLGLDevice::ScreenHeight() {
+			if (window)
+				SDL_GetWindowSize(window, &w, &h);
+			return h;
+		}
 	} // namespace gui
 } // namespace spades

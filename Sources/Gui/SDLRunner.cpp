@@ -223,14 +223,22 @@ namespace spades {
 					view.TextEditingEvent(event.edit.text, event.edit.start, event.edit.length);
 					break;
 				case SDL_WINDOWEVENT:
-					if (event.window.type == SDL_WINDOWEVENT_FOCUS_GAINED) {
+					if (event.window.event == SDL_WINDOWEVENT_FOCUS_GAINED) {
 						SDL_SetRelativeMouseMode(SDL_TRUE);
 						SDL_ShowCursor(SDL_DISABLE);
 						m_active = true;
-					} else if (event.window.type == SDL_WINDOWEVENT_FOCUS_LOST) {
+					} else if (event.window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
 						SDL_SetRelativeMouseMode(SDL_FALSE);
 						SDL_ShowCursor(SDL_ENABLE);
 						m_active = false;
+					} else if (event.window.event == SDL_WINDOWEVENT_RESIZED ||
+					           event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
+						int newW = event.window.data1;
+						int newH = event.window.data2;
+						if (newW > 0 && newH > 0) {
+							r_videoWidth = newW;
+							r_videoHeight = newH;
+						}
 					}
 					break;
 				case SDL_DROPFILE:

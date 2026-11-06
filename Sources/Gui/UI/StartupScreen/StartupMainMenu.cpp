@@ -24,6 +24,7 @@
 #include <Client/IFont.h>
 #include <Core/Strings.h>
 #include <Gui/StartupScreenHelper.h>
+#include <Gui/SDLRunner.h>
 #include <Gui/UI/Framework/UIManager.h>
 #include <Gui/UI/Widgets/GuiIcons.h>
 #include <Gui/UI/Widgets/TabStrip.h>
@@ -270,15 +271,7 @@ namespace spades {
 
 		void StartupScreenMainMenu::Start() {
 			helper->Start();
-			Settings::GetInstance()->Flush();
-			SDL_Window* window = SDL_GL_GetCurrentWindow();
-			if (window) {
-				if (static_cast<int>(r_fullscreen) != 0) {
-					SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
-				} else {
-					SDL_SetWindowFullscreen(window, 0);
-				}
-			}
+			SDLRunner::ApplyWindowVideoMode();
 			ui->shouldExit = true; // exit from the startup screen to return to the game
 		}
 
