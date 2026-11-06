@@ -211,19 +211,19 @@ namespace spades {
 		ChatWindow::ChatWindow(Client* c, IFont* fnt, bool killfeed)
 		    : client(c), renderer(c->GetRenderer()), font(fnt), killfeed(killfeed) {
 			firstY = 0.0F;
-			killImages.push_back(renderer.RegisterImage("Gfx/Killfeed/a-Rifle.png").GetPointerOrNull());
-			killImages.push_back(renderer.RegisterImage("Gfx/Killfeed/b-SMG.png").GetPointerOrNull());
-			killImages.push_back(renderer.RegisterImage("Gfx/Killfeed/c-Shotgun.png").GetPointerOrNull());
-			killImages.push_back(renderer.RegisterImage("Gfx/Killfeed/d-Headshot.png").GetPointerOrNull());
-			killImages.push_back(renderer.RegisterImage("Gfx/Killfeed/e-Melee.png").GetPointerOrNull());
-			killImages.push_back(renderer.RegisterImage("Gfx/Killfeed/f-Grenade.png").GetPointerOrNull());
-			killImages.push_back(renderer.RegisterImage("Gfx/Killfeed/g-Falling.png").GetPointerOrNull());
-			killImages.push_back(renderer.RegisterImage("Gfx/Killfeed/h-Teamchange.png").GetPointerOrNull());
-			killImages.push_back(renderer.RegisterImage("Gfx/Killfeed/i-Classchange.png").GetPointerOrNull());
-			killImages.push_back(renderer.RegisterImage("Gfx/Killfeed/j-Airborne.png").GetPointerOrNull());
-			killImages.push_back(renderer.RegisterImage("Gfx/Killfeed/k-Noscope.png").GetPointerOrNull());
-			killImages.push_back(renderer.RegisterImage("Gfx/Killfeed/l-Domination.png").GetPointerOrNull());
-			killImages.push_back(renderer.RegisterImage("Gfx/Killfeed/m-Revenge.png").GetPointerOrNull());
+			killImages.push_back(renderer.RegisterImage("Gfx/Killfeed/a-Rifle.png"));
+			killImages.push_back(renderer.RegisterImage("Gfx/Killfeed/b-SMG.png"));
+			killImages.push_back(renderer.RegisterImage("Gfx/Killfeed/c-Shotgun.png"));
+			killImages.push_back(renderer.RegisterImage("Gfx/Killfeed/d-Headshot.png"));
+			killImages.push_back(renderer.RegisterImage("Gfx/Killfeed/e-Melee.png"));
+			killImages.push_back(renderer.RegisterImage("Gfx/Killfeed/f-Grenade.png"));
+			killImages.push_back(renderer.RegisterImage("Gfx/Killfeed/g-Falling.png"));
+			killImages.push_back(renderer.RegisterImage("Gfx/Killfeed/h-Teamchange.png"));
+			killImages.push_back(renderer.RegisterImage("Gfx/Killfeed/i-Classchange.png"));
+			killImages.push_back(renderer.RegisterImage("Gfx/Killfeed/j-Airborne.png"));
+			killImages.push_back(renderer.RegisterImage("Gfx/Killfeed/k-Noscope.png"));
+			killImages.push_back(renderer.RegisterImage("Gfx/Killfeed/l-Domination.png"));
+			killImages.push_back(renderer.RegisterImage("Gfx/Killfeed/m-Revenge.png"));
 		}
 
 		ChatWindow::~ChatWindow() {}
@@ -270,7 +270,7 @@ namespace spades {
 		IImage* ChatWindow::GetKillImage(char index) {
 			int real = index - 'a';
 			if (real >= 0 && real < (int)killImages.size())
-				return killImages[real];
+				return killImages[real].GetPointerOrNull();
 			return NULL;
 		}
 

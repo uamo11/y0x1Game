@@ -22,8 +22,10 @@
 
 #include <list>
 #include <string>
+#include <vector>
 
 #include <Core/Math.h>
+#include <Core/RefCountedObject.h>
 
 namespace spades {
 	namespace client {
@@ -74,7 +76,7 @@ namespace spades {
 			float GetLineHeight();
 			float CalculateMessageHeight(const std::string& msg);
 
-			std::vector<IImage*> killImages;
+			std::vector<Handle<IImage>> killImages;
 			IImage* GetKillImage(char);
 
 		public:

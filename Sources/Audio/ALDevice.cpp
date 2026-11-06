@@ -585,6 +585,8 @@ namespace spades {
 
 			void Play(ALAudioChunk* chunk, const Vector3& origin, const client::AudioParam& param) {
 				SPADES_MARK_FUNCTION();
+				if (UNLIKELY(!chunk))
+					return;
 
 				ALSrc* src = AllocChunk();
 				if (UNLIKELY(!src))
@@ -599,6 +601,8 @@ namespace spades {
 			void PlayLocal(ALAudioChunk* chunk, const Vector3& origin,
 						   const client::AudioParam& param) {
 				SPADES_MARK_FUNCTION();
+				if (UNLIKELY(!chunk))
+					return;
 
 				ALSrc* src = AllocChunk();
 				if (!src)
@@ -612,6 +616,8 @@ namespace spades {
 			}
 			void PlayLocal(ALAudioChunk* chunk, const client::AudioParam& param) {
 				SPADES_MARK_FUNCTION();
+				if (UNLIKELY(!chunk))
+					return;
 
 				ALSrc* src = AllocChunk();
 				if (!src)
@@ -822,12 +828,16 @@ namespace spades {
 		void ALDevice::Play(client::IAudioChunk* chunk, const spades::Vector3& origin,
 							const client::AudioParam& param) {
 			SPADES_MARK_FUNCTION();
+			if (!chunk)
+				return;
 
 			d->Play(static_cast<ALAudioChunk*>(chunk), origin, param);
 		}
 		void ALDevice::PlayLocal(client::IAudioChunk* chunk, const spades::Vector3& origin,
 								 const client::AudioParam& param) {
 			SPADES_MARK_FUNCTION();
+			if (!chunk)
+				return;
 
 			d->PlayLocal(static_cast<ALAudioChunk*>(chunk),
 						 MakeVector3(origin.x, origin.y, -origin.z), param);
@@ -835,6 +845,8 @@ namespace spades {
 
 		void ALDevice::PlayLocal(client::IAudioChunk* chunk, const client::AudioParam& param) {
 			SPADES_MARK_FUNCTION();
+			if (!chunk)
+				return;
 
 			d->PlayLocal(static_cast<ALAudioChunk*>(chunk), param);
 		}

@@ -372,10 +372,10 @@ namespace spades {
 				SPRaise("Failed to create ENet peer");
 
 			// Network optimizations for lowest latency, jitter reduction, and WiFi stability:
-			// Ping interval: 250ms (keeps NAT/WiFi active and ping accurate at 4Hz)
-			enet_peer_ping_interval(peer, 250);
-			// Timeout: minimum 1000ms, max 4000ms, retry limit 32 (keeps RTT bounded to real latency)
-			enet_peer_timeout(peer, 32, 1000, 4000);
+			// Ping interval: 500ms (maintains NAT binding and keeps ping accurate without spam)
+			enet_peer_ping_interval(peer, 500);
+			// Timeout: minimum 8000ms, max 30000ms, retry limit 32 (resilient to map loads, high latency servers, and WiFi jitter)
+			enet_peer_timeout(peer, 32, 8000, 30000);
 
 			properties.reset(new GameProperties(hostname.GetProtocolVersion()));
 
@@ -538,12 +538,12 @@ namespace spades {
 				if (status == NetClientStatusConnecting) {
 					if (event.type == ENET_EVENT_TYPE_CONNECT) {
 						statusString = _Tr("NetClient", "Awaiting for state");
-						// Handshake VERIFY_CONNECT succeeded; lock throttle at 100% full throughput:
+						// Handshake VERIFY_CONNECT succeeded; configure responsive throttle recovery:
 						if (peer) {
-							peer->packetThrottle = peer->packetThrottleLimit; // 32 (100% full bandwidth)
-							peer->packetThrottleInterval = 5000;
-							peer->packetThrottleAcceleration = 2;
-							peer->packetThrottleDeceleration = 0; // Never throttle down game traffic!
+							peer->packetThrottle = peer->packetThrottleLimit;
+							peer->packetThrottleInterval = 2000;
+							peer->packetThrottleAcceleration = 4;
+							peer->packetThrottleDeceleration = 2;
 						}
 					} else if (event.type == ENET_EVENT_TYPE_RECEIVE) {
 						auto& reader = readerOrNone.value();

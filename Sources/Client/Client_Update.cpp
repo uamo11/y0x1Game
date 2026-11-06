@@ -1459,7 +1459,9 @@ namespace spades {
 			const bool isLocalInvolved = killer.IsLocalPlayer() || victim.IsLocalPlayer();
 
 			bool isRevengeKill = false;
-			if (killerId != victimId && isLocalInvolved) {
+			const int maxSlots = world ? static_cast<int>(world->GetNumPlayerSlots()) : 32;
+			if (killerId != victimId && isLocalInvolved && killerId >= 0 && victimId >= 0 &&
+			    killerId < maxSlots && victimId < maxSlots) {
 				// check if the victim was dominating before dying
 				if (killStreaks[victimId][killerId] >= 4) {
 					killStreaks[killerId][victimId] = 1; // start new streak for the killer
@@ -1531,9 +1533,11 @@ namespace spades {
 					};
 					Handle<IAudioChunk> c = audioDevice->RegisterSound(SampleRandomElement(snds));
 
-					AudioParam param;
-					param.volume = 4.0F;
-					audioDevice->Play(c.GetPointerOrNull(), victim.GetEye(), param);
+					if (c) {
+						AudioParam param;
+						param.volume = 4.0F;
+						audioDevice->Play(c.GetPointerOrNull(), victim.GetEye(), param);
+					}
 				}
 
 				// register local kills
@@ -1553,7 +1557,8 @@ namespace spades {
 						int sndIndex = curStreak - 2;
 						if (sndIndex < static_cast<int>(killSounds.size())) {
 							Handle<IAudioChunk> c = killSounds[sndIndex];
-							audioDevice->PlayLocal(c.GetPointerOrNull(), param);
+							if (c)
+								audioDevice->PlayLocal(c.GetPointerOrNull(), param);
 						}
 					}
 				}
@@ -1831,8 +1836,10 @@ namespace spades {
 
 				if (byLocalPlayer && type != HitTypeHead) {
 					c = audioDevice->RegisterSound("Sounds/Feedback/HitFeedback.opus");
-					param.volume = cg_hitFeedbackSoundGain;
-					audioDevice->PlayLocal(c.GetPointerOrNull(), param);
+					if (c) {
+						param.volume = cg_hitFeedbackSoundGain;
+						audioDevice->PlayLocal(c.GetPointerOrNull(), param);
+					}
 				}
 
 				hitScanState.hasPlayedNormalHitSound = true;
@@ -1918,9 +1925,11 @@ namespace spades {
 				if (!hitScanState.hasPlayedHeadshotSound && type == HitTypeHead) {
 					Handle<IAudioChunk> c =
 					  audioDevice->RegisterSound("Sounds/Feedback/HeadshotFeedback.opus");
-					AudioParam param;
-					param.volume = cg_headshotFeedbackSoundGain;
-					audioDevice->PlayLocal(c.GetPointerOrNull(), param);
+					if (c) {
+						AudioParam param;
+						param.volume = cg_headshotFeedbackSoundGain;
+						audioDevice->PlayLocal(c.GetPointerOrNull(), param);
+					}
 
 					hitScanState.hasPlayedHeadshotSound = true;
 				}
