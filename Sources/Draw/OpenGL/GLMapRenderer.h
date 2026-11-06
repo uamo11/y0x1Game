@@ -67,6 +67,8 @@ namespace spades {
 			}
 
 			inline GLMapChunk* GetChunk(int x, int y, int z) {
+				if (x < 0 || x >= numChunkWidth || y < 0 || y >= numChunkHeight || z < 0 || z >= numChunkDepth)
+					return nullptr;
 				return chunks[GetChunkIndex(x, y, z)];
 			}
 

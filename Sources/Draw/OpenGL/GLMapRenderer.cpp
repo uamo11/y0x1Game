@@ -426,37 +426,53 @@ namespace spades {
 		void GLMapRenderer::DrawColumnDepth(int cx, int cy, int cz, spades::Vector3 eye) {
 			cx &= numChunkWidth - 1;
 			cy &= numChunkHeight - 1;
-			for (int z = std::max(cz, 0); z < numChunkDepth; z++)
-				GetChunk(cx, cy, z)->RenderDepthPass();
-			for (int z = std::min(cz - 1, 63); z >= 0; z--)
-				GetChunk(cx, cy, z)->RenderDepthPass();
+			for (int z = std::max(cz, 0); z < numChunkDepth; z++) {
+				auto* ch = GetChunk(cx, cy, z);
+				if (ch) ch->RenderDepthPass();
+			}
+			for (int z = std::min(cz - 1, numChunkDepth - 1); z >= 0; z--) {
+				auto* ch = GetChunk(cx, cy, z);
+				if (ch) ch->RenderDepthPass();
+			}
 		}
 		void GLMapRenderer::DrawColumnSunlight(int cx, int cy, int cz, spades::Vector3 eye) {
 			cx &= numChunkWidth - 1;
 			cy &= numChunkHeight - 1;
-			for (int z = std::max(cz, 0); z < numChunkDepth; z++)
-				GetChunk(cx, cy, z)->RenderSunlightPass();
-			for (int z = std::min(cz - 1, 63); z >= 0; z--)
-				GetChunk(cx, cy, z)->RenderSunlightPass();
+			for (int z = std::max(cz, 0); z < numChunkDepth; z++) {
+				auto* ch = GetChunk(cx, cy, z);
+				if (ch) ch->RenderSunlightPass();
+			}
+			for (int z = std::min(cz - 1, numChunkDepth - 1); z >= 0; z--) {
+				auto* ch = GetChunk(cx, cy, z);
+				if (ch) ch->RenderSunlightPass();
+			}
 		}
 
 		void GLMapRenderer::DrawColumnDynamicLight(int cx, int cy, int cz, spades::Vector3 eye,
 		                                     const std::vector<GLDynamicLight>& lights) {
 			cx &= numChunkWidth - 1;
 			cy &= numChunkHeight - 1;
-			for (int z = std::max(cz, 0); z < numChunkDepth; z++)
-				GetChunk(cx, cy, z)->RenderDynamicLightPass(lights);
-			for (int z = std::min(cz - 1, 63); z >= 0; z--)
-				GetChunk(cx, cy, z)->RenderDynamicLightPass(lights);
+			for (int z = std::max(cz, 0); z < numChunkDepth; z++) {
+				auto* ch = GetChunk(cx, cy, z);
+				if (ch) ch->RenderDynamicLightPass(lights);
+			}
+			for (int z = std::min(cz - 1, numChunkDepth - 1); z >= 0; z--) {
+				auto* ch = GetChunk(cx, cy, z);
+				if (ch) ch->RenderDynamicLightPass(lights);
+			}
 		}
 
 		void GLMapRenderer::DrawColumnOutline(int cx, int cy, int cz, spades::Vector3 eye) {
 			cx &= numChunkWidth - 1;
 			cy &= numChunkHeight - 1;
-			for (int z = std::max(cz, 0); z < numChunkDepth; z++)
-				GetChunk(cx, cy, z)->RenderOutlinePass();
-			for (int z = std::min(cz - 1, 63); z >= 0; z--)
-				GetChunk(cx, cy, z)->RenderOutlinePass();
+			for (int z = std::max(cz, 0); z < numChunkDepth; z++) {
+				auto* ch = GetChunk(cx, cy, z);
+				if (ch) ch->RenderOutlinePass();
+			}
+			for (int z = std::min(cz - 1, numChunkDepth - 1); z >= 0; z--) {
+				auto* ch = GetChunk(cx, cy, z);
+				if (ch) ch->RenderOutlinePass();
+			}
 		}
 
 #pragma mark - BackFaceBlock

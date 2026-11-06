@@ -580,16 +580,9 @@ namespace spades {
 			/** Ingame team indicator badge */
 			void DrawTeamIndicator();
 
-			// Player blocklist / mute system
+			// Player blocklist / mute state
 			std::vector<std::string> blockedPlayers;
 			mutable std::mutex blockedPlayersMutex;
-			bool BlockPlayer(const std::string& nameOrSlot);
-			bool UnblockPlayer(const std::string& nameOrSlot);
-			void ClearBlockedPlayers();
-			bool IsPlayerBlocked(const std::string& name) const;
-			bool IsPlayerSlotBlocked(int slot) const;
-			std::vector<std::string> GetBlockedPlayers() const;
-			void AddLocalChatMessage(const std::string& msg);
 
 			bool staffSpectating;
 			bool spectatorPlayerNames;
@@ -813,6 +806,15 @@ namespace spades {
 
 			/** What the Teamplay extension has made this client remember. */
 			const Teamplay& GetTeamplay() const { return *teamplay; }
+
+			// Player blocklist / mute system
+			bool BlockPlayer(const std::string& nameOrSlot);
+			bool UnblockPlayer(const std::string& nameOrSlot);
+			void ClearBlockedPlayers();
+			bool IsPlayerBlocked(const std::string& name) const;
+			bool IsPlayerSlotBlocked(int slot) const;
+			std::vector<std::string> GetBlockedPlayers() const;
+			void AddLocalChatMessage(const std::string& msg);
 
 			void PlayerSentChatMessage(Player&, bool global, const std::string&);
 			void ServerSentMessage(bool system, const std::string&);
