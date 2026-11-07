@@ -1458,22 +1458,29 @@ namespace spades {
 				Vector3 front = Vector3(cosf(hState.pitch) * sinf(hState.yaw), -cosf(hState.pitch) * cosf(hState.yaw), -sinf(hState.pitch));
 				Vector3 right = Vector3(cosf(hState.yaw), sinf(hState.yaw), 0.0F);
 
+				// Seated pose: crouch input ensures crouched/bent legs resting cleanly inside cabin/bench with zero underbelly clipping
+				input.crouch = true;
+
 				if (isPilotingHeli) {
-					// Asiento del Conductor: En la cabina frontal detrás de la ventana
-					position = hState.position + front * 1.5F + MakeVector3(0.0F, 0.0F, -1.8F);
-					eye = position + MakeVector3(0.0F, 0.0F, -0.6F);
+					// Asiento del Conductor: En la cabina frontal detrás de la ventana (sin traspasar el suelo)
+					position = hState.position + front * 2.0F + MakeVector3(0.0F, 0.0F, -3.0F);
+					RepositionPlayer(position);
+					eye = position + MakeVector3(0.0F, 0.0F, -0.4F);
+					orientation = front;
+					orientationSmoothed = front;
 				} else if (isPassenger1) {
 					// Compañero 1: En el borde lateral izquierdo exterior
-					position = hState.position - right * 1.6F - front * 0.4F + MakeVector3(0.0F, 0.0F, -1.4F);
-					eye = position + MakeVector3(0.0F, 0.0F, -0.6F);
+					position = hState.position - right * 1.8F + front * 0.45F + MakeVector3(0.0F, 0.0F, -2.85F);
+					RepositionPlayer(position);
+					eye = position + MakeVector3(0.0F, 0.0F, -0.4F);
 				} else {
 					// Compañero 2: En el borde lateral derecho exterior
-					position = hState.position + right * 1.6F - front * 0.4F + MakeVector3(0.0F, 0.0F, -1.4F);
-					eye = position + MakeVector3(0.0F, 0.0F, -0.6F);
+					position = hState.position + right * 1.8F + front * 0.45F + MakeVector3(0.0F, 0.0F, -2.85F);
+					RepositionPlayer(position);
+					eye = position + MakeVector3(0.0F, 0.0F, -0.4F);
 				}
 				velocity = MakeVector3(0.0F, 0.0F, 0.0F);
 				airborne = true;
-				RepositionPlayer(position);
 				return;
 			}
 

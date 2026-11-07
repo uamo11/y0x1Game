@@ -101,6 +101,19 @@ namespace spades {
 
 			if (!localPlayerIsSpectating && p.IsAlive()) {
 				// There exists an alive (non-spectator) local player
+				auto& hState = PlayerCosmetics::GetGlobalHelicopter();
+				if (hState.active && hState.health > 0) {
+					int myPid = static_cast<int>(p.GetId());
+					if (hState.pilotId == myPid) {
+						// Conductor (Piloto): Vista en 3ra persona obligatoria
+						return ClientCameraMode::ThirdPersonLocal;
+					}
+					if (hState.pass1Id == myPid || hState.pass2Id == myPid) {
+						// Compañeros (Artilleros/Pasajeros en bordes): Vista en 1ra persona obligatoria para apuntar y disparar
+						return ClientCameraMode::FirstPersonLocal;
+					}
+				}
+
 				if (cg_thirdperson)
 					return ClientCameraMode::ThirdPersonLocal;
 				return ClientCameraMode::FirstPersonLocal;
