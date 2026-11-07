@@ -2853,9 +2853,10 @@ namespace spades {
 					float sw = renderer->ScreenWidth();
 					float sh = renderer->ScreenHeight();
 					IFont& font = fontManager->GetGuiFont();
+					int myPid = static_cast<int>(player.GetId());
 
-					if (hState.pilotId == static_cast<int>(player.GetId())) {
-						// Active Flight HUD with 3 Stability / Health Tiers
+					if (hState.pilotId == myPid) {
+						// Active Flight HUD with 3 Stability / Health Tiers (Conductor en la ventana)
 						std::string tierName;
 						Vector4 hudColor;
 						if (hState.healthTier == 3) {
@@ -2869,7 +2870,7 @@ namespace spades {
 							hudColor = MakeVector4(1.0F, 0.25F, 0.25F, 1.0F); // Flashing Red
 						}
 
-						std::string statusText = "[ HELICOPTERO MILITAR ] HP: " + std::to_string(hState.health) + "/" + std::to_string(hState.maxHealth) + " " + tierName;
+						std::string statusText = "[ CONDUCTOR EN VENTANA ] HP: " + std::to_string(hState.health) + "/" + std::to_string(hState.maxHealth) + " " + tierName;
 						float txtW1 = font.Measure(statusText).x;
 						float px1 = (sw - txtW1) * 0.5F;
 						float py1 = sh - 130.0F;
@@ -2884,18 +2885,40 @@ namespace spades {
 						font.DrawShadow(flightControls, MakeVector2(px2, py2), 0.95F,
 						                MakeVector4(0.9F, 0.95F, 1.0F, 0.95F),
 						                MakeVector4(0.0F, 0.0F, 0.0F, 0.9F));
-					} else if (hState.pilotId < 0) {
-						// Nearby parked prompt (adapted for 3X larger helicopter scale)
-						float dist = (player.GetOrigin() - hState.position).GetLength();
-						if (dist < 15.0F) {
-							std::string enterText = "[ Presiona 'E' para pilotar ] HP: " + std::to_string(hState.health) + "/300";
-							float txtW = font.Measure(enterText).x;
-							float px = (sw - txtW) * 0.5F;
-							float py = sh * 0.65F;
+					} else if (hState.pass1Id == myPid || hState.pass2Id == myPid) {
+						// Active Gunner HUD for Companion on lateral edge
+						std::string seatSide = (hState.pass1Id == myPid) ? "LATERAL IZQUIERDO" : "LATERAL DERECHO";
+						std::string statusText = "[ COMPANIERO / ARTILLERO EN BORDE: " + seatSide + " ] HP HELI: " + std::to_string(hState.health) + "/300";
+						float txtW1 = font.Measure(statusText).x;
+						float px1 = (sw - txtW1) * 0.5F;
+						float py1 = sh - 130.0F;
 
-							font.DrawShadow(enterText, MakeVector2(px, py), 1.0F,
-							                MakeVector4(1.0F, 0.9F, 0.2F, 1.0F),
-							                MakeVector4(0.0F, 0.0F, 0.0F, 0.9F));
+						font.DrawShadow(statusText, MakeVector2(px1, py1), 1.0F,
+						                MakeVector4(0.3F, 0.85F, 1.0F, 1.0F), MakeVector4(0.0F, 0.0F, 0.0F, 0.9F));
+
+						std::string gunnerControls = "[Clic Izquierdo]: Disparar Arma | [E]: Desembarcar | (Si el conductor cae, asumes los mandos)";
+						float txtW2 = font.Measure(gunnerControls).x;
+						float px2 = (sw - txtW2) * 0.5F;
+						float py2 = sh - 105.0F;
+
+						font.DrawShadow(gunnerControls, MakeVector2(px2, py2), 0.95F,
+						                MakeVector4(0.9F, 0.95F, 1.0F, 0.95F),
+						                MakeVector4(0.0F, 0.0F, 0.0F, 0.9F));
+					} else {
+						// Nearby parked prompt for ground players
+						float dist = (player.GetOrigin() - hState.position).GetLength();
+						if (dist < 18.0F) {
+							int occupants = (hState.pilotId >= 0 ? 1 : 0) + (hState.pass1Id >= 0 ? 1 : 0) + (hState.pass2Id >= 0 ? 1 : 0);
+							if (occupants < 3) {
+								std::string enterText = "[ Presiona 'E' para abordar ] (" + std::to_string(occupants) + "/3 Tripulantes) HP: " + std::to_string(hState.health) + "/300";
+								float txtW = font.Measure(enterText).x;
+								float px = (sw - txtW) * 0.5F;
+								float py = sh * 0.65F;
+
+								font.DrawShadow(enterText, MakeVector2(px, py), 1.0F,
+								                MakeVector4(1.0F, 0.9F, 0.2F, 1.0F),
+								                MakeVector4(0.0F, 0.0F, 0.0F, 0.9F));
+							}
 						}
 					}
 				}

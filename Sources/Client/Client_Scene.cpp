@@ -411,7 +411,9 @@ namespace spades {
 
 						float distance = 5.0F;
 						auto& hState = PlayerCosmetics::GetGlobalHelicopter();
-						if (hState.active && hState.pilotId == static_cast<int>(player.GetId())) {
+						int pid = static_cast<int>(player.GetId());
+						bool inHeli = hState.active && (hState.pilotId == pid || hState.pass1Id == pid || hState.pass2Id == pid);
+						if (inHeli) {
 							distance = 18.0F; // Majestic third-person view for 3X scale military combat gunship
 							center = hState.position + MakeVector3(0.0F, 0.0F, -2.5F);
 						}

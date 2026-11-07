@@ -644,6 +644,20 @@ namespace spades {
 					}
 				}
 
+				// Lateral Open Edge Benches for 2 Companions (Left & Right side platforms with safety rails)
+				for (int side : {-8, 8}) {
+					for (int by = 28; by <= 36; ++by) {
+						// Bench step platform
+						SetVoxel(cx + side, by, 9, colArmorSteel);
+						SetVoxel(cx + side + (side < 0 ? 1 : -1), by, 9, colArmorSteel);
+						// Safety corner handrails
+						if (by == 28 || by == 36) {
+							SetVoxel(cx + side, by, 10, colSkidSteel);
+							SetVoxel(cx + side, by, 11, colSkidSteel);
+						}
+					}
+				}
+
 				// 6. Dual Turboshaft Engine Nacelles (y = 26..46, z = 18..25)
 				for (int side : {-6, 6}) {
 					for (int y = 26; y <= 46; ++y) {

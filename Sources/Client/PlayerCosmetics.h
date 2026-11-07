@@ -37,6 +37,8 @@ namespace spades {
 			float pitch = 0.0F;
 			float roll = 0.0F;
 			int pilotId = -1;
+			int pass1Id = -1;
+			int pass2Id = -1;
 			bool isFlying = false;
 			float rotorAngle = 0.0F;
 			float rotorSpeed = 0.0F;

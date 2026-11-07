@@ -1424,10 +1424,10 @@ namespace spades {
 
 					// Intercept helicopter synchronization packets (do not show in chat)
 					if (msg.rfind("[HELI_SYNC]", 0) == 0) {
-						int hId = 1, pilotId = -1, isFlying = 0, hp = 300, maxHp = 300, tier = 3;
+						int hId = 1, pilotId = -1, isFlying = 0, hp = 300, maxHp = 300, tier = 3, p1 = -1, p2 = -1;
 						float hx = 0, hy = 0, hz = 0, hyaw = 0, hpitch = 0, hroll = 0;
-						int parsed = std::sscanf(msg.c_str(), "[HELI_SYNC] %d %f %f %f %f %f %f %d %d %d %d %d",
-						                         &hId, &hx, &hy, &hz, &hyaw, &hpitch, &hroll, &pilotId, &isFlying, &hp, &maxHp, &tier);
+						int parsed = std::sscanf(msg.c_str(), "[HELI_SYNC] %d %f %f %f %f %f %f %d %d %d %d %d %d %d",
+						                         &hId, &hx, &hy, &hz, &hyaw, &hpitch, &hroll, &pilotId, &isFlying, &hp, &maxHp, &tier, &p1, &p2);
 						if (parsed >= 7) {
 							auto& hState = PlayerCosmetics::GetGlobalHelicopter();
 							if (parsed >= 10 && hp <= 0) {
@@ -1449,6 +1449,8 @@ namespace spades {
 								if (parsed >= 10) hState.health = hp;
 								if (parsed >= 11) hState.maxHealth = maxHp;
 								if (parsed >= 12) hState.healthTier = tier;
+								hState.pass1Id = (parsed >= 13) ? p1 : -1;
+								hState.pass2Id = (parsed >= 14) ? p2 : -1;
 							}
 						}
 						break;

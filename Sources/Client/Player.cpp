@@ -1447,13 +1447,30 @@ namespace spades {
 				return;
 			}
 
-			// Keep pilot positioned inside the helicopter cockpit with full flight stability
+			// Keep occupants positioned inside the helicopter with full flight stability
 			auto& hState = PlayerCosmetics::GetGlobalHelicopter();
-			bool isPilotingHeli = IsLocalPlayer() && hState.active && hState.health > 0 && hState.pilotId == static_cast<int>(GetId());
-			if (isPilotingHeli) {
-				// Anchor player camera and character directly to the helicopter cockpit seat
-				position = hState.position;
-				eye = position + MakeVector3(0.0F, 0.0F, -2.4F);
+			bool isHeliActive = hState.active && hState.health > 0;
+			bool isPilotingHeli = isHeliActive && hState.pilotId == static_cast<int>(GetId());
+			bool isPassenger1 = isHeliActive && hState.pass1Id == static_cast<int>(GetId());
+			bool isPassenger2 = isHeliActive && hState.pass2Id == static_cast<int>(GetId());
+
+			if (isPilotingHeli || isPassenger1 || isPassenger2) {
+				Vector3 front = Vector3(cosf(hState.pitch) * sinf(hState.yaw), -cosf(hState.pitch) * cosf(hState.yaw), -sinf(hState.pitch));
+				Vector3 right = Vector3(cosf(hState.yaw), sinf(hState.yaw), 0.0F);
+
+				if (isPilotingHeli) {
+					// Asiento del Conductor: En la cabina frontal detrás de la ventana
+					position = hState.position + front * 1.5F + MakeVector3(0.0F, 0.0F, -1.8F);
+					eye = position + MakeVector3(0.0F, 0.0F, -0.6F);
+				} else if (isPassenger1) {
+					// Compañero 1: En el borde lateral izquierdo exterior
+					position = hState.position - right * 1.6F - front * 0.4F + MakeVector3(0.0F, 0.0F, -1.4F);
+					eye = position + MakeVector3(0.0F, 0.0F, -0.6F);
+				} else {
+					// Compañero 2: En el borde lateral derecho exterior
+					position = hState.position + right * 1.6F - front * 0.4F + MakeVector3(0.0F, 0.0F, -1.4F);
+					eye = position + MakeVector3(0.0F, 0.0F, -0.6F);
+				}
 				velocity = MakeVector3(0.0F, 0.0F, 0.0F);
 				airborne = true;
 				RepositionPlayer(position);
