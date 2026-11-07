@@ -1134,8 +1134,14 @@ namespace spades {
 					else
 						scriptedUI->ExitChatPeek();
 				} else if (CheckKey(cg_keyCaptureColor, name) && down) {
-					if (!localPlayerIsSpectator && localPlayerIsAlive && p.IsToolBlock())
-						CaptureColor();
+					if (!localPlayerIsSpectator && localPlayerIsAlive) {
+						if (p.IsToolBlock()) {
+							CaptureColor();
+						} else if (activeNet) {
+							// 'E' key interacts with vehicles / helicopters
+							activeNet->SendChat("/heli", false);
+						}
+					}
 				} else if (CheckKey(cg_keyChangeMapScale, name) && down) {
 					if (!largeMapView->IsZoomed()) {
 						mapView->SwitchScale();

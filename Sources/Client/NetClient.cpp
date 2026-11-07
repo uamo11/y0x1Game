@@ -34,6 +34,7 @@
 #include "GameProperties.h"
 #include "Grenade.h"
 #include "NetClient.h"
+#include "PlayerCosmetics.h"
 #include "Socks5UdpRelay.h"
 #include <Gui/ProxyManager.h>
 #include "Player.h"
@@ -1420,6 +1421,25 @@ namespace spades {
 					int playerId = r.ReadByte();
 					int type = r.ReadByte();
 					std::string msg = StripNewlines(TrimSpaces(r.ReadRemainingString()));
+
+					// Intercept helicopter synchronization packets (do not show in chat)
+					if (msg.rfind("[HELI_SYNC]", 0) == 0) {
+						int hId = 1, pilotId = -1, isFlying = 0;
+						float hx = 0, hy = 0, hz = 0, hyaw = 0, hpitch = 0, hroll = 0;
+						if (std::sscanf(msg.c_str(), "[HELI_SYNC] %d %f %f %f %f %f %f %d %d",
+						                &hId, &hx, &hy, &hz, &hyaw, &hpitch, &hroll, &pilotId, &isFlying) >= 7) {
+							auto& hState = PlayerCosmetics::GetGlobalHelicopter();
+							hState.active = true;
+							hState.id = hId;
+							hState.position = MakeVector3(hx, hy, hz);
+							hState.yaw = hyaw;
+							hState.pitch = hpitch;
+							hState.roll = hroll;
+							hState.pilotId = pilotId;
+							hState.isFlying = (isFlying != 0);
+						}
+						break;
+					}
 
 					if (type == ChatTypeSystem) {
 						// playerId 255 is the kick-reason channel, already consumed by

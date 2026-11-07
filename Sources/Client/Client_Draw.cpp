@@ -60,6 +60,7 @@
 #include "World.h"
 
 #include "NetClient.h"
+#include "PlayerCosmetics.h"
 
 DEFINE_SPADES_SETTING(cg_hitIndicator, "1");
 DEFINE_SPADES_SETTING(cg_debugAim, "0");
@@ -2845,6 +2846,39 @@ namespace spades {
 				DrawTeamplayPings();
 				if (!localPlayerIsSpectator)
 					DrawTeamOverlay();
+
+				// Draw Helicopter Vehicle HUD Prompts
+				auto& hState = PlayerCosmetics::GetGlobalHelicopter();
+				if (hState.active && player.IsAlive() && !localPlayerIsSpectator) {
+					float sw = renderer->ScreenWidth();
+					float sh = renderer->ScreenHeight();
+					IFont& font = fontManager->GetGuiFont();
+
+					if (hState.pilotId == static_cast<int>(player.GetId())) {
+						// Active Flight HUD
+						std::string flightText = "[ HELICOPTERO MILITAR ] [Espacio]: Ascender | [C]: Descender | [W/A/S/D]: Volar | [E]: Salir";
+						float txtW = font.Measure(flightText).x;
+						float px = (sw - txtW) * 0.5F;
+						float py = sh - 110.0F;
+
+						font.DrawShadow(flightText, MakeVector2(px, py), 1.0F,
+						                MakeVector4(0.3F, 1.0F, 0.4F, 1.0F),
+						                MakeVector4(0.0F, 0.0F, 0.0F, 0.9F));
+					} else if (hState.pilotId < 0) {
+						// Nearby parked prompt
+						float dist = (player.GetOrigin() - hState.position).GetLength();
+						if (dist < 5.0F) {
+							std::string enterText = "[ Presiona 'E' para pilotar el Helicóptero Militar ]";
+							float txtW = font.Measure(enterText).x;
+							float px = (sw - txtW) * 0.5F;
+							float py = sh * 0.65F;
+
+							font.DrawShadow(enterText, MakeVector2(px, py), 1.0F,
+							                MakeVector4(1.0F, 0.9F, 0.2F, 1.0F),
+							                MakeVector4(0.0F, 0.0F, 0.0F, 0.9F));
+						}
+					}
+				}
 
 				if (shouldDrawHUD) {
 					// draw firstperson camera player HUD

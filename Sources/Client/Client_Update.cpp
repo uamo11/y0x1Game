@@ -48,6 +48,7 @@
 #include "World.h"
 
 #include "NetClient.h"
+#include "PlayerCosmetics.h"
 
 DEFINE_SPADES_SETTING(cg_ragdoll, "1");
 SPADES_SETTING(cg_blood);
@@ -525,6 +526,29 @@ namespace spades {
 					continue;
 				}
 				++it;
+			}
+
+			// Update helicopter vehicle physics, rotor animation & 3D spatial audio
+			auto& heli = PlayerCosmetics::GetGlobalHelicopter();
+			if (heli.active) {
+				float spinRate = heli.isFlying ? 38.0F : (heli.pilotId >= 0 ? 30.0F : 4.0F);
+				heli.rotorAngle += dt * spinRate;
+				if (heli.rotorAngle > 6.283185F)
+					heli.rotorAngle -= 6.283185F;
+
+				// 3D Spatial Audio affecting all players within range
+				heli.soundTimer -= dt;
+				if (heli.soundTimer <= 0.0F) {
+					heli.soundTimer = 2.85F;
+					Handle<IAudioChunk> snd = audioDevice->RegisterSound("Sounds/Vehicles/HelicopterRotor.wav");
+					if (snd) {
+						AudioParam param;
+						param.volume = heli.isFlying ? 3.6F : 1.2F;
+						param.referenceDistance = 25.0F;
+						param.pitch = heli.isFlying ? 1.0F : 0.72F;
+						audioDevice->Play(snd.GetPointerOrNull(), heli.position, param);
+					}
+				}
 			}
 		}
 

@@ -29,13 +29,28 @@ namespace spades {
 		class IRenderer;
 		class IModel;
 
+		struct HelicopterState {
+			bool active = false;
+			int id = 1;
+			Vector3 position = MakeVector3(0.0F, 0.0F, 0.0F);
+			float yaw = 0.0F;
+			float pitch = 0.0F;
+			float roll = 0.0F;
+			int pilotId = -1;
+			bool isFlying = false;
+			float rotorAngle = 0.0F;
+			float soundTimer = 0.0F;
+		};
+
 		/**
 		 * Centralized in-game cosmetic system for ySpades.
 		 * Handles procedural voxel generation, caching, and color mapping for
-		 * capes, accessories (crowns, helmets), and custom player suits.
+		 * capes, accessories (crowns, helmets), custom player suits, and vehicles.
 		 */
 		class PlayerCosmetics {
 		public:
+			/** Global helicopter vehicle state */
+			static HelicopterState& GetGlobalHelicopter();
 			/** Returns uniform tint color based on chosen skinId or team color fallback */
 			static Vector3 GetSkinColor(const std::string& skinId, const Vector3& defaultColor);
 

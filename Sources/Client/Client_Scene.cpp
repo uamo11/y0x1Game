@@ -42,6 +42,7 @@
 #include "World.h"
 
 #include "NetClient.h"
+#include "PlayerCosmetics.h"
 
 DEFINE_SPADES_SETTING(cg_fov, "68");
 DEFINE_SPADES_SETTING(cg_horizontalFov, "0");
@@ -734,6 +735,32 @@ namespace spades {
 
 				// draw map objects
 				AddMapObjectsToScene();
+
+				// Draw parked world helicopter vehicle if unoccupied
+				auto& heli = PlayerCosmetics::GetGlobalHelicopter();
+				if (heli.active && heli.pilotId < 0) {
+					Handle<IModel> fuselage = PlayerCosmetics::GetHelicopterFuselageModel(*renderer);
+					Handle<IModel> rotor = PlayerCosmetics::GetHelicopterRotorModel(*renderer);
+					if (fuselage && rotor) {
+						float yawRad = heli.yaw;
+						Vector3 front = MakeVector3(sinf(yawRad), -cosf(yawRad), 0.0F);
+						Vector3 right = MakeVector3(-cosf(yawRad), -sinf(yawRad), 0.0F);
+						Vector3 up = MakeVector3(0.0F, 0.0F, 1.0F);
+
+						Matrix4 heliMat = Matrix4::FromAxis(right, front, -up, heli.position + MakeVector3(0.0F, 0.0F, 0.2F))
+							* Matrix4::Scale(0.075F);
+
+						ModelRenderParam hParam;
+						hParam.matrix = heliMat;
+						renderer->RenderModel(*fuselage, hParam);
+
+						Matrix4 rotorMat = Matrix4::FromAxis(right, front, -up, heli.position + MakeVector3(0.0F, 0.0F, -1.25F))
+							* Matrix4::Scale(0.075F)
+							* Matrix4::Rotate(MakeVector3(0, 0, 1), heli.rotorAngle);
+						hParam.matrix = rotorMat;
+						renderer->RenderModel(*rotor, hParam);
+					}
+				}
 
 				for (const auto& ent : localEntities)
 					ent->Render3D();

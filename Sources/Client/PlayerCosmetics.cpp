@@ -478,91 +478,308 @@ namespace spades {
 			return Handle<IModel>();
 		}
 
+		static HelicopterState g_worldHeli;
+		HelicopterState& PlayerCosmetics::GetGlobalHelicopter() {
+			return g_worldHeli;
+		}
+
 		Handle<IModel> PlayerCosmetics::GetHelicopterFuselageModel(IRenderer& renderer) {
 			if (g_heliFuselageModel)
 				return g_heliFuselageModel;
 
 			try {
-				int const w = 18;
-				int const l = 42;
-				int const h = 18;
+				int const w = 38;
+				int const l = 88;
+				int const h = 32;
 				Handle<VoxelModel> vm = Handle<VoxelModel>::New(w, l, h);
-				vm->SetOrigin(MakeVector3(-static_cast<float>(w) * 0.5F, -14.0F, -static_cast<float>(h) * 0.5F));
+				vm->SetOrigin(MakeVector3(-static_cast<float>(w) * 0.5F, -28.0F, -10.0F));
 
-				// Little-endian RGB: 0xBBGGRR
-				const uint32_t colHull     = 0x244028; // Camouflage olive green
-				const uint32_t colHullDark = 0x1A301E; // Shaded green
-				const uint32_t colSkid     = 0x18181A; // Heavy steel black
-				const uint32_t colGlass    = 0xF0C070; // Tinted cockpit glass cyan
-				const uint32_t colLight    = 0x80FFFF; // Searchlight / radar
-				const uint32_t colTailWarn = 0x1818EE; // Tail hazard red
+				const int cx = w / 2; // 19
 
-				// 1. Landing Skids (z = 0, 1)
-				for (int y = 4; y <= 24; ++y) {
-					vm->SetSolid(2, y, 0, colSkid);
-					vm->SetSolid(w - 3, y, 0, colSkid);
-				}
-				// Skid struts
-				for (int z = 1; z <= 2; ++z) {
-					for (int y : {8, 20}) {
-						vm->SetSolid(3, y, z, colSkid);
-						vm->SetSolid(w - 4, y, z, colSkid);
+				// Little-endian hex RGB: 0xBBGGRR
+				const uint32_t colHullBase    = 0x24442A; // Camouflage olive drab
+				const uint32_t colHullDark    = 0x1A301E; // Shadowed underbelly olive
+				const uint32_t colCamoEarth   = 0x263C52; // Camo earth brown
+				const uint32_t colArmorSteel  = 0x1A1B1D; // Tactical armor black/steel
+				const uint32_t colCockpitGlass= 0xF0D280; // Crystal tinted canopy glass
+				const uint32_t colGlassFrame  = 0x121214; // Canopy frame mullions
+				const uint32_t colIntakeMesh  = 0x2C2D30; // Dark titanium intake mesh
+				const uint32_t colExhaustAlloy= 0x485058; // Burnt titanium exhaust alloy
+				const uint32_t colSkidSteel   = 0x202224; // Steel landing skids
+				const uint32_t colGunMetal    = 0x2D2E30; // 30mm chain gun receiver & barrel
+				const uint32_t colRocketPod   = 0x203822; // Hydra 70 rocket pod housing
+				const uint32_t colRocketTip   = 0x98A0A8; // Silver alloy rocket warheads
+				const uint32_t colMissileBody = 0x224838; // Hellfire missile body
+				const uint32_t colMissileHead = 0x101518; // Seeker optic head
+				const uint32_t colSensorFLIR  = 0x161618; // Nose sensor pod housing
+				const uint32_t colFLIRLens    = 0x08A0F8; // Golden/amber infrared lens
+				const uint32_t colHUDGreen    = 0x20E040; // HUD phosphor green glow
+				const uint32_t colBeaconRed   = 0x1414F0; // Strobe warning beacon
+				const uint32_t colHazardYel   = 0x10D4F0; // Caution hazard stripe
+
+				auto SetVoxel = [&](int x, int y, int z, uint32_t col) {
+					if (x >= 0 && x < w && y >= 0 && y < l && z >= 0 && z < h)
+						vm->SetSolid(x, y, z, col);
+				};
+
+				// 1. Landing Skids (z = 0..8, y = 10..52)
+				for (int side : {-9, 9}) {
+					int sx = cx + side;
+					for (int y = 10; y <= 52; ++y) {
+						SetVoxel(sx, y, 0, colSkidSteel);
+						SetVoxel(sx, y, 1, colSkidSteel);
+					}
+					// Curved ski toes
+					SetVoxel(sx, 9, 2, colSkidSteel);
+					SetVoxel(sx, 8, 3, colSkidSteel);
+					SetVoxel(sx, 7, 4, colSkidSteel);
+					SetVoxel(sx, 53, 2, colSkidSteel);
+
+					// Heavy diagonal mounting struts
+					for (int sy : {18, 42}) {
+						for (int sz = 2; sz <= 7; ++sz) {
+							SetVoxel(sx, sy, sz, colSkidSteel);
+							int inwardX = (side < 0) ? sx + (sz - 2) / 2 : sx - (sz - 2) / 2;
+							SetVoxel(inwardX, sy, sz, colSkidSteel);
+						}
 					}
 				}
 
-				// 2. Cockpit & Cabin Floor (z = 2, 3)
-				for (int x = 4; x < w - 4; ++x) {
-					for (int y = 6; y <= 26; ++y) {
-						vm->SetSolid(x, y, 3, colHullDark);
+				// 2. Chin 30mm Chain Gun & Sensor Turret (y = 0..12, z = 4..9)
+				// FLIR sensor ball
+				for (int dx = -2; dx <= 2; ++dx) {
+					for (int dy = 3; dy <= 6; ++dy) {
+						for (int dz = 6; dz <= 9; ++dz) {
+							SetVoxel(cx + dx, dy, dz, colSensorFLIR);
+						}
+					}
+				}
+				SetVoxel(cx, 2, 7, colFLIRLens);
+				SetVoxel(cx, 2, 8, colFLIRLens);
+				SetVoxel(cx - 1, 3, 7, 0x00FF80); // Targeting laser designator
+
+				// 30mm Chain Gun Turret Cradle
+				for (int dx = -1; dx <= 1; ++dx) {
+					for (int dy = 4; dy <= 8; ++dy) {
+						SetVoxel(cx + dx, dy, 5, colGunMetal);
+					}
+				}
+				for (int dy = 0; dy <= 5; ++dy) {
+					SetVoxel(cx, dy, 4, colGunMetal);
+				}
+				SetVoxel(cx, 0, 4, colArmorSteel); // Muzzle brake
+
+				// 3. Aerodynamic Nose & Lower Forward Fuselage (y = 7..20, z = 7..15)
+				for (int y = 7; y <= 20; ++y) {
+					float progress = (y - 7) / 13.0F;
+					int halfWidth = static_cast<int>(2 + progress * 5);
+					for (int dx = -halfWidth; dx <= halfWidth; ++dx) {
+						for (int z = 7; z <= 12; ++z) {
+							uint32_t c = ((dx + y) % 5 == 0) ? colCamoEarth : (z == 7 ? colHullDark : colHullBase);
+							SetVoxel(cx + dx, y, z, c);
+						}
 					}
 				}
 
-				// 3. Cabin Walls & Roof (z = 4 to 10)
-				for (int z = 4; z <= 10; ++z) {
-					for (int y = 8; y <= 26; ++y) {
-						vm->SetSolid(4, y, z, colHull);
-						vm->SetSolid(w - 5, y, z, colHull);
+				// 4. Stepped Tandem Cockpit & Canopy (y = 12..38, z = 10..22)
+				for (int y = 12; y <= 38; ++y) {
+					for (int dx = -5; dx <= 5; ++dx) {
+						SetVoxel(cx + dx, y, 10, colHullDark);
 					}
 				}
-				// Roof
-				for (int x = 4; x < w - 4; ++x) {
-					for (int y = 8; y <= 26; ++y) {
-						vm->SetSolid(x, y, 10, colHull);
+				// Gunner seat (front)
+				for (int dx = -1; dx <= 1; ++dx) {
+					SetVoxel(cx + dx, 17, 11, colArmorSteel);
+					SetVoxel(cx + dx, 18, 12, colArmorSteel);
+					SetVoxel(cx + dx, 18, 13, colArmorSteel);
+				}
+				SetVoxel(cx, 14, 13, colHUDGreen);
+				SetVoxel(cx, 15, 12, colArmorSteel);
+
+				// Pilot seat (rear elevated)
+				for (int dx = -1; dx <= 1; ++dx) {
+					SetVoxel(cx + dx, 27, 12, colArmorSteel);
+					SetVoxel(cx + dx, 28, 13, colArmorSteel);
+					SetVoxel(cx + dx, 28, 14, colArmorSteel);
+					SetVoxel(cx + dx, 28, 15, colArmorSteel);
+				}
+				SetVoxel(cx, 24, 15, colHUDGreen);
+
+				// Canopy glass & mullions
+				for (int y = 12; y <= 38; ++y) {
+					int topZ = 13 + static_cast<int>((y - 12) * 0.28F);
+					if (topZ > 20) topZ = 20;
+
+					for (int dx = -4; dx <= 4; ++dx) {
+						bool isFrame = (std::abs(dx) == 4 || y == 12 || y == 22 || y == 34 || y == 38);
+						uint32_t glassCol = isFrame ? colGlassFrame : colCockpitGlass;
+						SetVoxel(cx + dx, y, topZ, glassCol);
+					}
+					for (int z = 11; z < topZ; ++z) {
+						bool isSideFrame = (y == 12 || y == 22 || y == 34 || y == 38 || z == 11);
+						uint32_t sideCol = isSideFrame ? colGlassFrame : colCockpitGlass;
+						SetVoxel(cx - 4, y, z, sideCol);
+						SetVoxel(cx + 4, y, z, sideCol);
 					}
 				}
 
-				// 4. Cockpit Windshield (front canopy, y = 4 to 8, z = 4 to 8)
-				for (int x = 5; x < w - 5; ++x) {
-					vm->SetSolid(x, 4, 4, colLight); // Nose radar beacon
-					vm->SetSolid(x, 5, 5, colGlass);
-					vm->SetSolid(x, 6, 6, colGlass);
-					vm->SetSolid(x, 7, 7, colGlass);
+				// 5. Main Fuselage, Sponsons & Cabin (y = 20..50, z = 7..18)
+				for (int y = 20; y <= 50; ++y) {
+					for (int dx = -7; dx <= 7; ++dx) {
+						for (int z = 7; z <= 18; ++z) {
+							bool isSponson = (std::abs(dx) >= 5 && z <= 13);
+							bool isCore = (std::abs(dx) <= 5);
+							if (isSponson || isCore) {
+								uint32_t col = colHullBase;
+								if (z == 7)
+									col = colHullDark;
+								else if ((dx + y + z) % 7 == 0)
+									col = colCamoEarth;
+								else if (std::abs(dx) == 7 && z == 10)
+									col = colArmorSteel;
+								SetVoxel(cx + dx, y, z, col);
+							}
+						}
+					}
 				}
 
-				// 5. Tail Boom (y = 26 to 40, centered x, z = 7, 8)
-				int const midX = w / 2;
-				for (int y = 26; y < l - 2; ++y) {
-					vm->SetSolid(midX - 1, y, 7, colHull);
-					vm->SetSolid(midX, y, 7, colHull);
-					vm->SetSolid(midX - 1, y, 8, colHull);
-					vm->SetSolid(midX, y, 8, colHull);
+				// 6. Dual Turboshaft Engine Nacelles (y = 26..46, z = 18..25)
+				for (int side : {-6, 6}) {
+					for (int y = 26; y <= 46; ++y) {
+						for (int dx = -2; dx <= 2; ++dx) {
+							for (int dz = -2; dz <= 2; ++dz) {
+								int ex = cx + side + dx;
+								int ez = 21 + dz;
+								if (dx * dx + dz * dz <= 5) {
+									uint32_t c = colArmorSteel;
+									if (y == 26)
+										c = colIntakeMesh;
+									else if (y >= 43)
+										c = colExhaustAlloy;
+									else if ((y + dx) % 4 == 0)
+										c = colHullBase;
+									SetVoxel(ex, y, ez, c);
+								}
+							}
+						}
+					}
 				}
 
-				// 6. Vertical Stabilizer Fin & Tail Rotor (y = l - 3, l - 2, z = 7 to 14)
-				for (int z = 7; z <= 14; ++z) {
-					vm->SetSolid(midX, l - 3, z, colHull);
+				// Center Transmission Deck & Doghouse
+				for (int y = 28; y <= 42; ++y) {
+					for (int dx = -3; dx <= 3; ++dx) {
+						for (int z = 19; z <= 24; ++z) {
+							SetVoxel(cx + dx, y, z, colArmorSteel);
+						}
+					}
 				}
-				// Tail hazard beacon & tail rotor
-				vm->SetSolid(midX, l - 3, 14, colTailWarn);
-				vm->SetSolid(midX + 1, l - 3, 12, colSkid);
-				vm->SetSolid(midX + 1, l - 3, 13, colTailWarn);
-				vm->SetSolid(midX + 1, l - 3, 11, colTailWarn);
 
-				// 7. Main Rotor Mast (z = 11, 12)
-				vm->SetSolid(midX - 1, 16, 11, colSkid);
-				vm->SetSolid(midX, 16, 11, colSkid);
-				vm->SetSolid(midX - 1, 16, 12, colSkid);
-				vm->SetSolid(midX, 16, 12, colSkid);
+				// Main Rotor Mast Housing (z = 25..29, y = 33..35)
+				for (int z = 25; z <= 29; ++z) {
+					for (int dx = -1; dx <= 1; ++dx) {
+						for (int dy = -1; dy <= 1; ++dy) {
+							SetVoxel(cx + dx, 34 + dy, z, colArmorSteel);
+						}
+					}
+				}
+				for (int dx = -2; dx <= 2; ++dx) {
+					SetVoxel(cx + dx, 34, 27, colExhaustAlloy);
+					SetVoxel(cx, 34 + dx, 27, colExhaustAlloy);
+				}
+
+				// 7. Stub Wings & Weapons Pylons (y = 28..34, z = 10..13)
+				for (int side : {-1, 1}) {
+					for (int d = 7; d <= 16; ++d) {
+						int wx = cx + side * d;
+						for (int y = 29; y <= 33; ++y) {
+							SetVoxel(wx, y, 11, colArmorSteel);
+							SetVoxel(wx, y, 12, colHullBase);
+						}
+					}
+
+					// Hydra 70 Rocket Pods
+					int podX = cx + side * 11;
+					for (int y = 25; y <= 35; ++y) {
+						for (int dx = -1; dx <= 1; ++dx) {
+							for (int dz = -1; dz <= 1; ++dz) {
+								uint32_t c = (y == 25) ? colRocketTip : colRocketPod;
+								SetVoxel(podX + dx, y, 9 + dz, c);
+							}
+						}
+					}
+
+					// AGM Hellfire Missiles
+					int misX = cx + side * 15;
+					for (int my : {24, 27}) {
+						(void)my;
+						for (int y = 23; y <= 34; ++y) {
+							uint32_t c = (y == 23) ? colMissileHead : colMissileBody;
+							SetVoxel(misX, y, 9, c);
+							SetVoxel(misX + side, y, 9, c);
+						}
+					}
+				}
+
+				// 8. Tapered Tail Boom & Empennage (y = 50..84, z = 13..28)
+				for (int y = 50; y <= 76; ++y) {
+					float taper = (y - 50) / 26.0F;
+					int halfW = static_cast<int>(4.0F - taper * 2.5F);
+					if (halfW < 1) halfW = 1;
+					int boomZ = 14 + static_cast<int>(taper * 2.0F);
+
+					for (int dx = -halfW; dx <= halfW; ++dx) {
+						for (int dz = 0; dz <= 3; ++dz) {
+							uint32_t c = ((y + dx) % 6 == 0) ? colCamoEarth : colHullBase;
+							if (dz == 0) c = colHullDark;
+							SetVoxel(cx + dx, y, boomZ + dz, c);
+						}
+					}
+				}
+
+				// Blade Antenna & Strobe Beacon
+				SetVoxel(cx, 56, 18, colArmorSteel);
+				SetVoxel(cx, 56, 19, colArmorSteel);
+				SetVoxel(cx, 56, 20, colArmorSteel);
+				SetVoxel(cx, 66, 18, colBeaconRed);
+
+				// Horizontal Stabilator Wings (y = 72..75, z = 16)
+				for (int dx = -8; dx <= 8; ++dx) {
+					for (int y = 72; y <= 75; ++y) {
+						SetVoxel(cx + dx, y, 16, colHullBase);
+					}
+					if (std::abs(dx) == 8) {
+						for (int ez = 14; ez <= 18; ++ez) {
+							SetVoxel(cx + dx, 73, ez, colArmorSteel);
+						}
+					}
+				}
+
+				// Swept Vertical Stabilizer Fin (y = 75..83, z = 15..30)
+				for (int y = 75; y <= 83; ++y) {
+					float finProgress = (y - 75) / 8.0F;
+					int maxFinZ = 18 + static_cast<int>(finProgress * 12.0F);
+					for (int z = 15; z <= maxFinZ; ++z) {
+						uint32_t c = (z == maxFinZ) ? colArmorSteel : colHullBase;
+						SetVoxel(cx, y, z, c);
+					}
+				}
+				SetVoxel(cx, 83, 30, colBeaconRed);
+
+				// Starboard Tail Rotor Assembly
+				int tailRotorX = cx + 2;
+				for (int dz = -1; dz <= 1; ++dz) {
+					for (int dy = -1; dy <= 1; ++dy) {
+						SetVoxel(tailRotorX - 1, 80 + dy, 24 + dz, colArmorSteel);
+						SetVoxel(tailRotorX, 80 + dy, 24 + dz, colExhaustAlloy);
+					}
+				}
+				for (int r = 2; r <= 5; ++r) {
+					uint32_t c = (r >= 4) ? colHazardYel : colArmorSteel;
+					SetVoxel(tailRotorX, 80, 24 + r, c);
+					SetVoxel(tailRotorX, 80, 24 - r, c);
+					SetVoxel(tailRotorX, 80 + r, 24, c);
+					SetVoxel(tailRotorX, 80 - r, 24, c);
+				}
 
 				g_heliFuselageModel = renderer.CreateModel(*vm);
 				return g_heliFuselageModel;
@@ -576,39 +793,56 @@ namespace spades {
 				return g_heliRotorModel;
 
 			try {
-				int const span = 46;
-				int const h = 3;
+				int const span = 70;
+				int const h = 4;
 				Handle<VoxelModel> vm = Handle<VoxelModel>::New(span, span, h);
 				vm->SetOrigin(MakeVector3(-static_cast<float>(span) * 0.5F, -static_cast<float>(span) * 0.5F, -1.0F));
 
-				const uint32_t colBlade = 0x18181A; // Carbon blade iron black
-				const uint32_t colTip   = 0x10E0FF; // Safety hazard yellow
-				const uint32_t colHub   = 0x303035; // Center titanium hub
+				const uint32_t colBladeBody   = 0x121314; // Carbon composite black
+				const uint32_t colLeadingEdge = 0x60646A; // Titanium erosion strip
+				const uint32_t colTipYellow   = 0x10D4F0; // High-visibility hazard yellow
+				const uint32_t colTipBlack    = 0x101010; // Hazard black stripe
+				const uint32_t colHubTitanium = 0x34363A; // Heavy rotor hub titanium
 
-				int const c = span / 2;
+				int const c = span / 2; // 35
 
-				// Center hub
-				for (int dx = -2; dx <= 2; ++dx) {
-					for (int dy = -2; dy <= 2; ++dy) {
-						vm->SetSolid(c + dx, c + dy, 1, colHub);
+				// Heavy Rotor Mast Center Hub
+				for (int dx = -3; dx <= 3; ++dx) {
+					for (int dy = -3; dy <= 3; ++dy) {
+						if (dx * dx + dy * dy <= 10) {
+							vm->SetSolid(c + dx, c + dy, 0, colHubTitanium);
+							vm->SetSolid(c + dx, c + dy, 1, colHubTitanium);
+							vm->SetSolid(c + dx, c + dy, 2, colHubTitanium);
+						}
 					}
 				}
 
-				// 4 Aerodynamic Blades with Safety Yellow Tips
-				for (int r = 3; r < c - 1; ++r) {
-					uint32_t col = (r >= c - 4) ? colTip : colBlade;
-					// Blade +Y
-					vm->SetSolid(c - 1, c + r, 1, col);
-					vm->SetSolid(c, c + r, 1, col);
-					// Blade -Y
-					vm->SetSolid(c - 1, c - r, 1, col);
-					vm->SetSolid(c, c - r, 1, col);
-					// Blade +X
-					vm->SetSolid(c + r, c - 1, 1, col);
-					vm->SetSolid(c + r, c, 1, col);
-					// Blade -X
-					vm->SetSolid(c - r, c - 1, 1, col);
-					vm->SetSolid(c - r, c, 1, col);
+				// 4 Aerodynamic Rotor Blades (70 voxels diameter)
+				for (int r = 4; r < c; ++r) {
+					uint32_t bladeCol = colBladeBody;
+					if (r >= c - 6) {
+						bladeCol = ((r / 2) % 2 == 0) ? colTipYellow : colTipBlack;
+					}
+
+					// Blade 1: Along +Y (Front)
+					vm->SetSolid(c - 1, c + r, 1, colLeadingEdge);
+					vm->SetSolid(c, c + r, 1, bladeCol);
+					vm->SetSolid(c + 1, c + r, 1, bladeCol);
+
+					// Blade 2: Along -Y (Aft)
+					vm->SetSolid(c + 1, c - r, 1, colLeadingEdge);
+					vm->SetSolid(c, c - r, 1, bladeCol);
+					vm->SetSolid(c - 1, c - r, 1, bladeCol);
+
+					// Blade 3: Along +X (Right)
+					vm->SetSolid(c + r, c + 1, 1, colLeadingEdge);
+					vm->SetSolid(c + r, c, 1, bladeCol);
+					vm->SetSolid(c + r, c - 1, 1, bladeCol);
+
+					// Blade 4: Along -X (Left)
+					vm->SetSolid(c - r, c - 1, 1, colLeadingEdge);
+					vm->SetSolid(c - r, c, 1, bladeCol);
+					vm->SetSolid(c - r, c + 1, 1, bladeCol);
 				}
 
 				g_heliRotorModel = renderer.CreateModel(*vm);
