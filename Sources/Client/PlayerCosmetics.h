@@ -48,6 +48,12 @@ namespace spades {
 			/** Returns (and caches) procedural lightweight LOD tool/weapon model for high FPS */
 			static Handle<IModel> GetSimpleToolModel(IRenderer& renderer, int toolType, int weaponType);
 
+			/** Returns (and caches) procedural 3D military helicopter fuselage model */
+			static Handle<IModel> GetHelicopterFuselageModel(IRenderer& renderer);
+
+			/** Returns (and caches) procedural 3D helicopter 4-blade rotor model */
+			static Handle<IModel> GetHelicopterRotorModel(IRenderer& renderer);
+
 			/** Clears cached cosmetic models (e.g. on renderer reset) */
 			static void ClearCache();
 

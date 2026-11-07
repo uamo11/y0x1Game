@@ -34,6 +34,8 @@ namespace spades {
 			static std::map<std::string, Handle<IModel>> g_capeCache;
 			static std::map<std::string, Handle<IModel>> g_accCache;
 			static std::map<int, Handle<IModel>> g_simpleToolCache;
+			static Handle<IModel> g_heliFuselageModel;
+			static Handle<IModel> g_heliRotorModel;
 			static Vector3 g_customSkinColor(0.20F, 0.50F, 0.85F);
 			static bool g_customSkinLoaded = false;
 		} // namespace
@@ -476,10 +478,152 @@ namespace spades {
 			return Handle<IModel>();
 		}
 
+		Handle<IModel> PlayerCosmetics::GetHelicopterFuselageModel(IRenderer& renderer) {
+			if (g_heliFuselageModel)
+				return g_heliFuselageModel;
+
+			try {
+				int const w = 18;
+				int const l = 42;
+				int const h = 18;
+				Handle<VoxelModel> vm = Handle<VoxelModel>::New(w, l, h);
+				vm->SetOrigin(MakeVector3(-static_cast<float>(w) * 0.5F, -14.0F, -static_cast<float>(h) * 0.5F));
+
+				// Little-endian RGB: 0xBBGGRR
+				const uint32_t colHull     = 0x244028; // Camouflage olive green
+				const uint32_t colHullDark = 0x1A301E; // Shaded green
+				const uint32_t colSkid     = 0x18181A; // Heavy steel black
+				const uint32_t colGlass    = 0xF0C070; // Tinted cockpit glass cyan
+				const uint32_t colLight    = 0x80FFFF; // Searchlight / radar
+				const uint32_t colTailWarn = 0x1818EE; // Tail hazard red
+
+				// 1. Landing Skids (z = 0, 1)
+				for (int y = 4; y <= 24; ++y) {
+					vm->SetSolid(2, y, 0, colSkid);
+					vm->SetSolid(w - 3, y, 0, colSkid);
+				}
+				// Skid struts
+				for (int z = 1; z <= 2; ++z) {
+					for (int y : {8, 20}) {
+						vm->SetSolid(3, y, z, colSkid);
+						vm->SetSolid(w - 4, y, z, colSkid);
+					}
+				}
+
+				// 2. Cockpit & Cabin Floor (z = 2, 3)
+				for (int x = 4; x < w - 4; ++x) {
+					for (int y = 6; y <= 26; ++y) {
+						vm->SetSolid(x, y, 3, colHullDark);
+					}
+				}
+
+				// 3. Cabin Walls & Roof (z = 4 to 10)
+				for (int z = 4; z <= 10; ++z) {
+					for (int y = 8; y <= 26; ++y) {
+						vm->SetSolid(4, y, z, colHull);
+						vm->SetSolid(w - 5, y, z, colHull);
+					}
+				}
+				// Roof
+				for (int x = 4; x < w - 4; ++x) {
+					for (int y = 8; y <= 26; ++y) {
+						vm->SetSolid(x, y, 10, colHull);
+					}
+				}
+
+				// 4. Cockpit Windshield (front canopy, y = 4 to 8, z = 4 to 8)
+				for (int x = 5; x < w - 5; ++x) {
+					vm->SetSolid(x, 4, 4, colLight); // Nose radar beacon
+					vm->SetSolid(x, 5, 5, colGlass);
+					vm->SetSolid(x, 6, 6, colGlass);
+					vm->SetSolid(x, 7, 7, colGlass);
+				}
+
+				// 5. Tail Boom (y = 26 to 40, centered x, z = 7, 8)
+				int const midX = w / 2;
+				for (int y = 26; y < l - 2; ++y) {
+					vm->SetSolid(midX - 1, y, 7, colHull);
+					vm->SetSolid(midX, y, 7, colHull);
+					vm->SetSolid(midX - 1, y, 8, colHull);
+					vm->SetSolid(midX, y, 8, colHull);
+				}
+
+				// 6. Vertical Stabilizer Fin & Tail Rotor (y = l - 3, l - 2, z = 7 to 14)
+				for (int z = 7; z <= 14; ++z) {
+					vm->SetSolid(midX, l - 3, z, colHull);
+				}
+				// Tail hazard beacon & tail rotor
+				vm->SetSolid(midX, l - 3, 14, colTailWarn);
+				vm->SetSolid(midX + 1, l - 3, 12, colSkid);
+				vm->SetSolid(midX + 1, l - 3, 13, colTailWarn);
+				vm->SetSolid(midX + 1, l - 3, 11, colTailWarn);
+
+				// 7. Main Rotor Mast (z = 11, 12)
+				vm->SetSolid(midX - 1, 16, 11, colSkid);
+				vm->SetSolid(midX, 16, 11, colSkid);
+				vm->SetSolid(midX - 1, 16, 12, colSkid);
+				vm->SetSolid(midX, 16, 12, colSkid);
+
+				g_heliFuselageModel = renderer.CreateModel(*vm);
+				return g_heliFuselageModel;
+			} catch (...) {
+				return Handle<IModel>();
+			}
+		}
+
+		Handle<IModel> PlayerCosmetics::GetHelicopterRotorModel(IRenderer& renderer) {
+			if (g_heliRotorModel)
+				return g_heliRotorModel;
+
+			try {
+				int const span = 46;
+				int const h = 3;
+				Handle<VoxelModel> vm = Handle<VoxelModel>::New(span, span, h);
+				vm->SetOrigin(MakeVector3(-static_cast<float>(span) * 0.5F, -static_cast<float>(span) * 0.5F, -1.0F));
+
+				const uint32_t colBlade = 0x18181A; // Carbon blade iron black
+				const uint32_t colTip   = 0x10E0FF; // Safety hazard yellow
+				const uint32_t colHub   = 0x303035; // Center titanium hub
+
+				int const c = span / 2;
+
+				// Center hub
+				for (int dx = -2; dx <= 2; ++dx) {
+					for (int dy = -2; dy <= 2; ++dy) {
+						vm->SetSolid(c + dx, c + dy, 1, colHub);
+					}
+				}
+
+				// 4 Aerodynamic Blades with Safety Yellow Tips
+				for (int r = 3; r < c - 1; ++r) {
+					uint32_t col = (r >= c - 4) ? colTip : colBlade;
+					// Blade +Y
+					vm->SetSolid(c - 1, c + r, 1, col);
+					vm->SetSolid(c, c + r, 1, col);
+					// Blade -Y
+					vm->SetSolid(c - 1, c - r, 1, col);
+					vm->SetSolid(c, c - r, 1, col);
+					// Blade +X
+					vm->SetSolid(c + r, c - 1, 1, col);
+					vm->SetSolid(c + r, c, 1, col);
+					// Blade -X
+					vm->SetSolid(c - r, c - 1, 1, col);
+					vm->SetSolid(c - r, c, 1, col);
+				}
+
+				g_heliRotorModel = renderer.CreateModel(*vm);
+				return g_heliRotorModel;
+			} catch (...) {
+				return Handle<IModel>();
+			}
+		}
+
 		void PlayerCosmetics::ClearCache() {
 			g_capeCache.clear();
 			g_accCache.clear();
 			g_simpleToolCache.clear();
+			g_heliFuselageModel = Handle<IModel>();
+			g_heliRotorModel = Handle<IModel>();
 		}
 	} // namespace client
 } // namespace spades

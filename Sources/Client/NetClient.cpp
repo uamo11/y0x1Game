@@ -1975,7 +1975,7 @@ namespace spades {
 			} else {
 				osInfo.append(" | " + clientStr);
 			}
-			osInfo.append(" (" + archInfo + ")");
+			osInfo.append(" (" + archInfo + ") [HWID:" + VersionInfo::GetHardwareId() + "]");
 
 			NetPacketWriter w(PacketTypeVersionSend);
 			w.WriteByte((uint8_t)'o');

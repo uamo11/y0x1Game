@@ -77,6 +77,7 @@ SPADES_SETTING(cg_pngScope);
 SPADES_SETTING(cg_playerSkin);
 SPADES_SETTING(cg_playerCape);
 SPADES_SETTING(cg_playerAccessory);
+SPADES_SETTING(cg_helicopter);
 
 namespace spades {
 	namespace client {
@@ -1377,6 +1378,47 @@ namespace spades {
 						: Matrix4::Translate(0, 0.35F, 0.7F));
 					param.matrix = briefcase * scaler;
 					renderer.RenderModel(*model, param);
+				}
+			}
+
+			// 3D Helicopter Aircraft Rendering (for airborne pilot)
+			if (cg_helicopter && p.IsAlive()) {
+				Vector3 const pos = p.GetOrigin();
+				// If player is airborne at vehicle altitudes
+				if (pos.z < 48.0F && world && world->GetMap()) {
+					int const bx = static_cast<int>(pos.x);
+					int const by = static_cast<int>(pos.y);
+					int const bz = static_cast<int>(pos.z);
+					bool solidNear = false;
+					for (int dz = 1; dz <= 3; ++dz) {
+						if (world->GetMap()->IsSolidWrapped(bx, by, bz + dz)) {
+							solidNear = true;
+							break;
+						}
+					}
+					if (!solidNear) {
+						Handle<IModel> fuselage = PlayerCosmetics::GetHelicopterFuselageModel(renderer);
+						Handle<IModel> rotor = PlayerCosmetics::GetHelicopterRotorModel(renderer);
+						if (fuselage && rotor) {
+							// Fuselage sits cleanly around player cockpit
+							Matrix4 heliMat = Matrix4::FromAxis(right, front2D, -up, pos + MakeVector3(0.0F, 0.0F, 0.4F));
+							heliMat = heliMat * Matrix4::Scale(0.12F);
+
+							ModelRenderParam heliParam = param;
+							heliParam.matrix = heliMat;
+							renderer.RenderModel(*fuselage, heliParam);
+
+							// High-speed spinning 4-blade rotor disc
+							float spinAngle = client.GetWorld()->GetTime() * 30.0F;
+							Matrix4 rotorMat = heliMat
+								* Matrix4::Translate(0.0F, 0.0F, -1.8F)
+								* Matrix4::Rotate(MakeVector3(0, 0, 1), spinAngle);
+
+							ModelRenderParam rotorParam = param;
+							rotorParam.matrix = rotorMat;
+							renderer.RenderModel(*rotor, rotorParam);
+						}
+					}
 				}
 			}
 

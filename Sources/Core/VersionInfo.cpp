@@ -99,3 +99,29 @@ std::string VersionInfo::GetAppArchitecture() {
 
 	return result;
 }
+
+std::string VersionInfo::GetHardwareId() {
+#if defined(OS_PLATFORM_WINDOWS)
+	HKEY hKey;
+	char guid[128] = {0};
+	DWORD bufSize = sizeof(guid);
+	// Query standard Windows machine GUID
+	if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Cryptography", 0, KEY_READ | KEY_WOW64_64KEY, &hKey) == ERROR_SUCCESS) {
+		RegQueryValueExA(hKey, "MachineGuid", NULL, NULL, reinterpret_cast<LPBYTE>(guid), &bufSize);
+		RegCloseKey(hKey);
+	}
+	if (guid[0] != '\0') {
+		// FNV-1a 64-bit hash
+		uint64_t hash = 14695981039346656037ULL;
+		for (const char* p = guid; *p; ++p) {
+			hash ^= static_cast<uint64_t>(*p);
+			hash *= 1099511628211ULL;
+		}
+		char hex[32];
+		snprintf(hex, sizeof(hex), "%016llX", static_cast<unsigned long long>(hash));
+		return std::string(hex);
+	}
+#endif
+	return "DEFAULT_HWID";
+}
+
