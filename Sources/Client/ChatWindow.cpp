@@ -307,9 +307,29 @@ namespace spades {
 		void ChatWindow::UpdateMessage(uint64_t id, const std::string& newMsg) {
 			for (auto& ent : entries) {
 				if (ent.id == id) {
+					ent.translatedMsg = newMsg;
+					ent.hasTranslation = true;
 					float oldH = ent.height;
-					ent.msg = newMsg;
-					float newH = CalculateMessageHeight(newMsg);
+					ent.msg = cg_chatTranslate ? ent.translatedMsg : ent.originalMsg;
+					float newH = CalculateMessageHeight(ent.msg);
+					if (newH != oldH) {
+						ent.height = newH;
+						firstY -= (newH - oldH);
+					}
+					return;
+				}
+			}
+		}
+
+		void ChatWindow::SetTranslation(uint64_t id, const std::string& original, const std::string& translated) {
+			for (auto& ent : entries) {
+				if (ent.id == id) {
+					ent.originalMsg = original;
+					ent.translatedMsg = translated;
+					ent.hasTranslation = true;
+					float oldH = ent.height;
+					ent.msg = cg_chatTranslate ? ent.translatedMsg : ent.originalMsg;
+					float newH = CalculateMessageHeight(ent.msg);
 					if (newH != oldH) {
 						ent.height = newH;
 						firstY -= (newH - oldH);
@@ -356,14 +376,35 @@ namespace spades {
 		}
 
 		void ChatWindow::Update(float dt) {
-			if (cg_chatTranslate && !killfeed && ChatTranslator::GetInstance().HasCompletedTranslations()) {
-				auto completed = ChatTranslator::GetInstance().PopCompletedTranslations();
-				for (const auto& item : completed) {
-					UpdateMessage(item.msgId, item.fullTranslatedText);
+			if (!killfeed) {
+				bool curTranslate = (bool)cg_chatTranslate;
+				if (curTranslate != lastChatTranslateState) {
+					lastChatTranslateState = curTranslate;
+					for (auto& ent : entries) {
+						if (ent.hasTranslation) {
+							float oldH = ent.height;
+							ent.msg = curTranslate ? ent.translatedMsg : ent.originalMsg;
+							float newH = CalculateMessageHeight(ent.msg);
+							if (newH != oldH) {
+								ent.height = newH;
+								firstY -= (newH - oldH);
+							}
+						}
+					}
 					if (client && client->GetUI()) {
-						client->GetUI()->UpdateChatLogTranslation(item.originalMsg,
-						                                          item.translatedMsg,
-						                                          item.sourceLang);
+						client->GetUI()->SetChatTranslationActive(curTranslate);
+					}
+				}
+
+				if (ChatTranslator::GetInstance().HasCompletedTranslations()) {
+					auto completed = ChatTranslator::GetInstance().PopCompletedTranslations();
+					for (const auto& item : completed) {
+						UpdateMessage(item.msgId, item.fullTranslatedText);
+						if (client && client->GetUI()) {
+							client->GetUI()->UpdateChatLogTranslation(item.originalMsg,
+							                                          item.translatedMsg,
+							                                          item.sourceLang);
+						}
 					}
 				}
 			}

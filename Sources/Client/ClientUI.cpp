@@ -38,6 +38,8 @@
 
 namespace spades {
 	namespace client {
+		SPADES_SETTING(cg_chatTranslate);
+
 		ClientUI::ClientUI(IRenderer* r, IAudioDevice* a, FontManager* fontManager, Client* client)
 		    : renderer(r), audioDevice(a), fontManager(fontManager), client(client) {
 			SPADES_MARK_FUNCTION();
@@ -148,10 +150,9 @@ namespace spades {
 			std::string TranslationTag(const std::string& lang, bool showingOriginal) {
 				if (showingOriginal)
 					return "[Original] ";
-				std::string code = "??";
-				if (lang.size() >= 2)
-					code = ToUpperCase(lang.substr(0, 2));
-				return "[" + code + "] ";
+				if (lang.size() >= 2 && lang != "xx" && lang != "??")
+					return "[" + ToUpperCase(lang.substr(0, 2)) + "] ";
+				return "";
 			}
 		} // namespace
 
@@ -161,14 +162,16 @@ namespace spades {
 			rec.displayed = msg;
 			rec.original = original.empty() ? msg : original;
 			rec.isTranslated = !original.empty() && original != msg;
-			rec.showingOriginal = false;
+			rec.showingOriginal = !(bool)cg_chatTranslate;
 			rec.language = language;
 			rec.color = color;
 			chatLogRecords.push_back(rec);
 
-			std::string drawLine = rec.displayed;
+			std::string drawLine = (rec.isTranslated && rec.showingOriginal) ? rec.original : rec.displayed;
 			if (rec.isTranslated) {
-				drawLine = TranslationTag(rec.language, false) + rec.displayed;
+				std::string tag = TranslationTag(rec.language, rec.showingOriginal);
+				if (!tag.empty())
+					drawLine = tag + drawLine;
 			}
 			chatLogWindow->Record(drawLine, color);
 			if (chatPanel)
@@ -180,15 +183,31 @@ namespace spades {
 			for (auto it = chatLogRecords.rbegin(); it != chatLogRecords.rend(); ++it) {
 				if (it->original.find(original) != std::string::npos || it->displayed.find(original) != std::string::npos) {
 					it->isTranslated = true;
-					it->original = it->displayed;
-					it->displayed = translated;
-					it->showingOriginal = false;
+					size_t colon = it->displayed.find(": ");
+					std::string namePrefix = (colon != std::string::npos) ? it->displayed.substr(0, colon + 2) : "";
+					if (it->original.find(": ") == std::string::npos && !namePrefix.empty()) {
+						it->original = namePrefix + it->original;
+					}
+					it->displayed = namePrefix + translated;
+					it->showingOriginal = !(bool)cg_chatTranslate;
 					it->language = language;
 					if (chatPanel) {
 						chatPanel->RebuildHistory();
 					}
 					break;
 				}
+			}
+		}
+
+		void ClientUI::SetChatTranslationActive(bool active) {
+			for (auto& rec : chatLogRecords) {
+				if (rec.isTranslated) {
+					rec.showingOriginal = !active;
+				}
+			}
+			if (chatPanel) {
+				chatPanel->RebuildHistory();
+				chatPanel->UpdateTranslateButtonState();
 			}
 		}
 

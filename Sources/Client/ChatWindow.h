@@ -58,18 +58,22 @@ namespace spades {
 			struct ChatEntry {
 				uint64_t id;
 				std::string msg;
+				std::string originalMsg;
+				std::string translatedMsg;
+				bool hasTranslation = false;
 				float height;
 				float fade = 0.0F; // usual fade opacity
 				float bufferFade = 0.0F;
 				float timeFade; // timeout fade opacity
 
 				ChatEntry(uint64_t Id, const std::string& Msg, float Height, float TimeFade)
-					: id(Id), msg(Msg), height(Height), timeFade(TimeFade) {}
+					: id(Id), msg(Msg), originalMsg(Msg), height(Height), timeFade(TimeFade) {}
 			};
 
 			std::list<ChatEntry> entries;
 			float firstY;
 			bool killfeed;
+			bool lastChatTranslateState = true;
 
 			float GetWidth();
 			float GetHeight();
@@ -88,6 +92,7 @@ namespace spades {
 
 			uint64_t AddMessage(const std::string&, float fadeTime = -1.0F);
 			void UpdateMessage(uint64_t id, const std::string& newMsg);
+			void SetTranslation(uint64_t id, const std::string& original, const std::string& translated);
 			static std::string ColoredMessage(const std::string&, char);
 			static std::string TeamColorMessage(const std::string&, int);
 			static std::string KillImage(int killType, int weaponType = -1);

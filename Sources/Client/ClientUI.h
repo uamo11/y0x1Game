@@ -143,6 +143,7 @@ namespace spades {
 			                   const std::string& language = "");
 			void UpdateChatLogTranslation(const std::string& original, const std::string& translated,
 			                              const std::string& language = "");
+			void SetChatTranslationActive(bool active);
 
 			bool IsChatEnabled();
 			bool IsLocalPlayerSpectator() const;

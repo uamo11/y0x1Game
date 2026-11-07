@@ -396,28 +396,54 @@ namespace spades {
 			// draw hints
 			if (font) {
 				const float toggleEnd = contentX + toggleW * 2.0F + 4.0F + transW;
-				const float hintGap = 8.0F;
+				const float hintGap = 10.0F;
+				const float rightEdge = contentX + contentW;
 
-				// right aligned: the keys of the composer
 				std::string hint = _Tr("Client", "[Enter] Send  [Esc] Cancel");
 				float hintW = std::ceil(font->Measure(hint).x);
-				{
-					Handle<Label> label = Handle<Label>::New(manager);
-					label->text = hint;
-					label->textColor = MakeVector4(1.0F, 1.0F, 1.0F, 0.5F);
-					label->SetBounds(AABB2(contentX + contentW - hintW, headerY + 4.0F, hintW + 2.0F, 20.0F));
-					AddChild(label.GetPointerOrNull());
-				}
-
-				// next to the toggles it controls
 				std::string switchHint = _Tr("Client", "[Tab] Switch");
 				float switchW = std::ceil(font->Measure(switchHint).x);
-				{
-					Handle<Label> label = Handle<Label>::New(manager);
-					label->text = switchHint;
-					label->textColor = MakeVector4(1.0F, 1.0F, 1.0F, 0.5F);
-					label->SetBounds(AABB2(toggleEnd + hintGap, headerY + 4.0F, switchW + 2.0F, 20.0F));
-					AddChild(label.GetPointerOrNull());
+
+				float availableW = rightEdge - (toggleEnd + hintGap);
+
+				if (switchW + hintW + 16.0F <= availableW) {
+					// Both hints fit comfortably without collision
+					Handle<Label> sLabel = Handle<Label>::New(manager);
+					sLabel->text = switchHint;
+					sLabel->textColor = MakeVector4(1.0F, 1.0F, 1.0F, 0.5F);
+					sLabel->SetBounds(AABB2(toggleEnd + hintGap, headerY + 4.0F, switchW + 2.0F, 20.0F));
+					AddChild(sLabel.GetPointerOrNull());
+
+					Handle<Label> rLabel = Handle<Label>::New(manager);
+					rLabel->text = hint;
+					rLabel->textColor = MakeVector4(1.0F, 1.0F, 1.0F, 0.5F);
+					rLabel->SetBounds(AABB2(rightEdge - hintW, headerY + 4.0F, hintW + 2.0F, 20.0F));
+					AddChild(rLabel.GetPointerOrNull());
+				} else {
+					// Space is tight: try shortened cancel hint
+					std::string shortHint = _Tr("Client", "[Esc] Cancel");
+					float shortHintW = std::ceil(font->Measure(shortHint).x);
+
+					if (switchW + shortHintW + 16.0F <= availableW) {
+						Handle<Label> sLabel = Handle<Label>::New(manager);
+						sLabel->text = switchHint;
+						sLabel->textColor = MakeVector4(1.0F, 1.0F, 1.0F, 0.5F);
+						sLabel->SetBounds(AABB2(toggleEnd + hintGap, headerY + 4.0F, switchW + 2.0F, 20.0F));
+						AddChild(sLabel.GetPointerOrNull());
+
+						Handle<Label> rLabel = Handle<Label>::New(manager);
+						rLabel->text = shortHint;
+						rLabel->textColor = MakeVector4(1.0F, 1.0F, 1.0F, 0.5F);
+						rLabel->SetBounds(AABB2(rightEdge - shortHintW, headerY + 4.0F, shortHintW + 2.0F, 20.0F));
+						AddChild(rLabel.GetPointerOrNull());
+					} else if (shortHintW + 8.0F <= availableW) {
+						// Only show cancel hint to avoid collision
+						Handle<Label> rLabel = Handle<Label>::New(manager);
+						rLabel->text = shortHint;
+						rLabel->textColor = MakeVector4(1.0F, 1.0F, 1.0F, 0.5F);
+						rLabel->SetBounds(AABB2(rightEdge - shortHintW, headerY + 4.0F, shortHintW + 2.0F, 20.0F));
+						AddChild(rLabel.GetPointerOrNull());
+					}
 				}
 			}
 
@@ -484,10 +510,10 @@ namespace spades {
 				const auto& r = records[i];
 				std::string line = r.displayed;
 				if (r.isTranslated) {
-					std::string tag = "[??] ";
+					std::string tag;
 					if (r.showingOriginal) {
 						tag = "[Original] ";
-					} else if (r.language.size() >= 2) {
+					} else if (r.language.size() >= 2 && r.language != "xx" && r.language != "??") {
 						tag = "[" + ToUpperCase(r.language.substr(0, 2)) + "] ";
 					}
 					line = tag + (r.showingOriginal ? r.original : r.displayed);
@@ -651,8 +677,8 @@ namespace spades {
 			bool next = !cur;
 			Settings::ItemHandle("cg_chatTranslate", nullptr) = next ? "1" : "0";
 			UpdateTranslateButtonState();
-			if (!next) {
-				ChatTranslator::GetInstance().ClearCache();
+			if (ui) {
+				ui->SetChatTranslationActive(next);
 			}
 		}
 
@@ -779,8 +805,8 @@ namespace spades {
 				bool next = !cur;
 				Settings::ItemHandle("cg_chatTranslate", nullptr) = next ? "1" : "0";
 				UpdateTranslateButtonState();
-				if (!next) {
-					ChatTranslator::GetInstance().ClearCache();
+				if (ui) {
+					ui->SetChatTranslationActive(next);
 				}
 				notify(std::string("[ySpades] Traductor de chat: ") + (next ? "ACTIVADO" : "DESACTIVADO (0 consumo de recursos)"));
 				return true;

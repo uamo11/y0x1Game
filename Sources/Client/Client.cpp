@@ -1296,14 +1296,16 @@ namespace spades {
 					std::string sourceLang;
 					if (ChatTranslator::GetInstance().TryFastTranslate(msg, fastTranslation, sourceLang)) {
 						// Instant 0ms translation from tactical gaming dictionary or in-memory LRU cache
-						s += ChatWindow::TranslateMarker(sourceLang) + fastTranslation;
-						chatWindow->AddMessage(s);
-						scriptedUI->RecordChatLog(playerNameStr + ": " + fastTranslation, ConvertColorRGBA(p.GetColor()), playerNameStr + ": " + msg, sourceLang);
+						std::string origS = s + msg;
+						std::string transS = s + ChatWindow::TranslateMarker(sourceLang) + fastTranslation;
+						uint64_t msgId = chatWindow->AddMessage(transS);
+						chatWindow->SetTranslation(msgId, origS, transS);
+						scriptedUI->RecordChatLog(prefix + playerNameStr + ": " + fastTranslation, ConvertColorRGBA(p.GetColor()), prefix + playerNameStr + ": " + msg, sourceLang);
 					} else {
 						// Display original message immediately so there is zero delay in receiving chat
 						s += msg;
 						uint64_t msgId = chatWindow->AddMessage(s);
-						scriptedUI->RecordChatLog(playerNameStr + ": " + msg, ConvertColorRGBA(p.GetColor()), playerNameStr + ": " + msg);
+						scriptedUI->RecordChatLog(prefix + playerNameStr + ": " + msg, ConvertColorRGBA(p.GetColor()), prefix + playerNameStr + ": " + msg);
 						// Worker thread translates asynchronously and updates in-place
 						ChatTranslator::GetInstance().QueueTranslation(
 						    msgId, prefix, playerNameStr, p.GetTeamId(), state, msg);
@@ -1311,7 +1313,7 @@ namespace spades {
 				} else {
 					s += msg;
 					chatWindow->AddMessage(s);
-					scriptedUI->RecordChatLog(playerNameStr + ": " + msg, ConvertColorRGBA(p.GetColor()));
+					scriptedUI->RecordChatLog(prefix + playerNameStr + ": " + msg, ConvertColorRGBA(p.GetColor()));
 				}
 			}
 
