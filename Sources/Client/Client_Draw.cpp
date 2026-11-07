@@ -2877,7 +2877,7 @@ namespace spades {
 
 						font.DrawShadow(statusText, MakeVector2(px1, py1), 1.0F, hudColor, MakeVector4(0.0F, 0.0F, 0.0F, 0.9F));
 
-						std::string flightControls = "[Espacio]: Ascender | [C]: Descender | [W/A/S/D]: Volar | [E]: Salir";
+						std::string flightControls = "[W]: Subir | [S]: Bajar | [Clic Izq Mantenido]: Acelerar | [A/D]: Girar | [E]: Salir";
 						float txtW2 = font.Measure(flightControls).x;
 						float px2 = (sw - txtW2) * 0.5F;
 						float py2 = sh - 105.0F;

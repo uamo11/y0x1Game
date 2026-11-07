@@ -1426,8 +1426,10 @@ namespace spades {
 					if (msg.rfind("[HELI_SYNC]", 0) == 0) {
 						int hId = 1, pilotId = -1, isFlying = 0, hp = 300, maxHp = 300, tier = 3, p1 = -1, p2 = -1;
 						float hx = 0, hy = 0, hz = 0, hyaw = 0, hpitch = 0, hroll = 0;
-						int parsed = std::sscanf(msg.c_str(), "[HELI_SYNC] %d %f %f %f %f %f %f %d %d %d %d %d %d %d",
-						                         &hId, &hx, &hy, &hz, &hyaw, &hpitch, &hroll, &pilotId, &isFlying, &hp, &maxHp, &tier, &p1, &p2);
+						float hvx = 0, hvy = 0, hvz = 0;
+						int parsed = std::sscanf(msg.c_str(), "[HELI_SYNC] %d %f %f %f %f %f %f %d %d %d %d %d %d %d %f %f %f",
+						                         &hId, &hx, &hy, &hz, &hyaw, &hpitch, &hroll, &pilotId, &isFlying, &hp, &maxHp, &tier, &p1, &p2,
+						                         &hvx, &hvy, &hvz);
 						if (parsed >= 7) {
 							auto& hState = PlayerCosmetics::GetGlobalHelicopter();
 							if (parsed >= 10 && hp <= 0) {
@@ -1438,12 +1440,22 @@ namespace spades {
 								hState.health = 0;
 								hState.healthTier = 0;
 							} else {
+								Vector3 newPos = MakeVector3(hx, hy, hz);
+								if (!hState.active || (newPos - hState.position).GetLengthSq() > 144.0F) {
+									hState.position = newPos;
+									hState.yaw = hyaw;
+									hState.pitch = hpitch;
+									hState.roll = hroll;
+								}
+								hState.targetPosition = newPos;
+								hState.targetYaw = hyaw;
+								hState.targetPitch = hpitch;
+								hState.targetRoll = hroll;
+								if (parsed >= 17) {
+									hState.velocity = MakeVector3(hvx, hvy, hvz);
+								}
 								hState.active = true;
 								hState.id = hId;
-								hState.position = MakeVector3(hx, hy, hz);
-								hState.yaw = hyaw;
-								hState.pitch = hpitch;
-								hState.roll = hroll;
 								hState.pilotId = pilotId;
 								hState.isFlying = (isFlying != 0);
 								if (parsed >= 10) hState.health = hp;

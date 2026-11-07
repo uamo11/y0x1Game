@@ -340,7 +340,13 @@ namespace spades {
 						nextBlockTime = world.GetTime() + secondaryDelay;
 				}
 			} else if (tool == ToolWeapon && isLocal) {
-				weapon->SetShooting(newInput.primary);
+				auto& hState = PlayerCosmetics::GetGlobalHelicopter();
+				if (hState.active && hState.health > 0 && hState.pilotId == static_cast<int>(id)) {
+					// Pilot in cockpit: Primary click controls helicopter throttle/propulsion, not handheld weapon fire
+					weapon->SetShooting(false);
+				} else {
+					weapon->SetShooting(newInput.primary);
+				}
 			} else if (tool == ToolWeapon) {
 				// non-local weapon player: no local simulation needed
 			} else if (tool == ToolGrenade) {

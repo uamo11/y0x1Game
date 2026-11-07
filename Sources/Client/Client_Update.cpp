@@ -532,6 +532,19 @@ namespace spades {
 			// Update helicopter vehicle physics, rotor animation & 3D spatial audio
 			auto& heli = PlayerCosmetics::GetGlobalHelicopter();
 			if (heli.active && heli.health > 0) {
+				// Smooth frame interpolation (eliminates tick-to-tick jumping completely)
+				float const blendFactor = 1.0F - expf(-18.0F * dt);
+				heli.position += (heli.targetPosition - heli.position) * blendFactor;
+
+				// Smooth angle wrap-around for yaw
+				float yawDiff = fmodf(heli.targetYaw - heli.yaw + 3.14159265F, 6.2831853F);
+				if (yawDiff < 0.0F) yawDiff += 6.2831853F;
+				yawDiff -= 3.14159265F;
+				heli.yaw += yawDiff * blendFactor;
+
+				heli.pitch += (heli.targetPitch - heli.pitch) * blendFactor;
+				heli.roll += (heli.targetRoll - heli.roll) * blendFactor;
+
 				// Rotors are OFF when parked/unoccupied, turn ON upon boarding, and spin RAPIDÍSIMO (80.0 rad/s)
 				float targetRotorSpeed = (heli.pilotId >= 0) ? 80.0F : 0.0F;
 				if (heli.rotorSpeed < targetRotorSpeed) {

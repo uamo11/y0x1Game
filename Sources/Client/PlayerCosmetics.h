@@ -33,9 +33,14 @@ namespace spades {
 			bool active = false;
 			int id = 1;
 			Vector3 position = MakeVector3(0.0F, 0.0F, 0.0F);
+			Vector3 targetPosition = MakeVector3(0.0F, 0.0F, 0.0F);
+			Vector3 velocity = MakeVector3(0.0F, 0.0F, 0.0F);
 			float yaw = 0.0F;
+			float targetYaw = 0.0F;
 			float pitch = 0.0F;
+			float targetPitch = 0.0F;
 			float roll = 0.0F;
+			float targetRoll = 0.0F;
 			int pilotId = -1;
 			int pass1Id = -1;
 			int pass2Id = -1;
