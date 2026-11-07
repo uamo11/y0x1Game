@@ -341,7 +341,7 @@ namespace spades {
 				}
 			} else if (tool == ToolWeapon && isLocal) {
 				auto& hState = PlayerCosmetics::GetGlobalHelicopter();
-				if (hState.active && hState.health > 0 && hState.pilotId == static_cast<int>(id)) {
+				if (hState.active && hState.health > 0 && hState.pilotId == static_cast<int>(GetId())) {
 					// Pilot in cockpit: Primary click controls helicopter throttle/propulsion, not handheld weapon fire
 					weapon->SetShooting(false);
 				} else {

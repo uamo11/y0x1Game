@@ -1441,7 +1441,7 @@ namespace spades {
 								hState.healthTier = 0;
 							} else {
 								Vector3 newPos = MakeVector3(hx, hy, hz);
-								if (!hState.active || (newPos - hState.position).GetLengthSq() > 144.0F) {
+								if (!hState.active || (newPos - hState.position).GetSquaredLength() > 144.0F) {
 									hState.position = newPos;
 									hState.yaw = hyaw;
 									hState.pitch = hpitch;
