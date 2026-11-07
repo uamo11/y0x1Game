@@ -606,21 +606,29 @@ namespace spades {
 				}
 				SetVoxel(cx, 24, 15, colHUDGreen);
 
-				// Canopy glass & mullions
+				// Canopy structural frame & open windows (allows conductor in window to be clearly visible from outside)
 				for (int y = 12; y <= 38; ++y) {
 					int topZ = 13 + static_cast<int>((y - 12) * 0.28F);
 					if (topZ > 20) topZ = 20;
 
+					// Canopy roof spine & arches
 					for (int dx = -4; dx <= 4; ++dx) {
-						bool isFrame = (std::abs(dx) == 4 || y == 12 || y == 22 || y == 34 || y == 38);
-						uint32_t glassCol = isFrame ? colGlassFrame : colCockpitGlass;
-						SetVoxel(cx + dx, y, topZ, glassCol);
+						bool isRoofFrame = (std::abs(dx) == 4 || dx == 0 || y == 12 || y == 22 || y == 34 || y == 38);
+						if (isRoofFrame) {
+							SetVoxel(cx + dx, y, topZ, colGlassFrame);
+						}
 					}
+					// Side window frame posts & sill (leaving windows open for pilot visibility)
 					for (int z = 11; z < topZ; ++z) {
 						bool isSideFrame = (y == 12 || y == 22 || y == 34 || y == 38 || z == 11);
-						uint32_t sideCol = isSideFrame ? colGlassFrame : colCockpitGlass;
-						SetVoxel(cx - 4, y, z, sideCol);
-						SetVoxel(cx + 4, y, z, sideCol);
+						if (isSideFrame) {
+							SetVoxel(cx - 4, y, z, colGlassFrame);
+							SetVoxel(cx + 4, y, z, colGlassFrame);
+						}
+					}
+					// Front windshield center dividing mullion
+					if (y <= 14) {
+						SetVoxel(cx, y, topZ, colGlassFrame);
 					}
 				}
 
