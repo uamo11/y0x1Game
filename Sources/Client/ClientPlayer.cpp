@@ -1381,55 +1381,6 @@ namespace spades {
 				}
 			}
 
-			// 3D Helicopter Aircraft Rendering (for airborne pilot or designated pilot)
-			if (cg_helicopter && p.IsAlive()) {
-				Vector3 const pos = p.GetOrigin();
-				auto& worldHeli = PlayerCosmetics::GetGlobalHelicopter();
-				bool isHeliPilot = (worldHeli.active && worldHeli.pilotId == static_cast<int>(p.GetId()));
-
-				// If player is marked as pilot or is airborne in vehicle altitudes
-				if (isHeliPilot || (pos.z < 52.0F && world && world->GetMap())) {
-					bool shouldRender = isHeliPilot;
-					if (!shouldRender) {
-						int const bx = static_cast<int>(pos.x);
-						int const by = static_cast<int>(pos.y);
-						int const bz = static_cast<int>(pos.z);
-						bool solidNear = false;
-						for (int dz = 1; dz <= 3; ++dz) {
-							if (world->GetMap()->IsSolidWrapped(bx, by, bz + dz)) {
-								solidNear = true;
-								break;
-							}
-						}
-						shouldRender = !solidNear;
-					}
-
-					if (shouldRender) {
-						Handle<IModel> fuselage = PlayerCosmetics::GetHelicopterFuselageModel(renderer);
-						Handle<IModel> rotor = PlayerCosmetics::GetHelicopterRotorModel(renderer);
-						if (fuselage && rotor) {
-							// Ultra-detailed military helicopter fuselage at 0.075 scale
-							Matrix4 heliMat = Matrix4::FromAxis(right, front2D, -up, pos + MakeVector3(0.0F, 0.0F, 0.2F));
-							heliMat = heliMat * Matrix4::Scale(0.075F);
-
-							ModelRenderParam heliParam = param;
-							heliParam.matrix = heliMat;
-							renderer.RenderModel(*fuselage, heliParam);
-
-							// High-speed 60+ FPS spinning 4-blade rotor disc
-							float spinAngle = client.GetWorld()->GetTime() * 38.0F;
-							Matrix4 rotorMat = Matrix4::FromAxis(right, front2D, -up, pos + MakeVector3(0.0F, 0.0F, -1.25F))
-								* Matrix4::Scale(0.075F)
-								* Matrix4::Rotate(MakeVector3(0, 0, 1), spinAngle);
-
-							ModelRenderParam rotorParam = param;
-							rotorParam.matrix = rotorMat;
-							renderer.RenderModel(*rotor, rotorParam);
-						}
-					}
-				}
-			}
-
 			// third person player rendering, done
 		}
 

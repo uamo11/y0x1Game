@@ -2849,26 +2849,46 @@ namespace spades {
 
 				// Draw Helicopter Vehicle HUD Prompts
 				auto& hState = PlayerCosmetics::GetGlobalHelicopter();
-				if (hState.active && player.IsAlive() && !localPlayerIsSpectator) {
+				if (hState.active && hState.health > 0 && player.IsAlive() && !localPlayerIsSpectator) {
 					float sw = renderer->ScreenWidth();
 					float sh = renderer->ScreenHeight();
 					IFont& font = fontManager->GetGuiFont();
 
 					if (hState.pilotId == static_cast<int>(player.GetId())) {
-						// Active Flight HUD
-						std::string flightText = "[ HELICOPTERO MILITAR ] [Espacio]: Ascender | [C]: Descender | [W/A/S/D]: Volar | [E]: Salir";
-						float txtW = font.Measure(flightText).x;
-						float px = (sw - txtW) * 0.5F;
-						float py = sh - 110.0F;
+						// Active Flight HUD with 3 Stability / Health Tiers
+						std::string tierName;
+						Vector4 hudColor;
+						if (hState.healthTier == 3) {
+							tierName = "[ ESTABILIDAD: OPTIMA ]";
+							hudColor = MakeVector4(0.25F, 1.0F, 0.45F, 1.0F); // Phosphor Green
+						} else if (hState.healthTier == 2) {
+							tierName = "[ ESTABILIDAD: INESTABLE - DANIADO ]";
+							hudColor = MakeVector4(1.0F, 0.82F, 0.15F, 1.0F); // Warning Yellow
+						} else {
+							tierName = "[ !ALERTA CRITICA! ROTOR DE COLA COMPROMETIDO ]";
+							hudColor = MakeVector4(1.0F, 0.25F, 0.25F, 1.0F); // Flashing Red
+						}
 
-						font.DrawShadow(flightText, MakeVector2(px, py), 1.0F,
-						                MakeVector4(0.3F, 1.0F, 0.4F, 1.0F),
+						std::string statusText = "[ HELICOPTERO MILITAR ] HP: " + std::to_string(hState.health) + "/" + std::to_string(hState.maxHealth) + " " + tierName;
+						float txtW1 = font.Measure(statusText).x;
+						float px1 = (sw - txtW1) * 0.5F;
+						float py1 = sh - 130.0F;
+
+						font.DrawShadow(statusText, MakeVector2(px1, py1), 1.0F, hudColor, MakeVector4(0.0F, 0.0F, 0.0F, 0.9F));
+
+						std::string flightControls = "[Espacio]: Ascender | [C]: Descender | [W/A/S/D]: Volar | [E]: Salir";
+						float txtW2 = font.Measure(flightControls).x;
+						float px2 = (sw - txtW2) * 0.5F;
+						float py2 = sh - 105.0F;
+
+						font.DrawShadow(flightControls, MakeVector2(px2, py2), 0.95F,
+						                MakeVector4(0.9F, 0.95F, 1.0F, 0.95F),
 						                MakeVector4(0.0F, 0.0F, 0.0F, 0.9F));
 					} else if (hState.pilotId < 0) {
 						// Nearby parked prompt
 						float dist = (player.GetOrigin() - hState.position).GetLength();
-						if (dist < 5.0F) {
-							std::string enterText = "[ Presiona 'E' para pilotar el Helicóptero Militar ]";
+						if (dist < 6.0F) {
+							std::string enterText = "[ Presiona 'E' para pilotar ] HP: " + std::to_string(hState.health) + "/300";
 							float txtW = font.Measure(enterText).x;
 							float px = (sw - txtW) * 0.5F;
 							float py = sh * 0.65F;

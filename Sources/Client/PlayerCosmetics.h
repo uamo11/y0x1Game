@@ -39,7 +39,11 @@ namespace spades {
 			int pilotId = -1;
 			bool isFlying = false;
 			float rotorAngle = 0.0F;
+			float rotorSpeed = 0.0F;
 			float soundTimer = 0.0F;
+			int health = 300;
+			int maxHealth = 300;
+			int healthTier = 3;
 		};
 
 		/**

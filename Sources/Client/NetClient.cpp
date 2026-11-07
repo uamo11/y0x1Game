@@ -1424,19 +1424,32 @@ namespace spades {
 
 					// Intercept helicopter synchronization packets (do not show in chat)
 					if (msg.rfind("[HELI_SYNC]", 0) == 0) {
-						int hId = 1, pilotId = -1, isFlying = 0;
+						int hId = 1, pilotId = -1, isFlying = 0, hp = 300, maxHp = 300, tier = 3;
 						float hx = 0, hy = 0, hz = 0, hyaw = 0, hpitch = 0, hroll = 0;
-						if (std::sscanf(msg.c_str(), "[HELI_SYNC] %d %f %f %f %f %f %f %d %d",
-						                &hId, &hx, &hy, &hz, &hyaw, &hpitch, &hroll, &pilotId, &isFlying) >= 7) {
+						int parsed = std::sscanf(msg.c_str(), "[HELI_SYNC] %d %f %f %f %f %f %f %d %d %d %d %d",
+						                         &hId, &hx, &hy, &hz, &hyaw, &hpitch, &hroll, &pilotId, &isFlying, &hp, &maxHp, &tier);
+						if (parsed >= 7) {
 							auto& hState = PlayerCosmetics::GetGlobalHelicopter();
-							hState.active = true;
-							hState.id = hId;
-							hState.position = MakeVector3(hx, hy, hz);
-							hState.yaw = hyaw;
-							hState.pitch = hpitch;
-							hState.roll = hroll;
-							hState.pilotId = pilotId;
-							hState.isFlying = (isFlying != 0);
+							if (parsed >= 10 && hp <= 0) {
+								if (hState.active && client) {
+									client->GrenadeExplosion(hState.position);
+								}
+								hState.active = false;
+								hState.health = 0;
+								hState.healthTier = 0;
+							} else {
+								hState.active = true;
+								hState.id = hId;
+								hState.position = MakeVector3(hx, hy, hz);
+								hState.yaw = hyaw;
+								hState.pitch = hpitch;
+								hState.roll = hroll;
+								hState.pilotId = pilotId;
+								hState.isFlying = (isFlying != 0);
+								if (parsed >= 10) hState.health = hp;
+								if (parsed >= 11) hState.maxHealth = maxHp;
+								if (parsed >= 12) hState.healthTier = tier;
+							}
 						}
 						break;
 					}

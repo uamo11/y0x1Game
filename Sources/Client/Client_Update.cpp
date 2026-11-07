@@ -37,6 +37,7 @@
 #include "FallingBlock.h"
 #include "HurtRingView.h"
 #include "ILocalEntity.h"
+#include "SmokeSpriteEntity.h"
 #include "MapView.h"
 #include "PieMenuView.h"
 #include "Teamplay.h"
@@ -530,23 +531,74 @@ namespace spades {
 
 			// Update helicopter vehicle physics, rotor animation & 3D spatial audio
 			auto& heli = PlayerCosmetics::GetGlobalHelicopter();
-			if (heli.active) {
-				float spinRate = heli.isFlying ? 38.0F : (heli.pilotId >= 0 ? 30.0F : 4.0F);
-				heli.rotorAngle += dt * spinRate;
-				if (heli.rotorAngle > 6.283185F)
-					heli.rotorAngle -= 6.283185F;
+			if (heli.active && heli.health > 0) {
+				// Rotors are OFF when parked/unoccupied, turn ON upon boarding, and spin RAPIDÍSIMO (80.0 rad/s)
+				float targetRotorSpeed = (heli.pilotId >= 0) ? 80.0F : 0.0F;
+				if (heli.rotorSpeed < targetRotorSpeed) {
+					heli.rotorSpeed = std::min(targetRotorSpeed, heli.rotorSpeed + dt * 65.0F);
+				} else if (heli.rotorSpeed > targetRotorSpeed) {
+					heli.rotorSpeed = std::max(targetRotorSpeed, heli.rotorSpeed - dt * 35.0F);
+				}
 
-				// 3D Spatial Audio affecting all players within range
-				heli.soundTimer -= dt;
-				if (heli.soundTimer <= 0.0F) {
-					heli.soundTimer = 2.85F;
-					Handle<IAudioChunk> snd = audioDevice->RegisterSound("Sounds/Vehicles/HelicopterRotor.wav");
-					if (snd) {
-						AudioParam param;
-						param.volume = heli.isFlying ? 3.6F : 1.2F;
-						param.referenceDistance = 25.0F;
-						param.pitch = heli.isFlying ? 1.0F : 0.72F;
-						audioDevice->Play(snd.GetPointerOrNull(), heli.position, param);
+				heli.rotorAngle += dt * heli.rotorSpeed;
+				if (heli.rotorAngle > 6.283185F)
+					heli.rotorAngle = fmodf(heli.rotorAngle, 6.283185F);
+
+				float const curTime = world ? world->GetTime() : 0.0F;
+
+				// 3D Spatial Audio: ONLY plays when rotors are ON (spinning)
+				if (heli.rotorSpeed > 2.0F) {
+					heli.soundTimer -= dt;
+					if (heli.soundTimer <= 0.0F) {
+						heli.soundTimer = 2.85F;
+						Handle<IAudioChunk> snd = audioDevice->RegisterSound("Sounds/Vehicles/HelicopterRotor.wav");
+						if (snd) {
+							AudioParam param;
+							float speedRatio = heli.rotorSpeed / 80.0F;
+							param.volume = (heli.isFlying ? 3.6F : 1.8F) * speedRatio;
+							param.referenceDistance = 25.0F;
+
+							float basePitch = (heli.isFlying ? 1.0F : 0.75F) * (0.5F + 0.5F * speedRatio);
+							// Sound instability across 3 health tiers
+							if (heli.healthTier == 2) {
+								basePitch *= (0.94F + 0.06F * sinf(curTime * 15.0F));
+							} else if (heli.healthTier == 1) {
+								basePitch *= (0.82F + 0.14F * sinf(curTime * 25.0F));
+							}
+							param.pitch = basePitch;
+							audioDevice->Play(snd.GetPointerOrNull(), heli.position, param);
+						}
+					}
+				} else {
+					heli.soundTimer = 0.0F;
+				}
+
+				// Visual Damage Effects (Smoke and sparks for damaged tiers)
+				if (heli.healthTier == 2) {
+					// Tier 2: Light gray smoke from engine nacelles
+					static float smokeTimer2 = 0.0F;
+					smokeTimer2 -= dt;
+					if (smokeTimer2 <= 0.0F) {
+						smokeTimer2 = 0.15F;
+						auto ent = stmp::make_unique<SmokeSpriteEntity>(*this, MakeVector4(0.7F, 0.7F, 0.7F, 0.35F), 25.0F);
+						ent->SetTrajectory(heli.position + MakeVector3(0.0F, 0.0F, -0.6F), MakeVector3(0.0F, 0.0F, -1.5F));
+						ent->SetRadius(0.8F, 0.3F);
+						ent->SetLifeTime(1.5F, 0.1F, 0.5F);
+						ent->SetBlockHitAction(BlockHitAction::Ignore);
+						localEntities.emplace_back(std::move(ent));
+					}
+				} else if (heli.healthTier == 1) {
+					// Tier 1: Heavy black smoke and sparks from damaged tail and engine
+					static float smokeTimer1 = 0.0F;
+					smokeTimer1 -= dt;
+					if (smokeTimer1 <= 0.0F) {
+						smokeTimer1 = 0.07F;
+						auto ent = stmp::make_unique<SmokeSpriteEntity>(*this, MakeVector4(0.12F, 0.12F, 0.12F, 0.70F), 35.0F);
+						ent->SetTrajectory(heli.position + MakeVector3(0.0F, 0.0F, -0.6F), MakeVector3(0.0F, 0.0F, -2.0F));
+						ent->SetRadius(1.2F, 0.4F);
+						ent->SetLifeTime(2.2F, 0.1F, 0.8F);
+						ent->SetBlockHitAction(BlockHitAction::Ignore);
+						localEntities.emplace_back(std::move(ent));
 					}
 				}
 			}
