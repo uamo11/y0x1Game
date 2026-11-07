@@ -410,6 +410,11 @@ namespace spades {
 						}
 
 						float distance = 5.0F;
+						auto& hState = PlayerCosmetics::GetGlobalHelicopter();
+						if (hState.active && hState.pilotId == static_cast<int>(player.GetId())) {
+							distance = 18.0F; // Majestic third-person view for 3X scale military combat gunship
+							center = hState.position + MakeVector3(0.0F, 0.0F, -2.5F);
+						}
 						if (player.IsLocalPlayer()
 							&& !player.IsSpectator()
 							&& !player.IsAlive()) { // deathcam.
