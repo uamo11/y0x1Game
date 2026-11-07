@@ -746,28 +746,31 @@ namespace spades {
 						float pitchRad = heli.pitch;
 						float rollRad = heli.roll;
 
+						// 3X larger scale: Imposing military gunship (~20 blocks long, ~7 blocks high, ~16 blocks rotor span)
+						const float heliScale = 0.225F;
+
 						Vector3 front = MakeVector3(sinf(yawRad), -cosf(yawRad), 0.0F);
 						Vector3 right = MakeVector3(-cosf(yawRad), -sinf(yawRad), 0.0F);
-						Vector3 up = MakeVector3(0.0F, 0.0F, 1.0F);
+						Vector3 upSky = MakeVector3(0.0F, 0.0F, -1.0F); // -Z is sky in OpenSpades
 
-						Matrix4 heliMat = Matrix4::FromAxis(right, front, -up, heli.position + MakeVector3(0.0F, 0.0F, 0.2F));
+						// Model basis:
+						// X = right, Y = -front (model -Y is nose, so nose points forward), Z = upSky (model +Z is mast up)
+						Matrix4 heliMat = Matrix4::FromAxis(right, -front, upSky, heli.position);
 						if (std::abs(pitchRad) > 0.001F || std::abs(rollRad) > 0.001F) {
 							heliMat = heliMat * Matrix4::Rotate(MakeVector3(1, 0, 0), pitchRad)
 							                  * Matrix4::Rotate(MakeVector3(0, 1, 0), rollRad);
 						}
-						heliMat = heliMat * Matrix4::Scale(0.075F);
 
+						// 1. Render Fuselage
 						ModelRenderParam hParam;
-						hParam.matrix = heliMat;
+						hParam.matrix = heliMat * Matrix4::Scale(heliScale);
 						renderer->RenderModel(*fuselage, hParam);
 
-						Matrix4 rotorMat = Matrix4::FromAxis(right, front, -up, heli.position + MakeVector3(0.0F, 0.0F, -1.25F));
-						if (std::abs(pitchRad) > 0.001F || std::abs(rollRad) > 0.001F) {
-							rotorMat = rotorMat * Matrix4::Rotate(MakeVector3(1, 0, 0), pitchRad)
-							                    * Matrix4::Rotate(MakeVector3(0, 1, 0), rollRad);
-						}
-						rotorMat = rotorMat * Matrix4::Scale(0.075F)
-							* Matrix4::Rotate(MakeVector3(0, 0, 1), heli.rotorAngle);
+						// 2. Render Main Rotor: Centered exactly at mast top (Z = 29 voxels above skids)
+						// Dynamically attached as child of helicopter transformation: 100% centered in all orientations
+						Matrix4 rotorMat = heliMat * Matrix4::Translate(0.0F, 0.0F, 29.0F * heliScale)
+						                           * Matrix4::Rotate(MakeVector3(0, 0, 1), heli.rotorAngle)
+						                           * Matrix4::Scale(heliScale);
 						hParam.matrix = rotorMat;
 						renderer->RenderModel(*rotor, hParam);
 					}

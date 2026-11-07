@@ -492,7 +492,8 @@ namespace spades {
 				int const l = 88;
 				int const h = 32;
 				Handle<VoxelModel> vm = Handle<VoxelModel>::New(w, l, h);
-				vm->SetOrigin(MakeVector3(-static_cast<float>(w) * 0.5F, -28.0F, -10.0F));
+				// Center at: X=19 (fuselage center), Y=34 (rotor mast center), Z=0 (landing skids base)
+				vm->SetOrigin(MakeVector3(-19.0F, -34.0F, 0.0F));
 
 				const int cx = w / 2; // 19
 
@@ -796,7 +797,8 @@ namespace spades {
 				int const span = 70;
 				int const h = 4;
 				Handle<VoxelModel> vm = Handle<VoxelModel>::New(span, span, h);
-				vm->SetOrigin(MakeVector3(-static_cast<float>(span) * 0.5F, -static_cast<float>(span) * 0.5F, -1.0F));
+				// Center at: X=35 (hub center), Y=35 (hub center), Z=0 (hub bottom)
+				vm->SetOrigin(MakeVector3(-static_cast<float>(span) * 0.5F, -static_cast<float>(span) * 0.5F, 0.0F));
 
 				const uint32_t colBladeBody   = 0x121314; // Carbon composite black
 				const uint32_t colLeadingEdge = 0x60646A; // Titanium erosion strip

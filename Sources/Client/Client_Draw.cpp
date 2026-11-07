@@ -2885,9 +2885,9 @@ namespace spades {
 						                MakeVector4(0.9F, 0.95F, 1.0F, 0.95F),
 						                MakeVector4(0.0F, 0.0F, 0.0F, 0.9F));
 					} else if (hState.pilotId < 0) {
-						// Nearby parked prompt
+						// Nearby parked prompt (adapted for 3X larger helicopter scale)
 						float dist = (player.GetOrigin() - hState.position).GetLength();
-						if (dist < 6.0F) {
+						if (dist < 15.0F) {
 							std::string enterText = "[ Presiona 'E' para pilotar ] HP: " + std::to_string(hState.health) + "/300";
 							float txtW = font.Measure(enterText).x;
 							float px = (sw - txtW) * 0.5F;

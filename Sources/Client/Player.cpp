@@ -28,6 +28,7 @@
 #include "Grenade.h"
 #include "HitTestDebugger.h"
 #include "IWorldListener.h"
+#include "PlayerCosmetics.h"
 #include "Weapon.h"
 #include "World.h"
 #include <Core/Debug.h>
@@ -1443,6 +1444,133 @@ namespace spades {
 		void Player::MovePlayer(float fsynctics) {
 			if (!alive) {
 				MoveCorpse(fsynctics);
+				return;
+			}
+
+			// Aerodynamic Military Combat Helicopter Flight Physics Simulation
+			auto& hState = PlayerCosmetics::GetGlobalHelicopter();
+			bool isPilotingHeli = IsLocalPlayer() && hState.active && hState.health > 0 && hState.pilotId == static_cast<int>(GetId());
+			if (isPilotingHeli) {
+				float const dt = fsynctics;
+
+				// 1. Heading / Yaw steering from mouse orientation
+				Vector3 frontDir = GetFront();
+				float targetYaw = atan2f(frontDir.x, -frontDir.y);
+				float yawDiff = targetYaw - hState.yaw;
+				while (yawDiff > 3.14159265F) yawDiff -= 6.2831853F;
+				while (yawDiff < -3.14159265F) yawDiff += 6.2831853F;
+				hState.yaw += yawDiff * std::min(1.0F, dt * 8.0F);
+
+				// Tier 1 Failure: Tail Rotor Loss -> Continuous Uncontrollable Torque Yaw Spin!
+				if (hState.healthTier == 1) {
+					hState.yaw += 2.8F * dt;
+				}
+
+				Vector3 heliFront = MakeVector3(sinf(hState.yaw), -cosf(hState.yaw), 0.0F);
+				Vector3 heliRight = MakeVector3(-cosf(hState.yaw), -sinf(hState.yaw), 0.0F);
+
+				// 2. Power Factor across 3 Health & Stability Tiers
+				float powerFactor = (hState.healthTier == 3) ? 1.0F : ((hState.healthTier == 2) ? 0.75F : 0.45F);
+
+				// 3. Collective Pitch (Vertical Climb & Descent)
+				// Note: In OpenSpades, negative Z is UP (towards sky), positive Z is DOWN (towards ground)
+				float fz = 0.0F;
+				if (input.jump) {
+					// Space: Ascend powerfully
+					fz -= 24.0F * powerFactor;
+				} else if (input.crouch || input.sneak) {
+					// C / Sneak: Smooth controlled descent
+					fz += 14.0F;
+				} else {
+					// Hover mode: auto-dampen vertical velocity to maintain altitude
+					fz = -velocity.z * 4.0F;
+				}
+
+				// Tier 1 Gravity Sink
+				if (hState.healthTier == 1) {
+					fz += 7.0F; // Downward gravity drag - requires active collective to avoid crashing
+				}
+
+				// 4. Cyclic Pitch & Roll (Horizontal Flight & Banking)
+				Vector3 horizForce = MakeVector3(0.0F, 0.0F, 0.0F);
+				float targetPitch = 0.0F;
+				float targetRoll = 0.0F;
+
+				if (input.moveForward) {
+					horizForce += heliFront * (18.0F * powerFactor);
+					targetPitch = -0.24F; // Nose down
+				} else if (input.moveBackward) {
+					horizForce -= heliFront * (14.0F * powerFactor);
+					targetPitch = 0.20F;  // Nose up / braking
+				}
+
+				if (input.moveLeft) {
+					horizForce -= heliRight * (14.0F * powerFactor);
+					targetRoll = -0.22F;  // Bank left
+				} else if (input.moveRight) {
+					horizForce += heliRight * (14.0F * powerFactor);
+					targetRoll = 0.22F;   // Bank right
+				}
+
+				// Smooth physical pitch and roll transitions
+				hState.pitch += (targetPitch - hState.pitch) * std::min(1.0F, dt * 6.0F);
+				hState.roll += (targetRoll - hState.roll) * std::min(1.0F, dt * 6.0F);
+
+				// Dynamic Engine Shudder & Turbulence across Tiers
+				float const curTime = world.GetTime();
+				if (hState.healthTier == 2) {
+					hState.pitch += sinf(curTime * 14.0F) * 0.04F;
+					hState.roll += cosf(curTime * 12.0F) * 0.05F;
+				} else if (hState.healthTier == 1) {
+					hState.pitch += sinf(curTime * 22.0F) * 0.12F;
+					hState.roll += cosf(curTime * 20.0F) * 0.14F;
+				}
+
+				// 5. Integrate Velocity with Aerodynamic Drag
+				velocity.x = (velocity.x + horizForce.x * dt) * powf(0.88F, dt * 20.0F);
+				velocity.y = (velocity.y + horizForce.y * dt) * powf(0.88F, dt * 20.0F);
+				velocity.z = (velocity.z + fz * dt) * powf(0.85F, dt * 20.0F);
+
+				// Integrate Position
+				position += velocity * (dt * 32.0F);
+
+				// 6. Realistic Ground Collision: Landing skids rest cleanly on surface
+				const Handle<GameMap>& map = world.GetMap();
+				if (map) {
+					int px = static_cast<int>(floorf(position.x));
+					int py = static_cast<int>(floorf(position.y));
+					if (px >= 0 && px < 512 && py >= 0 && py < 512) {
+						float groundZ = 63.0F;
+						for (int cz = 0; cz < 63; ++cz) {
+							if (map->IsSolid(px, py, cz)) {
+								groundZ = static_cast<float>(cz);
+								break;
+							}
+						}
+
+						// Landing skids touch at groundZ: never penetrate ground
+						if (position.z >= groundZ - 0.2F) {
+							position.z = groundZ - 0.2F;
+							if (velocity.z > 0.0F)
+								velocity.z = 0.0F;
+							hState.pitch *= 0.8F;
+							hState.roll *= 0.8F;
+						}
+					}
+				}
+
+				// Sky ceiling
+				if (position.z < 3.0F) {
+					position.z = 3.0F;
+					if (velocity.z < 0.0F)
+						velocity.z = 0.0F;
+				}
+
+				hState.position = position;
+				hState.isFlying = (velocity.GetSquaredLength() > 0.5F || position.z < 50.0F);
+
+				airborne = true;
+				RepositionPlayer(position);
 				return;
 			}
 
