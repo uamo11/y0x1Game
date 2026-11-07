@@ -116,7 +116,6 @@ namespace spades {
 			void OnSetGlobal(gui::ui::UIElement& sender);
 			void OnSetTeam(gui::ui::UIElement& sender);
 			void OnToggleTranslate(gui::ui::UIElement& sender);
-			void UpdateTranslateButtonState();
 			void OnFieldChanged(gui::ui::UIElement& sender);
 			void OnCancel(gui::ui::UIElement& sender);
 			bool CheckAndSetConfigVariable();
@@ -138,6 +137,7 @@ namespace spades {
 			                 ChatWindowMode mode = ChatWindowMode::Centered);
 
 			void UpdateState();
+			void UpdateTranslateButtonState();
 			void RebuildHistory();
 
 			/** Appends a line to the history of the docked and peek views. */
