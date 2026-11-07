@@ -489,7 +489,6 @@ namespace spades {
 			void Bleed(Vector3, bool bounce = false);
 			void EmitBlockFragments(Vector3, IntVector3 color);
 			void EmitBlockDestroyFragments(IntVector3 pos);
-			void GrenadeExplosion(Vector3);
 			void GrenadeExplosionUnderwater(Vector3);
 			void MuzzleFire(Vector3, bool smoke = true);
 			void BulletHitWaterSurface(Vector3);
@@ -855,6 +854,7 @@ namespace spades {
 			void PlayerDestroyedBlockWithWeaponOrTool(IntVector3);
 			void PlayerDiggedBlock(IntVector3);
 			void GrenadeDestroyedBlock(IntVector3);
+			void GrenadeExplosion(Vector3);
 			void PlayerLeaving(Player&);
 			void PlayerJoinedTeam(Player&);
 			void PlayerSpawned(Player&);
