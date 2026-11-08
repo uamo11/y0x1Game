@@ -1517,7 +1517,8 @@ namespace spades {
 					RepositionPlayer(position);
 					eye = position + MakeVector3(0.0F, 0.0F, -0.4F);
 				}
-				velocity = cState.velocity;
+				velocity = MakeVector3(0.0F, 0.0F, 0.0F);
+				airborne = true;
 				return;
 			}
 

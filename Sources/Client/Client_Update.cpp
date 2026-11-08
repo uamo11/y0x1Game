@@ -659,14 +659,15 @@ namespace spades {
 					car.soundTimer -= dt;
 					if (car.soundTimer <= 0.0F) {
 						car.soundTimer = 1.5F;
-						Handle<IAudioChunk> snd = audioDevice->RegisterSound("Sounds/Misc/CarEngine.opus");
-						if (!snd) snd = audioDevice->RegisterSound("Sounds/Misc/HelicopterRotor.opus");
-						if (snd) {
-							AudioParam param;
-							param.volume = (carSpeed > 2.0F) ? 2.0F : 1.1F;
-							param.pitch = 0.70F + std::min(0.9F, carSpeed * 0.04F);
-							audioDevice->Play(snd.GetPointerOrNull(), car.position, param);
-						}
+						try {
+							Handle<IAudioChunk> snd = audioDevice->RegisterSound("Sounds/Misc/SwitchMapZoom.opus");
+							if (snd) {
+								AudioParam param;
+								param.volume = (carSpeed > 2.0F) ? 1.0F : 0.6F;
+								param.pitch = 0.50F + std::min(0.5F, carSpeed * 0.02F);
+								audioDevice->Play(snd.GetPointerOrNull(), car.position, param);
+							}
+						} catch (...) {}
 					}
 				} else {
 					car.soundTimer = 0.0F;
