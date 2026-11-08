@@ -49,6 +49,7 @@
 #include "GLProgramAttribute.h"
 #include "GLProgramManager.h"
 #include "GLProgramUniform.h"
+#include "GLQuadRenderer.h"
 #include "GLRadiosityRenderer.h"
 #include "GLRenderer.h"
 #include "GLResampleBicubicFilter.h"
@@ -71,6 +72,7 @@
 #include <Core/Stopwatch.h>
 
 SPADES_SETTING(cg_fog);
+SPADES_SETTING(cg_volumetricSky);
 
 namespace spades {
 	namespace draw {
@@ -757,6 +759,94 @@ namespace spades {
 			}
 		}
 
+		void GLRenderer::RenderSky(bool mirror) {
+			SPADES_MARK_FUNCTION();
+			if (!skyProgram) {
+				try {
+					skyProgram = RegisterProgram("Shaders/OpenGL/VolumetricSky.program");
+				} catch (...) {
+					skyProgram = nullptr;
+					return;
+				}
+			}
+			if (!skyProgram)
+				return;
+
+			static GLProgramAttribute positionAttribute("positionAttribute");
+			static GLProgramUniform viewOriginUniform("viewOrigin");
+			static GLProgramUniform viewAxisUpUniform("viewAxisUp");
+			static GLProgramUniform viewAxisSideUniform("viewAxisSide");
+			static GLProgramUniform viewAxisFrontUniform("viewAxisFront");
+			static GLProgramUniform fovUniform("fov");
+			static GLProgramUniform fogColorUniform("fogColor");
+			static GLProgramUniform fogDistanceUniform("fogDistance");
+			static GLProgramUniform timeUniform("time");
+			static GLProgramUniform sunDirectionUniform("sunDirection");
+			static GLProgramUniform isHDRUniform("isHDR");
+
+			positionAttribute(skyProgram);
+			viewOriginUniform(skyProgram);
+			viewAxisUpUniform(skyProgram);
+			viewAxisSideUniform(skyProgram);
+			viewAxisFrontUniform(skyProgram);
+			fovUniform(skyProgram);
+			fogColorUniform(skyProgram);
+			fogDistanceUniform(skyProgram);
+			timeUniform(skyProgram);
+			sunDirectionUniform(skyProgram);
+			isHDRUniform(skyProgram);
+
+			skyProgram->Use();
+
+			// Setup camera parameters
+			client::SceneDefinition def = GetSceneDef();
+			fovUniform.SetValue(tanf(def.fovX * 0.5f), tanf(def.fovY * 0.5f));
+
+			if (mirror || IsRenderingMirror()) {
+				def.viewOrigin.z = 63.0f * 2.0f - def.viewOrigin.z;
+				def.viewAxis[0].z = -def.viewAxis[0].z;
+				def.viewAxis[1].z = -def.viewAxis[1].z;
+				def.viewAxis[2].z = -def.viewAxis[2].z;
+			}
+
+			viewOriginUniform.SetValue(def.viewOrigin.x, def.viewOrigin.y, def.viewOrigin.z);
+			viewAxisSideUniform.SetValue(def.viewAxis[0].x, def.viewAxis[0].y, def.viewAxis[0].z);
+			viewAxisUpUniform.SetValue(def.viewAxis[1].x, def.viewAxis[1].y, def.viewAxis[1].z);
+			viewAxisFrontUniform.SetValue(def.viewAxis[2].x, def.viewAxis[2].y, def.viewAxis[2].z);
+
+			Vector3 fogCol = GetFogColor();
+			if (settings.r_hdr) {
+				fogCol *= fogCol; // linearize
+			}
+			fogColorUniform.SetValue(fogCol.x, fogCol.y, fogCol.z);
+			fogDistanceUniform.SetValue(GetFogDistance());
+
+			float curTime = static_cast<float>(def.time) * 0.001f;
+			timeUniform.SetValue(curTime);
+
+			// Standard AoS isometric sun direction (towards -Y, up -Z)
+			Vector3 sunDir = MakeVector3(-0.35f, -0.65f, -0.68f).Normalize();
+			sunDirectionUniform.SetValue(sunDir.x, sunDir.y, sunDir.z);
+
+			isHDRUniform.SetValue(settings.r_hdr ? 1 : 0);
+
+			// Configure OpenGL states:
+			// DepthFunc LessOrEqual with quad at z=1.0: only shades unoccluded background sky!
+			// DepthMask false: does not overwrite depth values
+			device->Enable(IGLDevice::DepthTest, true);
+			device->DepthFunc(IGLDevice::LessOrEqual);
+			device->DepthMask(false);
+			device->Enable(IGLDevice::Blend, false);
+			device->Enable(IGLDevice::CullFace, false);
+
+			GLQuadRenderer qr(*device);
+			qr.SetCoordAttributeIndex(positionAttribute.GetIndex());
+			qr.Draw();
+
+			// Restore depth mask
+			device->DepthMask(true);
+		}
+
 		void GLRenderer::RenderXRayPass() {
 			SPADES_MARK_FUNCTION();
 
@@ -918,6 +1008,11 @@ namespace spades {
 						RenderObjects(true);
 					}
 
+					if (cg_volumetricSky) {
+						GLProfiler::Context p(*profiler, "Mirrored Volumetric Sky");
+						RenderSky(true);
+					}
+
 					// restore matrices
 					std::swap(view, viewMatrix);
 					projectionViewMatrix = projectionMatrix * viewMatrix;
@@ -970,6 +1065,11 @@ namespace spades {
 			{
 				GLProfiler::Context p(*profiler, "Non-mirrored Objects");
 				RenderObjects();
+			}
+
+			if (cg_volumetricSky) {
+				GLProfiler::Context p(*profiler, "Volumetric Sky");
+				RenderSky(false);
 			}
 
 			device->Enable(IGLDevice::CullFace, false);

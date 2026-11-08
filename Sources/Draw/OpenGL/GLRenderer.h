@@ -110,6 +110,7 @@ namespace spades {
 			GLAutoExposureFilter* autoExposureFilter;
 			std::unique_ptr<GLTemporalAAFilter> temporalAAFilter;
 			std::unique_ptr<GLFogFilter2> fogFilter2;
+			GLProgram* skyProgram = nullptr;
 
 			// used when r_ssao = 1. only valid while rendering objects
 			IGLDevice::UInteger ssaoBufferTexture;
@@ -143,6 +144,7 @@ namespace spades {
 			void RenderDebugLines();
 
 			void RenderObjects(bool mirror = false);
+			void RenderSky(bool mirror = false);
 			void RenderGhosts();
 
 			/** Draws every model flagged `xray` again where the world hides it, in the

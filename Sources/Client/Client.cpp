@@ -73,6 +73,7 @@ DEFINE_SPADES_SETTING(cg_ignorePrivateMessages, "0");
 DEFINE_SPADES_SETTING(cg_ignoreChatMessages, "0");
 DEFINE_SPADES_SETTING(cg_chatTranslate, "1");
 DEFINE_SPADES_SETTING(cg_fog, "1");
+DEFINE_SPADES_SETTING(cg_volumetricSky, "1");
 DEFINE_SPADES_SETTING(cg_helicopter, "1");
 
 SPADES_SETTING(cg_playerName);
