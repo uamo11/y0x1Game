@@ -230,15 +230,17 @@ namespace spades {
 						sharedState.pitch = -DEG2RAD(89);
 					sharedState.yaw = fmodf(sharedState.yaw, DEG2RAD(360));
 
-					// Si el jugador local es el Conductor del helicóptero en 3ra persona, girar su orientación para dirigir el vuelo
+					// Si el jugador local es el Conductor del helicóptero en 3ra persona, alinear exactamente su orientación con la cámara
 					if (cameraMode == ClientCameraMode::ThirdPersonLocal && world) {
 						auto maybeP = world->GetLocalPlayer();
 						if (maybeP && maybeP->IsAlive()) {
 							auto& hState = PlayerCosmetics::GetGlobalHelicopter();
 							if (hState.active && hState.pilotId == static_cast<int>(maybeP->GetId())) {
-								float mouseTurnX = origMouseX * (float)cg_mouseSensitivity * 0.003F;
-								float mouseTurnY = (cg_invertMouseY ? origMouseY : -origMouseY) * (float)cg_mouseSensitivity * 0.003F;
-								maybeP->Turn(mouseTurnX, mouseTurnY);
+								Vector3 camFront;
+								camFront.x = cosf(sharedState.pitch) * -cosf(sharedState.yaw);
+								camFront.y = cosf(sharedState.pitch) * -sinf(sharedState.yaw);
+								camFront.z = sinf(sharedState.pitch);
+								maybeP->SetOrientation(camFront);
 							}
 						}
 					}
