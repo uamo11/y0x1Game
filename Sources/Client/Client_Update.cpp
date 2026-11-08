@@ -86,6 +86,7 @@ SPADES_SETTING(cg_corpseDisableGravity);
 SPADES_SETTING(cg_killfeedFadeTime);
 SPADES_SETTING(cg_maintainBlockSelection);
 SPADES_SETTING(cg_infiniteBlocks);
+SPADES_SETTING(cg_airBattle);
 
 namespace spades {
 	namespace client {
@@ -620,35 +621,75 @@ namespace spades {
 			// WWII Air Dogfight Simulation (Zero-Cost, Dynamic Combat AI)
 			// =====================================================================
 			auto& battle = PlayerCosmetics::GetGlobalAirBattle();
-			if (battle.active) {
+			if ((int)cg_airBattle != 0) {
+				battle.active = true;
+			}
+			if (!battle.active) {
+				battle.planes[0].active = false;
+				battle.planes[0].state = 0;
+				battle.planes[1].active = false;
+				battle.planes[1].state = 0;
+			} else {
 				battle.globalTimer += dt;
 				Vector3 playerPos = lastSceneDef.viewOrigin;
 
+				// Camera orientation vectors
+				Vector3 camFwd = lastSceneDef.viewAxis[2];
+				Vector3 camRight = lastSceneDef.viewAxis[0];
+				Vector2 fwd2D = MakeVector2(camFwd.x, camFwd.y);
+				if (fwd2D.GetLength() < 0.05F) {
+					fwd2D = MakeVector2(0.0F, 1.0F);
+				} else {
+					fwd2D = fwd2D.Normalize();
+				}
+				Vector2 right2D = MakeVector2(camRight.x, camRight.y);
+				if (right2D.GetLength() < 0.05F) {
+					right2D = MakeVector2(-fwd2D.y, fwd2D.x);
+				} else {
+					right2D = right2D.Normalize();
+				}
+
 				// Spawn / Initialize the two rival warbirds if not active
 				if (!battle.planes[0].active && !battle.planes[1].active && battle.planes[0].state != 5 && battle.planes[1].state != 5) {
-					// Plane 0: Allied Spitfire
-					auto& p0 = battle.planes[0];
-					p0.active = true;
-					p0.team = 0;
-					p0.position = playerPos + MakeVector3(-60.0F, -70.0F, -26.0F);
-					p0.yaw = 0.85F;
-					p0.pitch = -0.05F;
-					p0.roll = 0.0F;
-					p0.speed = 42.0F;
-					p0.health = 100.0F;
-					p0.state = 1; // Hunter
+					// Base focal position directly in front of player's camera view
+					Vector3 spawnCenter = playerPos;
+					spawnCenter.x += fwd2D.x * 52.0F;
+					spawnCenter.y += fwd2D.y * 52.0F;
+					spawnCenter.z = std::max(6.0F, std::min(22.0F, playerPos.z - 16.0F));
 
-					// Plane 1: Axis Bf 109
+					// Keep within map boundaries
+					spawnCenter.x = std::max(70.0F, std::min(442.0F, spawnCenter.x));
+					spawnCenter.y = std::max(70.0F, std::min(442.0F, spawnCenter.y));
+
+					// Flight trajectory angled across player's field of view
+					Vector2 flyDir = (fwd2D * 0.35F - right2D * 0.90F).Normalize();
+					float baseYaw = atan2f(flyDir.x, -flyDir.y);
+
+					// Plane 1: Axis Bf 109 (Target being pursued)
 					auto& p1 = battle.planes[1];
 					p1.active = true;
 					p1.team = 1;
-					p1.position = playerPos + MakeVector3(30.0F, -30.0F, -24.0F);
-					p1.yaw = 0.65F;
-					p1.pitch = -0.05F;
-					p1.roll = 0.25F;
-					p1.speed = 40.0F;
+					p1.position = spawnCenter + MakeVector3(right2D.x * 10.0F, right2D.y * 10.0F, -2.0F);
+					p1.yaw = baseYaw;
+					p1.pitch = -0.04F;
+					p1.roll = 0.20F;
+					p1.speed = 42.0F;
 					p1.health = 100.0F;
 					p1.state = 2; // Target
+					p1.burstTimer = 0.0F;
+
+					// Plane 0: Allied Spitfire (Hunter on target's tail)
+					auto& p0 = battle.planes[0];
+					p0.active = true;
+					p0.team = 0;
+					p0.position = spawnCenter + MakeVector3(right2D.x * 26.0F, right2D.y * 26.0F, 0.0F);
+					p0.yaw = baseYaw;
+					p0.pitch = -0.04F;
+					p0.roll = 0.15F;
+					p0.speed = 45.0F;
+					p0.health = 100.0F;
+					p0.state = 1; // Hunter
+					p0.burstTimer = 0.05F; // Immediately start firing machine gun bursts!
 				}
 
 				// Role switching between Hunter and Prey
@@ -685,13 +726,20 @@ namespace spades {
 							if (p.stateTimer <= 0.0F) {
 								p.active = true;
 								p.team = i;
-								p.position = playerPos + MakeVector3(static_cast<float>((rand() % 160) - 80), -140.0F, -30.0F);
+								Vector3 respawnPos = playerPos;
+								respawnPos.x += fwd2D.x * 60.0F + static_cast<float>((rand() % 60) - 30);
+								respawnPos.y += fwd2D.y * 60.0F + static_cast<float>((rand() % 60) - 30);
+								respawnPos.x = std::max(60.0F, std::min(452.0F, respawnPos.x));
+								respawnPos.y = std::max(60.0F, std::min(452.0F, respawnPos.y));
+								respawnPos.z = std::max(8.0F, std::min(22.0F, playerPos.z - 16.0F));
+								p.position = respawnPos;
 								p.yaw = static_cast<float>(rand() % 628) * 0.01F;
-								p.pitch = -0.08F;
+								p.pitch = -0.05F;
 								p.roll = 0.0F;
 								p.speed = 42.0F;
 								p.health = 100.0F;
 								p.state = 1;
+								p.burstTimer = 0.1F;
 							}
 						}
 						continue;
@@ -719,18 +767,20 @@ namespace spades {
 						p.speed = 44.0F;
 
 						// Machine Gun Firing when aligned behind target
-						if (distTarget < 85.0F && std::abs(yawDiff) < 0.55F && targetP.active && targetP.state != 4) {
+						if (distTarget < 95.0F && std::abs(yawDiff) < 0.65F && targetP.active && targetP.state != 4) {
 							p.burstTimer -= dt;
 							if (p.burstTimer <= 0.0F) {
-								p.burstTimer = 0.12F;
-								// Twin wing machine gun tracers
+								p.burstTimer = 0.11F;
+								// Twin wing machine gun tracers projecting across the sky
 								Vector3 muzzleL = p.position + right * 1.6F + forward * 2.5F;
 								Vector3 muzzleR = p.position - right * 1.6F + forward * 2.5F;
-								Vector3 hitL = targetP.position + MakeVector3(static_cast<float>((rand() % 10 - 5)) * 0.3F, static_cast<float>((rand() % 10 - 5)) * 0.3F, static_cast<float>((rand() % 10 - 5)) * 0.3F);
-								Vector3 hitR = targetP.position + MakeVector3(static_cast<float>((rand() % 10 - 5)) * 0.3F, static_cast<float>((rand() % 10 - 5)) * 0.3F, static_cast<float>((rand() % 10 - 5)) * 0.3F);
+								Vector3 aimDirL = (targetP.position + MakeVector3(static_cast<float>((rand() % 10 - 5)) * 0.25F, static_cast<float>((rand() % 10 - 5)) * 0.25F, static_cast<float>((rand() % 10 - 5)) * 0.25F) - muzzleL).Normalize();
+								Vector3 aimDirR = (targetP.position + MakeVector3(static_cast<float>((rand() % 10 - 5)) * 0.25F, static_cast<float>((rand() % 10 - 5)) * 0.25F, static_cast<float>((rand() % 10 - 5)) * 0.25F) - muzzleR).Normalize();
+								Vector3 tracerEndL = muzzleL + aimDirL * 150.0F;
+								Vector3 tracerEndR = muzzleR + aimDirR * 150.0F;
 
-								AddLocalEntity(stmp::make_unique<Tracer>(*this, muzzleL, hitL, 400.0F, false));
-								AddLocalEntity(stmp::make_unique<Tracer>(*this, muzzleR, hitR, 400.0F, false));
+								AddLocalEntity(stmp::make_unique<Tracer>(*this, muzzleL, tracerEndL, 450.0F, false));
+								AddLocalEntity(stmp::make_unique<Tracer>(*this, muzzleR, tracerEndR, 450.0F, false));
 
 								// 3D Positional Machine Gun Audio
 								if (audioDevice) {
@@ -767,38 +817,38 @@ namespace spades {
 					} else if (p.state == 3) {
 						// LOW DIVE FLYBY ("Sentías que se iban a estrellar contra ti")
 						p.stateTimer -= dt;
-						Vector3 flybyTarget = MakeVector3(playerPos.x, playerPos.y, playerPos.z - 8.0F);
+						Vector3 flybyTarget = MakeVector3(playerPos.x, playerPos.y, playerPos.z - 6.0F);
 						Vector3 toPlayer = flybyTarget - p.position;
 						float distToPlayer = toPlayer.GetLength();
 
-						if (p.stateTimer > 2.5F && p.position.z < playerPos.z - 6.0F) {
+						if (p.stateTimer > 2.0F && p.position.z < playerPos.z - 4.0F) {
 							// Steep screaming dive straight towards ground player!
 							float desYaw = atan2f(toPlayer.x, -toPlayer.y);
 							float yDiff = (desYaw - p.yaw + 3.14159F);
 							yDiff = fmodf(yDiff, 6.283185F) - 3.14159F;
-							p.yaw += yDiff * (2.2F * dt);
-							p.pitch += (0.42F - p.pitch) * (3.0F * dt); // Nose pointed down
-							p.speed = 62.0F;                            // Roaring dive speed!
+							p.yaw += yDiff * (2.8F * dt);
+							p.pitch += (0.45F - p.pitch) * (3.5F * dt); // Nose pointed down
+							p.speed = 64.0F;                            // Roaring dive speed!
 						} else {
 							// Pull up hard right over the player's head!
-							p.pitch += (-0.65F - p.pitch) * (4.5F * dt); // Pull up violently
+							p.pitch += (-0.68F - p.pitch) * (5.0F * dt); // Pull up violently
 							p.roll += sinf(battle.globalTimer * 4.0F) * dt * 2.0F;
 							if (p.stateTimer <= 0.0F) {
 								p.state = 1; // Resume dogfight
 							}
 						}
 
-						// Near-miss sound cue when swooping past (< 38 blocks)
+						// Near-miss sound cue when swooping past (< 40 blocks)
 						p.flybySoundTimer -= dt;
-						if (distToPlayer < 38.0F && p.flybySoundTimer <= 0.0F) {
-							p.flybySoundTimer = 4.0F;
+						if (distToPlayer < 40.0F && p.flybySoundTimer <= 0.0F) {
+							p.flybySoundTimer = 3.5F;
 							if (audioDevice) {
 								Handle<IAudioChunk> whoosh = audioDevice->RegisterSound("Sounds/Vehicles/HelicopterRotor.wav");
 								if (whoosh) {
 									AudioParam wparam;
-									wparam.volume = 4.5F;
-									wparam.pitch = 2.35F; // Screaming prop dive sound
-									wparam.referenceDistance = 50.0F;
+									wparam.volume = 5.0F;
+									wparam.pitch = 2.4F; // Screaming prop dive sound
+									wparam.referenceDistance = 60.0F;
 									audioDevice->Play(whoosh.GetPointerOrNull(), p.position, wparam);
 								}
 							}
@@ -875,13 +925,16 @@ namespace spades {
 					p.velocity = forward * p.speed;
 					p.position += p.velocity * dt;
 
-					// Altitude and map boundary containment
-					p.position.z = std::max(4.0F, std::min(60.0F, p.position.z));
-					if (p.position.x < 20.0F || p.position.x > 492.0F) {
-						p.yaw += 1.8F * dt;
-					}
-					if (p.position.y < 20.0F || p.position.y > 492.0F) {
-						p.yaw += 1.8F * dt;
+					// Altitude and map boundary containment: steer towards player arena
+					p.position.z = std::max(4.0F, std::min(58.0F, p.position.z));
+					Vector2 toPlayer2D = MakeVector2(playerPos.x - p.position.x, playerPos.y - p.position.y);
+					float distToP2D = toPlayer2D.GetLength();
+					if (p.position.x < 45.0F || p.position.x > 467.0F || p.position.y < 45.0F || p.position.y > 467.0F || distToP2D > 175.0F) {
+						float returnYaw = atan2f(toPlayer2D.x, -toPlayer2D.y);
+						float yawDiff = (returnYaw - p.yaw + 3.14159F);
+						yawDiff = fmodf(yawDiff, 6.283185F) - 3.14159F;
+						p.yaw += yawDiff * (2.6F * dt);
+						p.roll += (-yawDiff * 2.2F - p.roll) * (3.0F * dt);
 					}
 
 					// Engine Audio with dynamic Doppler and dive pitch shift

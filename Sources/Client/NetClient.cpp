@@ -64,6 +64,7 @@ DEFINE_SPADES_SETTING(cg_proxyAllowDirectFallback, "0");
 DEFINE_SPADES_SETTING(cg_defaultBlockColorR, "111");
 DEFINE_SPADES_SETTING(cg_defaultBlockColorG, "111");
 DEFINE_SPADES_SETTING(cg_defaultBlockColorB, "111");
+SPADES_SETTING(cg_airBattle);
 
 namespace spades {
 	namespace client {
@@ -1473,6 +1474,7 @@ namespace spades {
 						int state = 1;
 						std::sscanf(msg.c_str(), "[AIRBATTLE_SYNC] %d", &state);
 						PlayerCosmetics::GetGlobalAirBattle().active = (state != 0);
+						cg_airBattle = state;
 						break;
 					}
 
@@ -1954,11 +1956,16 @@ namespace spades {
 
 			std::string lowerText = text;
 			for (auto& ch : lowerText) ch = tolower(ch);
-			if (lowerText.find("batle avion") != std::string::npos || lowerText.find("battle avion") != std::string::npos || lowerText.find("airbattle") != std::string::npos) {
-				if (lowerText.find("stop") != std::string::npos || lowerText.find("despawn") != std::string::npos) {
+			if ((lowerText.find("batle") != std::string::npos && lowerText.find("avion") != std::string::npos) ||
+			    (lowerText.find("battle") != std::string::npos && lowerText.find("avion") != std::string::npos) ||
+			    lowerText.find("spawn avion") != std::string::npos ||
+			    lowerText.find("airbattle") != std::string::npos) {
+				if (lowerText.find("stop") != std::string::npos || lowerText.find("despawn") != std::string::npos || lowerText.find("off") != std::string::npos) {
 					PlayerCosmetics::GetGlobalAirBattle().active = false;
+					cg_airBattle = 0;
 				} else {
 					PlayerCosmetics::GetGlobalAirBattle().active = true;
+					cg_airBattle = 1;
 				}
 			}
 
