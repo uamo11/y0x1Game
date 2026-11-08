@@ -70,6 +70,10 @@ namespace spades {
 			float engineSoundTimer = 0.0F;
 			float smokeTimer = 0.0F;
 			float flybySoundTimer = 0.0F;
+			int maneuverType = 0; // 0: Rolling Scissors, 1: Immelmann Turn, 2: High Chandelle, 3: Split-S
+			float maneuverTimer = 0.0F;
+			bool willCrashObstacle = false; // 20% crash probability on structure encounter
+			float obstacleCheckTimer = 0.0F;
 		};
 
 		struct AirBattleState {

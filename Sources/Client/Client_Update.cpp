@@ -755,19 +755,20 @@ namespace spades {
 					Vector3 right = MakeVector3(-cosf(p.yaw), -sinf(p.yaw), 0.0F).Normalize();
 
 					if (p.state == 1) {
-						// CHASE (Pursuer): Intercept target plane
-						Vector3 toTarget = targetP.position - p.position;
+						// CHASE (Pursuer): Lead pursuit targeting predicted future position
+						Vector3 leadTarget = targetP.position + targetP.velocity * 0.35F;
+						Vector3 toTarget = leadTarget - p.position;
 						float distTarget = toTarget.GetLength();
 						float desiredYaw = atan2f(toTarget.x, -toTarget.y);
 						float yawDiff = (desiredYaw - p.yaw + 3.14159F);
 						yawDiff = fmodf(yawDiff, 6.283185F) - 3.14159F;
-						p.yaw += yawDiff * (1.8F * dt);
+						p.yaw += yawDiff * (2.0F * dt);
 
 						float desiredPitch = -toTarget.z / std::max(20.0F, distTarget) * 0.7F;
 						desiredPitch = std::max(-0.45F, std::min(0.45F, desiredPitch));
-						p.pitch += (desiredPitch - p.pitch) * (2.2F * dt);
-						p.roll += (-yawDiff * 2.8F - p.roll) * (3.5F * dt);
-						p.speed = 44.0F;
+						p.pitch += (desiredPitch - p.pitch) * (2.4F * dt);
+						p.roll += (-yawDiff * 3.0F - p.roll) * (3.8F * dt);
+						p.speed = 45.0F;
 
 						// Machine Gun Firing when aligned behind target
 						if (distTarget < 95.0F && std::abs(yawDiff) < 0.65F && targetP.active && targetP.state != 4) {
@@ -811,12 +812,50 @@ namespace spades {
 							}
 						}
 					} else if (p.state == 2) {
-						// EVADE: Evasive banking, barrel rolls, climbing chandelles
-						float t = battle.globalTimer * 1.8F;
-						p.yaw += sinf(t * 0.8F) * 0.9F * dt;
-						p.pitch = sinf(t * 1.2F) * 0.35F;
-						p.roll += (sinf(t * 2.2F) * 1.2F - p.roll) * (3.0F * dt);
-						p.speed = 46.0F;
+						// EVADE: Advanced combat aerobatics (Rolling Scissors, Immelmann, Chandelle, Split-S)
+						p.maneuverTimer -= dt;
+						if (p.maneuverTimer <= 0.0F) {
+							p.maneuverTimer = 4.2F + static_cast<float>(rand() % 4);
+							p.maneuverType = rand() % 4;
+						}
+
+						if (p.maneuverType == 0) {
+							// 1. ROLLING SCISSORS (Helical 3D corkscrew)
+							float t = battle.globalTimer * 2.8F;
+							p.roll += (sinf(t) * 1.55F - p.roll) * (4.2F * dt);
+							p.pitch += (sinf(t * 0.7F) * 0.40F - p.pitch) * (3.2F * dt);
+							p.yaw += cosf(t * 0.5F) * 1.25F * dt;
+							p.speed = 46.0F;
+						} else if (p.maneuverType == 1) {
+							// 2. IMMELMANN TURN (Vertical climb, inverted roll, reverse heading)
+							if (p.maneuverTimer > 2.0F) {
+								p.pitch += (-0.75F - p.pitch) * (4.5F * dt);
+								p.roll += (3.14159F - p.roll) * (4.8F * dt);
+								p.speed = 40.0F;
+							} else {
+								p.pitch += (0.0F - p.pitch) * (4.0F * dt);
+								p.yaw += 2.6F * dt;
+								p.roll += (0.0F - p.roll) * (5.0F * dt);
+								p.speed = 48.0F;
+							}
+						} else if (p.maneuverType == 2) {
+							// 3. HIGH CHANDELLE (Steep climbing break turn)
+							p.roll += (1.30F - p.roll) * (4.0F * dt);
+							p.pitch += (-0.50F - p.pitch) * (3.5F * dt);
+							p.yaw += 1.80F * dt;
+							p.speed = 44.0F;
+						} else {
+							// 4. SPLIT-S DIVE (Invert and plunge for speed)
+							if (p.maneuverTimer > 2.0F && p.position.z < 45.0F) {
+								p.roll += (3.14159F - p.roll) * (5.2F * dt);
+								p.pitch += (0.50F - p.pitch) * (4.2F * dt);
+								p.speed = 58.0F;
+							} else {
+								p.pitch += (-0.40F - p.pitch) * (4.5F * dt);
+								p.roll += (0.0F - p.roll) * (4.0F * dt);
+								p.speed = 48.0F;
+							}
+						}
 					} else if (p.state == 3) {
 						// LOW DIVE FLYBY ("Sentías que se iban a estrellar contra ti")
 						p.stateTimer -= dt;
@@ -841,7 +880,7 @@ namespace spades {
 							}
 						}
 
-						// Near-miss Stuka Jericho dive siren ("Trompetas de Jericó" - 3 variations)
+						// Near-miss Stuka Jericho dive siren ("Trompetas de Jericó" - 3 variations) with dynamic volume flutter
 						p.flybySoundTimer -= dt;
 						if (p.flybySoundTimer <= 0.0F) {
 							p.flybySoundTimer = 3.6F;
@@ -854,8 +893,12 @@ namespace spades {
 								Handle<IAudioChunk> whoosh = audioDevice->RegisterSound(stukaDiveSounds[rand() % 3]);
 								if (whoosh) {
 									AudioParam wparam;
-									wparam.volume = 5.6F;
-									wparam.pitch = 1.0F + (p.speed - 50.0F) * 0.012F;
+									float diveFlutter = 1.0F + 0.12F * sinf(battle.globalTimer * 3.5F) + static_cast<float>((rand() % 14) - 7) * 0.01F;
+									float distP = (p.position - playerPos).GetLength();
+									// Proximity crescendo: starts menacing and peaks at full volume when screaming past player
+									float proximityGain = std::max(0.85F, std::min(1.35F, 65.0F / std::max(18.0F, distP)));
+									wparam.volume = 5.2F * diveFlutter * proximityGain;
+									wparam.pitch = (1.0F + (p.speed - 50.0F) * 0.012F) * (0.98F + static_cast<float>((rand() % 8) - 4) * 0.006F);
 									wparam.referenceDistance = 85.0F;
 									audioDevice->Play(whoosh.GetPointerOrNull(), p.position, wparam);
 								}
@@ -905,33 +948,41 @@ namespace spades {
 							fire->SetBlockHitAction(BlockHitAction::Ignore);
 							localEntities.emplace_back(std::move(fire));
 						}
+					}
 
-						// Cataclysmic ground collision
-						bool hitGround = (p.position.z >= 58.0F);
-						if (map && !hitGround) {
-							int ix = static_cast<int>(p.position.x);
-							int iy = static_cast<int>(p.position.y);
-							int iz = static_cast<int>(p.position.z);
-							if (ix >= 0 && ix < map->Width() && iy >= 0 && iy < map->Height() && iz >= 0 && iz < map->Depth()) {
-								hitGround = map->IsSolid(ix, iy, iz);
-							}
-						}
+					// 2. Obstacle & Structure Awareness (Fly Higher or Crash with 20% Probability)
+					if (map && p.state != 4 && p.state != 5) {
+						Vector3 look1 = p.position + forward * 16.0F;
+						Vector3 look2 = p.position + forward * 32.0F;
+						int oTop1 = map->IsValidMapCoord(static_cast<int>(look1.x), static_cast<int>(look1.y), 0) ? map->GetTop(static_cast<int>(look1.x), static_cast<int>(look1.y)) : 0;
+						int oTop2 = map->IsValidMapCoord(static_cast<int>(look2.x), static_cast<int>(look2.y), 0) ? map->GetTop(static_cast<int>(look2.x), static_cast<int>(look2.y)) : 0;
 
-						if (hitGround) {
-							GrenadeExplosion(p.position);
-							if (audioDevice) {
-								Handle<IAudioChunk> crashSnd = audioDevice->RegisterSound("Sounds/Weapons/Grenade/ExplodeFarStereo.opus");
-								if (crashSnd) {
-									AudioParam cparam;
-									cparam.volume = 5.0F;
-									cparam.referenceDistance = 80.0F;
-									audioDevice->Play(crashSnd.GetPointerOrNull(), p.position, cparam);
-								}
+						int structureTop = 64;
+						if (oTop1 > 0 && oTop1 < structureTop) structureTop = oTop1;
+						if (oTop2 > 0 && oTop2 < structureTop) structureTop = oTop2;
+
+						// If structure is higher than sea level and in plane's vertical collision path
+						if (structureTop < 58 && p.position.z >= static_cast<float>(structureTop) - 4.5F) {
+							p.obstacleCheckTimer -= dt;
+							if (p.obstacleCheckTimer <= 0.0F) {
+								p.obstacleCheckTimer = 3.0F;
+								// Exactly 20% crash probability!
+								p.willCrashObstacle = ((rand() % 100) < 20);
 							}
-							p.active = false;
-							p.state = 5; // Respawn countdown
-							p.stateTimer = 6.0F;
-							continue;
+
+							if (!p.willCrashObstacle) {
+								// 80% CHANCE: High evasive climb over rooftop / mountain!
+								float targetClimbPitch = -0.74F; // Steep climb up to clear structure
+								p.pitch += (targetClimbPitch - p.pitch) * (5.5F * dt);
+								p.roll += (1.25F - p.roll) * (4.0F * dt);
+								p.speed = std::max(p.speed, 52.0F); // Thrust burst
+							} else {
+								// 20% CHANCE: Late panicked pull-up ending in impact!
+								p.pitch += (-0.18F - p.pitch) * (2.0F * dt);
+								p.roll += 3.2F * dt;
+							}
+						} else {
+							p.willCrashObstacle = false;
 						}
 					}
 
@@ -953,11 +1004,59 @@ namespace spades {
 					p.velocity = forward * p.speed;
 					p.position += p.velocity * dt;
 
-					// Altitude and map boundary containment: steer towards player arena
-					p.position.z = std::max(4.0F, std::min(58.0F, p.position.z));
+					// Dynamic Safe Floor & Map Bounds (Universal for any map environment)
+					int mapW = map ? map->Width() : 512;
+					int mapH = map ? map->Height() : 512;
+					int mapD = map ? map->Depth() : 64;
+
+					int groundAtPos = (map && map->IsValidMapCoord(static_cast<int>(p.position.x), static_cast<int>(p.position.y), 0)) ? map->GetTop(static_cast<int>(p.position.x), static_cast<int>(p.position.y)) : 58;
+					if (groundAtPos <= 0) groundAtPos = 58;
+					float floorLimitZ = std::max(4.0F, static_cast<float>(groundAtPos) - 2.5F);
+
+					// Check direct voxel collision with structure/terrain
+					bool voxelCollision = (p.position.z >= floorLimitZ);
+					if (map && !voxelCollision) {
+						int vx = static_cast<int>(p.position.x);
+						int vy = static_cast<int>(p.position.y);
+						int vz = static_cast<int>(p.position.z);
+						if (map->IsValidMapCoord(vx, vy, vz)) {
+							voxelCollision = map->IsSolid(vx, vy, vz);
+						}
+					}
+
+					if (voxelCollision && (p.state == 4 || p.willCrashObstacle || p.position.z >= static_cast<float>(mapD) - 3.0F)) {
+						GrenadeExplosion(p.position);
+						if (audioDevice) {
+							Handle<IAudioChunk> crashSnd = audioDevice->RegisterSound("Sounds/Weapons/Grenade/ExplodeFarStereo.opus");
+							if (crashSnd) {
+								AudioParam cparam;
+								cparam.volume = 5.2F;
+								cparam.referenceDistance = 85.0F;
+								audioDevice->Play(crashSnd.GetPointerOrNull(), p.position, cparam);
+							}
+						}
+						p.active = false;
+						p.state = 5; // Respawn countdown
+						p.stateTimer = 6.0F;
+						p.willCrashObstacle = false;
+						continue;
+					}
+
+					// Ground proximity auto pull-up when not in death plunge
+					if (p.position.z >= floorLimitZ - 0.5F && p.state != 4) {
+						p.pitch += (-0.58F - p.pitch) * (6.0F * dt);
+					}
+					p.position.z = std::max(3.0F, std::min(floorLimitZ, p.position.z));
+
+					// Map boundary containment: steer back towards combat arena
+					float boundMinX = 40.0F;
+					float boundMaxX = static_cast<float>(mapW) - 45.0F;
+					float boundMinY = 40.0F;
+					float boundMaxY = static_cast<float>(mapH) - 45.0F;
+
 					Vector2 toPlayer2D = MakeVector2(playerPos.x - p.position.x, playerPos.y - p.position.y);
 					float distToP2D = toPlayer2D.GetLength();
-					if (p.position.x < 45.0F || p.position.x > 467.0F || p.position.y < 45.0F || p.position.y > 467.0F || distToP2D > 175.0F) {
+					if (p.position.x < boundMinX || p.position.x > boundMaxX || p.position.y < boundMinY || p.position.y > boundMaxY || distToP2D > 175.0F) {
 						float returnYaw = atan2f(toPlayer2D.x, -toPlayer2D.y);
 						float yawDiff = (returnYaw - p.yaw + 3.14159F);
 						yawDiff = fmodf(yawDiff, 6.283185F) - 3.14159F;
@@ -965,7 +1064,7 @@ namespace spades {
 						p.roll += (-yawDiff * 2.2F - p.roll) * (3.0F * dt);
 					}
 
-					// Engine Audio: Authentic WWII Warbird V12 Engine (Rolls-Royce Merlin / DB 601)
+					// Engine Audio: Authentic WWII Warbird V12 Engine with dynamic flutter & distance attenuation
 					p.engineSoundTimer -= dt;
 					if (p.engineSoundTimer <= 0.0F) {
 						p.engineSoundTimer = 2.0F;
@@ -974,8 +1073,12 @@ namespace spades {
 							if (eng) {
 								AudioParam ep;
 								ep.referenceDistance = 45.0F;
-								ep.volume = 2.4F;
-								ep.pitch = 0.95F + (p.speed - 40.0F) * 0.015F;
+								// Subtle atmospheric acoustic turbulence (±12-16%)
+								float volFlutter = 1.0F + 0.14F * sinf(battle.globalTimer * 2.8F + i * 2.1F) + static_cast<float>((rand() % 16) - 8) * 0.01F;
+								float distToP = (p.position - playerPos).GetLength();
+								float distAtten = std::max(0.65F, std::min(1.20F, 52.0F / std::max(20.0F, distToP)));
+								ep.volume = 2.4F * volFlutter * distAtten;
+								ep.pitch = (0.95F + (p.speed - 40.0F) * 0.015F) * (0.98F + static_cast<float>((rand() % 10) - 5) * 0.008F);
 								audioDevice->Play(eng.GetPointerOrNull(), p.position, ep);
 							}
 						}
