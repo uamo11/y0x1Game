@@ -29,6 +29,31 @@ namespace spades {
 		class IRenderer;
 		class IModel;
 
+		struct ClassicCarState {
+			bool active = false;
+			int id = 1;
+			Vector3 position = MakeVector3(0.0F, 0.0F, 0.0F);
+			Vector3 targetPosition = MakeVector3(0.0F, 0.0F, 0.0F);
+			Vector3 velocity = MakeVector3(0.0F, 0.0F, 0.0F);
+			float yaw = 0.0F;
+			float targetYaw = 0.0F;
+			float pitch = 0.0F;
+			float targetPitch = 0.0F;
+			float roll = 0.0F;
+			float targetRoll = 0.0F;
+			float steerAngle = 0.0F;
+			float targetSteerAngle = 0.0F;
+			float wheelRotation = 0.0F;
+			int driverId = -1;
+			int passId = -1;
+			int health = 350;
+			int maxHealth = 350;
+			int healthTier = 3;
+			float soundTimer = 0.0F;
+			float smokeTimer = 0.0F;
+			float hornTimer = 0.0F;
+		};
+
 		struct HelicopterState {
 			bool active = false;
 			int id = 1;
@@ -94,6 +119,15 @@ namespace spades {
 		public:
 			/** Global helicopter vehicle state */
 			static HelicopterState& GetGlobalHelicopter();
+
+			/** Global classic vintage car vehicle state */
+			static ClassicCarState& GetGlobalCar();
+
+			/** Returns (and caches) procedural 3D vintage street car chassis & body model */
+			static Handle<IModel> GetClassicCarBodyModel(IRenderer& renderer);
+
+			/** Returns (and caches) procedural 3D vintage whitewall spoked wheel model */
+			static Handle<IModel> GetClassicCarWheelModel(IRenderer& renderer);
 
 			/** Global WWII Air Dogfight state */
 			static AirBattleState& GetGlobalAirBattle();

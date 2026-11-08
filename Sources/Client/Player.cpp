@@ -341,8 +341,10 @@ namespace spades {
 				}
 			} else if (tool == ToolWeapon && isLocal) {
 				auto& hState = PlayerCosmetics::GetGlobalHelicopter();
-				if (hState.active && hState.health > 0 && hState.pilotId == static_cast<int>(GetId())) {
-					// Pilot in cockpit: Primary click controls helicopter throttle/propulsion, not handheld weapon fire
+				auto& cState = PlayerCosmetics::GetGlobalCar();
+				if ((hState.active && hState.health > 0 && hState.pilotId == static_cast<int>(GetId())) ||
+				    (cState.active && cState.health > 0 && cState.driverId == static_cast<int>(GetId()))) {
+					// Driver in cockpit/car: Primary click controls vehicle, not handheld weapon fire
 					weapon->SetShooting(false);
 				} else {
 					weapon->SetShooting(newInput.primary);
@@ -1487,6 +1489,35 @@ namespace spades {
 				}
 				velocity = MakeVector3(0.0F, 0.0F, 0.0F);
 				airborne = true;
+				return;
+			}
+
+			// Keep driver and passenger seated naturally inside the classic vintage car
+			auto& cState = PlayerCosmetics::GetGlobalCar();
+			bool isCarActive = cState.active && cState.health > 0;
+			bool isDriverCar = isCarActive && cState.driverId == static_cast<int>(GetId());
+			bool isPassCar = isCarActive && cState.passId == static_cast<int>(GetId());
+
+			if (isDriverCar || isPassCar) {
+				Vector3 front = Vector3(sinf(cState.yaw), -cosf(cState.yaw), 0.0F);
+				Vector3 right = Vector3(-cosf(cState.yaw), -sinf(cState.yaw), 0.0F);
+
+				input.crouch = true; // Seated bench pose
+
+				if (isDriverCar) {
+					// Driver: Left front seat behind steering wheel
+					position = cState.position - right * 0.55F + front * 0.15F + MakeVector3(0.0F, 0.0F, -0.65F);
+					RepositionPlayer(position);
+					eye = position + MakeVector3(0.0F, 0.0F, -0.4F);
+					orientation = front;
+					orientationSmoothed = front;
+				} else {
+					// Copiloto / Passenger: Right front seat
+					position = cState.position + right * 0.55F + front * 0.15F + MakeVector3(0.0F, 0.0F, -0.65F);
+					RepositionPlayer(position);
+					eye = position + MakeVector3(0.0F, 0.0F, -0.4F);
+				}
+				velocity = cState.velocity;
 				return;
 			}
 

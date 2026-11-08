@@ -629,6 +629,70 @@ namespace spades {
 			}
 
 			// =====================================================================
+			// Classic Vintage Street Car: Physics, Wheel Spin Animation & Audio
+			// =====================================================================
+			auto& car = PlayerCosmetics::GetGlobalCar();
+			if (car.active && car.health > 0) {
+				float blendFactor = 1.0F - expf(-14.0F * dt);
+				car.position += (car.targetPosition - car.position) * blendFactor;
+
+				float yawDiff = fmodf(car.targetYaw - car.yaw + 3.14159265F, 6.2831853F);
+				if (yawDiff < 0.0F) yawDiff += 6.2831853F;
+				yawDiff -= 3.14159265F;
+				car.yaw += yawDiff * blendFactor;
+
+				car.pitch += (car.targetPitch - car.pitch) * blendFactor;
+				car.roll += (car.targetRoll - car.roll) * blendFactor;
+				car.steerAngle += (car.targetSteerAngle - car.steerAngle) * blendFactor;
+
+				// Dynamic wheel rolling rotation proportional to ground velocity
+				float carSpeed = car.velocity.GetLength2D();
+				if (carSpeed > 0.04F) {
+					// Voxel wheel radius = 4 * 0.165 = 0.66 blocks -> perimeter ~4.15 blocks
+					car.wheelRotation += (carSpeed / 0.66F) * dt;
+					if (car.wheelRotation > 6.283185F)
+						car.wheelRotation = fmodf(car.wheelRotation, 6.283185F);
+				}
+
+				// Classic vintage engine sound
+				if (car.driverId >= 0 && audioDevice) {
+					car.soundTimer -= dt;
+					if (car.soundTimer <= 0.0F) {
+						car.soundTimer = 1.5F;
+						Handle<IAudioChunk> snd = audioDevice->RegisterSound("Sounds/Misc/CarEngine.opus");
+						if (!snd) snd = audioDevice->RegisterSound("Sounds/Misc/HelicopterRotor.opus");
+						if (snd) {
+							AudioParam param;
+							param.volume = (carSpeed > 2.0F) ? 2.0F : 1.1F;
+							param.pitch = 0.70F + std::min(0.9F, carSpeed * 0.04F);
+							audioDevice->Play(snd.GetPointerOrNull(), car.position, param);
+						}
+					}
+				} else {
+					car.soundTimer = 0.0F;
+				}
+
+				// Radiator steam / engine smoke if damaged
+				if (car.healthTier <= 2) {
+					car.smokeTimer -= dt;
+					if (car.smokeTimer <= 0.0F) {
+						car.smokeTimer = (car.healthTier == 2) ? 0.15F : 0.08F;
+						Vector3 front = MakeVector3(sinf(car.yaw), -cosf(car.yaw), 0.0F);
+						Vector3 hoodPos = car.position + front * 1.5F + MakeVector3(0.0F, 0.0F, -0.6F);
+						Vector4 smokeCol = (car.healthTier == 2)
+							? MakeVector4(0.85F, 0.85F, 0.88F, 0.50F)
+							: MakeVector4(0.15F, 0.15F, 0.15F, 0.75F);
+						auto ent = stmp::make_unique<SmokeSpriteEntity>(*this, smokeCol, 25.0F);
+						ent->SetTrajectory(hoodPos, MakeVector3(0.0F, 0.0F, -1.2F));
+						ent->SetRadius(0.8F, 0.3F);
+						ent->SetLifeTime(1.8F, 0.1F, 0.6F);
+						ent->SetBlockHitAction(BlockHitAction::Ignore);
+						localEntities.emplace_back(std::move(ent));
+					}
+				}
+			}
+
+			// =====================================================================
 			// WWII Air Dogfight Simulation (Zero-Cost, Dynamic Combat AI)
 			// =====================================================================
 			auto& battle = PlayerCosmetics::GetGlobalAirBattle();

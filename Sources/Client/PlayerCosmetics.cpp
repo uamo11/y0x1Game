@@ -483,7 +483,15 @@ namespace spades {
 			return g_worldHeli;
 		}
 
-		static AirBattleState g_airBattle;
+		static ClassicCarState g_worldCar;
+		ClassicCarState& PlayerCosmetics::GetGlobalCar() {
+			return g_worldCar;
+		}
+
+		static Handle<IModel> g_carBodyModel;
+		static Handle<IModel> g_carWheelModel;
+
+		AirBattleState& PlayerCosmetics::GetGlobalAirBattle() {
 		static Handle<IModel> g_warbirdFuselageAllied;
 		static Handle<IModel> g_warbirdFuselageAxis;
 		static Handle<IModel> g_warbirdPropModel;
@@ -820,6 +828,417 @@ namespace spades {
 			}
 		}
 
+		Handle<IModel> PlayerCosmetics::GetClassicCarBodyModel(IRenderer& renderer) {
+			if (g_carBodyModel)
+				return g_carBodyModel;
+
+			try {
+				int const w = 26;
+				int const l = 54;
+				int const h = 24;
+				Handle<VoxelModel> vm = Handle<VoxelModel>::New(w, l, h);
+				// Center at: X=13 (midline), Y=26 (mid-wheelbase), Z=0 (wheel road contact level)
+				vm->SetOrigin(MakeVector3(-13.0F, -26.0F, 0.0F));
+
+				const int cx = w / 2; // 13
+
+				// Vintage Little-endian 0xBBGGRR palette:
+				const uint32_t colBodyBase     = 0x1A1B22; // Deep obsidian vintage lacquer
+				const uint32_t colBodyHighlight= 0x2A2C38; // Polished lacquer highlight
+				const uint32_t colBodyDark     = 0x101115; // Shadowed underbody
+				const uint32_t colFender       = 0x121316; // Polished curved onyx fenders
+				const uint32_t colRunningBoard = 0x222428; // Ribbed non-slip running board mat
+				const uint32_t colChrome       = 0xEAEAEA; // Gleaming polished mirror chrome
+				const uint32_t colChromeShadow = 0x8A9098; // Beveled chrome shadow
+				const uint32_t colGrilleCore   = 0x141416; // Dark radiator core depth
+				const uint32_t colHeadlightLens= 0xC0FFFF; // Warm fluted sealed-beam glass
+				const uint32_t colGlass        = 0xF0D280; // Crystalline sky-tinted vintage glass
+				const uint32_t colLeather      = 0x28507C; // Saddle cognac vintage leather seat
+				const uint32_t colLeatherDeep  = 0x1C3858; // Tufted leather cushion shadow
+				const uint32_t colDashboard    = 0x182C48; // Polished mahogany wood veneer
+				const uint32_t colSteeringRim  = 0x182028; // Bakelite/wood steering wheel rim
+				const uint32_t colTaillight    = 0x1818E0; // Art-deco ruby-red glass lens
+				const uint32_t colTaillightRim = 0xD8DDE2; // Chrome teardrop taillight bezel
+				const uint32_t colPlateYellow  = 0x30C0E0; // Classic vintage license plate
+				const uint32_t colExhaustPipe  = 0x9098A0; // Dual chrome exhaust pipe tips
+				const uint32_t colSpareCover   = 0x141518; // Leather continental spare tire cover
+
+				auto SetVoxel = [&](int x, int y, int z, uint32_t col) {
+					if (x >= 0 && x < w && y >= 0 && y < l && z >= 0 && z < h)
+						vm->SetSolid(x, y, z, col);
+				};
+
+				// 1. Underbody Chassis Frame & Floorpan (Z = 3..5)
+				for (int y = 3; y <= 50; ++y) {
+					for (int dx = -7; dx <= 7; ++dx) {
+						SetVoxel(cx + dx, y, 4, colBodyDark);
+						if (std::abs(dx) <= 5)
+							SetVoxel(cx + dx, y, 5, colBodyDark);
+					}
+				}
+
+				// 2. Front & Rear Chrome Bumpers (Y = 0..2 & Y = 52..54, Z = 3..6)
+				for (int x = 3; x <= 22; ++x) {
+					// Front bumper
+					SetVoxel(x, 1, 4, colChrome);
+					SetVoxel(x, 1, 5, colChrome);
+					// Rear bumper
+					SetVoxel(x, 52, 4, colChrome);
+					SetVoxel(x, 52, 5, colChrome);
+				}
+				// Curved bumper tips
+				SetVoxel(2, 2, 4, colChrome); SetVoxel(2, 2, 5, colChrome);
+				SetVoxel(23, 2, 4, colChrome); SetVoxel(23, 2, 5, colChrome);
+				SetVoxel(2, 51, 4, colChrome); SetVoxel(2, 51, 5, colChrome);
+				SetVoxel(23, 51, 4, colChrome); SetVoxel(23, 51, 5, colChrome);
+
+				// Vertical Chrome Bumperettes (Overriders)
+				for (int bx : {7, 18}) {
+					for (int z = 3; z <= 7; ++z) {
+						SetVoxel(bx, 0, z, colChrome);
+						SetVoxel(bx, 1, z, colChromeShadow);
+						SetVoxel(bx, 53, z, colChrome);
+						SetVoxel(bx, 52, z, colChromeShadow);
+					}
+				}
+
+				// 3. Dual Polished Chrome Exhaust Pipe Tips
+				for (int ex : {6, 19}) {
+					SetVoxel(ex, 52, 3, colExhaustPipe);
+					SetVoxel(ex, 53, 3, colExhaustPipe);
+				}
+
+				// 4. Front Radiator Shell & Classic Chrome Waterfall Grille (Y = 3..7, Z = 5..14)
+				for (int z = 5; z <= 14; ++z) {
+					for (int dx = -4; dx <= 4; ++dx) {
+						int x = cx + dx;
+						bool isBorder = (std::abs(dx) == 4 || z == 5 || z == 14 || (z == 13 && std::abs(dx) >= 3));
+						if (isBorder) {
+							SetVoxel(x, 4, z, colChrome);
+							SetVoxel(x, 5, z, colChrome);
+						} else {
+							// Vertical fine chrome slats with radiator depth
+							uint32_t c = (dx % 2 == 0) ? colChrome : colGrilleCore;
+							SetVoxel(x, 4, z, c);
+							SetVoxel(x, 5, z, colGrilleCore);
+						}
+					}
+				}
+				// Art-Deco Chrome Hood Mascot / Goddess
+				SetVoxel(cx, 4, 15, colChrome);
+				SetVoxel(cx, 5, 15, colChrome);
+				SetVoxel(cx, 5, 16, colChrome);
+
+				// 5. Classic Bullet Headlights (Y = 3..7, Z = 8..11)
+				for (int hx : {cx - 6, cx + 6}) {
+					for (int dy = 0; dy <= 3; ++dy) {
+						for (int dz = -1; dz <= 1; ++dz) {
+							for (int ddx = -1; ddx <= 1; ++ddx) {
+								if (ddx * ddx + dz * dz <= 1) {
+									int x = hx + ddx;
+									int y = 4 + dy;
+									int z = 9 + dz;
+									if (dy == 0) {
+										SetVoxel(x, y, z, colHeadlightLens);
+									} else {
+										SetVoxel(x, y, z, (dy == 3) ? colChromeShadow : colChrome);
+									}
+								}
+							}
+						}
+					}
+					// Chrome mounting bracket to frame
+					SetVoxel(hx, 5, 7, colChrome);
+					SetVoxel(hx, 5, 8, colChrome);
+				}
+
+				// 6. Sweeping Curving Front Fenders, Running Boards & Rear Fenders
+				// A) Front Fenders (Y = 2..21)
+				for (int side : {-1, 1}) {
+					int fxBase = cx + side * 9;
+					for (int y = 2; y <= 21; ++y) {
+						float arch = 0.0F;
+						if (y >= 6 && y <= 16) {
+							float dy = (y - 11) / 5.0F;
+							arch = (1.0F - dy * dy) * 4.5F; // Arch over front wheel
+						}
+						int fzTop = static_cast<int>(5.5F + arch);
+						for (int z = 4; z <= fzTop; ++z) {
+							for (int wdx = 0; wdx <= 3; ++wdx) {
+								int x = fxBase + side * wdx;
+								uint32_t c = (z == fzTop) ? colFender : colBodyDark;
+								SetVoxel(x, y, z, c);
+							}
+						}
+					}
+				}
+
+				// B) Running Boards (Estriberas) (Y = 21..37)
+				for (int side : {-1, 1}) {
+					int rxBase = cx + side * 9;
+					for (int y = 21; y <= 37; ++y) {
+						for (int wdx = 0; wdx <= 3; ++wdx) {
+							int x = rxBase + side * wdx;
+							uint32_t c = (wdx == 3) ? colChrome : colRunningBoard;
+							SetVoxel(x, y, 4, c);
+							SetVoxel(x, y, 5, c);
+						}
+					}
+				}
+
+				// C) Rear Fenders (Y = 37..50)
+				for (int side : {-1, 1}) {
+					int rxBase = cx + side * 9;
+					for (int y = 37; y <= 50; ++y) {
+						float arch = 0.0F;
+						if (y >= 38 && y <= 46) {
+							float dy = (y - 42) / 4.0F;
+							arch = (1.0F - dy * dy) * 4.5F; // Arch over rear wheel
+						}
+						int fzTop = static_cast<int>(5.5F + arch);
+						for (int z = 4; z <= fzTop; ++z) {
+							for (int wdx = 0; wdx <= 3; ++wdx) {
+								int x = rxBase + side * wdx;
+								uint32_t c = (z == fzTop) ? colFender : colBodyDark;
+								SetVoxel(x, y, z, c);
+							}
+						}
+					}
+				}
+
+				// 7. Long Tapering Engine Hood & Cowl (Y = 6..21, Z = 6..14)
+				for (int y = 6; y <= 21; ++y) {
+					float progress = (y - 6) / 15.0F;
+					int halfW = static_cast<int>(4.0F + progress * 2.5F); // Narrows forward
+					for (int dx = -halfW; dx <= halfW; ++dx) {
+						int x = cx + dx;
+						int topZ = 13 + (std::abs(dx) <= 1 ? 1 : 0);
+						// Hood top skin
+						SetVoxel(x, y, topZ, (std::abs(dx) == 0) ? colChrome : colBodyBase);
+						// Hood side panels
+						if (std::abs(dx) == halfW) {
+							for (int z = 6; z < topZ; ++z) {
+								bool isLouver = (y >= 10 && y <= 18 && z >= 8 && z <= 10 && (y % 2 == 0));
+								SetVoxel(x, y, z, isLouver ? colChrome : colBodyBase);
+							}
+						}
+					}
+				}
+
+				// 8. Classic Two-Door Coupe Cabin (Y = 21..42, Z = 5..22)
+				// A) Raked Split Windshield (Y = 21..24, Z = 13..18)
+				for (int dx = -6; dx <= 6; ++dx) {
+					int x = cx + dx;
+					for (int z = 13; z <= 18; ++z) {
+						int wy = 21 + static_cast<int>((z - 13) * 0.55F); // Raked backwards
+						bool isFrame = (std::abs(dx) == 6 || std::abs(dx) == 0 || z == 13 || z == 18);
+						SetVoxel(x, wy, z, isFrame ? colChrome : colGlass);
+					}
+				}
+
+				// B) Dashboard & Interior Controls (Y = 22..24, Z = 6..13)
+				for (int dx = -5; dx <= 5; ++dx) {
+					int x = cx + dx;
+					SetVoxel(x, 23, 11, colDashboard);
+					SetVoxel(x, 23, 12, colDashboard);
+					// Gauge dials
+					if (dx == -2 || dx == 0 || dx == 2)
+						SetVoxel(x, 23, 12, colChrome);
+				}
+				// 3-Spoke Vintage Steering Wheel at driver seat (X = cx - 3)
+				int steerX = cx - 3;
+				SetVoxel(steerX, 24, 12, colChrome);
+				SetVoxel(steerX - 1, 24, 13, colSteeringRim);
+				SetVoxel(steerX + 1, 24, 13, colSteeringRim);
+				SetVoxel(steerX, 24, 14, colSteeringRim);
+				SetVoxel(steerX, 24, 11, colSteeringRim);
+
+				// Floor gear shift with ivory knob
+				SetVoxel(cx, 26, 6, colChrome);
+				SetVoxel(cx, 26, 7, colChrome);
+				SetVoxel(cx, 26, 8, 0xF0F4F8); // Ivory shift knob
+
+				// C) Saddle Cognac Leather Bench Seat (Y = 28..33, Z = 6..12)
+				for (int y = 28; y <= 33; ++y) {
+					for (int dx = -5; dx <= 5; ++dx) {
+						int x = cx + dx;
+						uint32_t lc = (y % 2 == 0) ? colLeather : colLeatherDeep;
+						// Seat base cushion
+						SetVoxel(x, y, 6, lc);
+						SetVoxel(x, y, 7, lc);
+						// Seat backrest (at Y = 32..33)
+						if (y >= 32) {
+							for (int bz = 8; bz <= 12; ++bz) {
+								SetVoxel(x, y, bz, lc);
+							}
+						}
+					}
+				}
+
+				// D) Side Doors, Chrome Handles & Side Windows (Y = 24..37, Z = 6..18)
+				for (int side : {-1, 1}) {
+					int dx = side * 6;
+					int x = cx + dx;
+					for (int y = 24; y <= 37; ++y) {
+						// Lower door panel
+						for (int z = 6; z <= 13; ++z) {
+							SetVoxel(x, y, z, colBodyBase);
+						}
+						// Chrome horizontal door handle
+						if (y == 32)
+							SetVoxel(x + side, y, 11, colChrome);
+
+						// Window frame & tinted glass
+						for (int z = 14; z <= 18; ++z) {
+							bool isFrame = (y == 24 || y == 37 || z == 18 || z == 14 || (y == 27 && (side < 0 || side > 0)));
+							SetVoxel(x, y, z, isFrame ? colChrome : colGlass);
+						}
+					}
+				}
+
+				// E) Curved Coupe Roof & Rear Oval Window (Y = 24..42, Z = 18..22)
+				for (int y = 24; y <= 42; ++y) {
+					float roofCurvature = 0.0F;
+					if (y >= 36) {
+						float dy = (y - 36) / 6.0F;
+						roofCurvature = dy * dy * 3.0F; // Slopes gently down into rear window
+					}
+					int topZ = static_cast<int>(22.0F - roofCurvature);
+
+					for (int dx = -6; dx <= 6; ++dx) {
+						int x = cx + dx;
+						int curZ = topZ - (std::abs(dx) >= 5 ? 1 : 0);
+						SetVoxel(x, y, curZ, (std::abs(dx) <= 2) ? colBodyHighlight : colBodyBase);
+					}
+				}
+
+				// Rear Oval Window at Y = 40..41, Z = 15..17
+				for (int dx = -4; dx <= 4; ++dx) {
+					for (int z = 15; z <= 17; ++z) {
+						bool isBorder = (std::abs(dx) == 4 || z == 15 || z == 17);
+						SetVoxel(cx + dx, 41, z, isBorder ? colChrome : colGlass);
+					}
+				}
+
+				// 9. Sloping Rounded Rear Trunk (Bustleback) (Y = 41..51, Z = 5..14)
+				for (int y = 41; y <= 51; ++y) {
+					float progress = (y - 41) / 10.0F;
+					int maxZ = static_cast<int>(14.0F - progress * 7.5F); // Slopes down to Z=6
+					int halfW = static_cast<int>(6.0F - progress * 1.5F);
+					for (int dx = -halfW; dx <= halfW; ++dx) {
+						int x = cx + dx;
+						SetVoxel(x, y, maxZ, colBodyBase);
+						for (int z = 5; z < maxZ; ++z) {
+							if (std::abs(dx) == halfW || y == 51)
+								SetVoxel(x, y, z, colBodyDark);
+						}
+					}
+				}
+
+				// 10. Dual Ruby-Red Art-Deco Teardrop Taillights (Y = 49..50, Z = 8..9)
+				for (int side : {-1, 1}) {
+					int tx = cx + side * 8;
+					SetVoxel(tx, 50, 8, colTaillightRim);
+					SetVoxel(tx, 50, 9, colTaillightRim);
+					SetVoxel(tx, 51, 8, colTaillight);
+					SetVoxel(tx, 51, 9, colTaillight);
+				}
+
+				// 11. Vintage Yellow License Plate at Y = 51, Z = 6..8
+				for (int px = -2; px <= 2; ++px) {
+					SetVoxel(cx + px, 52, 6, colPlateYellow);
+					SetVoxel(cx + px, 52, 7, colPlateYellow);
+				}
+				// License plate light lamp
+				SetVoxel(cx, 52, 8, colChrome);
+
+				// 12. Continental Spare Whitewall Tire on Rear Trunk (Y = 51..53, Z = 7..14)
+				for (int dy = 0; dy <= 2; ++dy) {
+					for (int dz = -3; dz <= 3; ++dz) {
+						for (int dx = -3; dx <= 3; ++dx) {
+							if (dx * dx + dz * dz <= 9) {
+								int x = cx + dx;
+								int y = 51 + dy;
+								int z = 10 + dz;
+								if (dy == 2 && dx * dx + dz * dz <= 2) {
+									SetVoxel(x, y, z, colChrome); // Center chrome cap
+								} else {
+									SetVoxel(x, y, z, colSpareCover);
+								}
+							}
+						}
+					}
+				}
+
+				g_carBodyModel = renderer.CreateModel(*vm);
+				return g_carBodyModel;
+			} catch (...) {
+				return Handle<IModel>();
+			}
+		}
+
+		Handle<IModel> PlayerCosmetics::GetClassicCarWheelModel(IRenderer& renderer) {
+			if (g_carWheelModel)
+				return g_carWheelModel;
+
+			try {
+				int const w = 8;
+				int const l = 8;
+				int const h = 8;
+				Handle<VoxelModel> vm = Handle<VoxelModel>::New(w, l, h);
+				// Center at: X=4, Y=4, Z=4 (axle center)
+				vm->SetOrigin(MakeVector3(-4.0F, -4.0F, -4.0F));
+
+				const uint32_t colTread     = 0x161719; // Vulcanized vintage black tire rubber
+				const uint32_t colWhitewall = 0xF2F6FA; // Crisp classic wide whitewall rubber
+				const uint32_t colHubcap    = 0xEEEEEE; // Polished dome chrome hubcap
+				const uint32_t colHubCenter = 0xFFFFFF; // Specular chrome highlight
+				const uint32_t colRimInner  = 0x2A2C30; // Steel inner rim / brake drum
+
+				// The wheel rotates around X axle. Y is front-to-back, Z is up-and-down.
+				// Width of wheel: X from 1 to 5 (thickness of 4 voxels).
+				// Outer face is at X = 1, inner face is at X = 5.
+				for (int y = 0; y < l; ++y) {
+					for (int z = 0; z < h; ++z) {
+						float dy = (y - 3.5F);
+						float dz = (z - 3.5F);
+						float r = sqrtf(dy * dy + dz * dz);
+						if (r <= 3.8F) {
+							for (int x = 1; x <= 5; ++x) {
+								uint32_t c = colTread;
+								if (x == 1) {
+									// Outer visible wheel face: Whitewall + Chrome Hubcap!
+									if (r <= 1.4F)
+										c = colHubCenter;
+									else if (r <= 2.2F)
+										c = colHubcap;
+									else if (r <= 3.2F)
+										c = colWhitewall; // Classic Wide Whitewall ring!
+									else
+										c = colTread;
+								} else if (x == 2) {
+									if (r <= 2.0F)
+										c = colHubcap;
+									else if (r <= 3.0F)
+										c = colWhitewall;
+									else
+										c = colTread;
+								} else {
+									c = (r <= 2.2F) ? colRimInner : colTread;
+								}
+								vm->SetSolid(x, y, z, c);
+							}
+						}
+					}
+				}
+
+				g_carWheelModel = renderer.CreateModel(*vm);
+				return g_carWheelModel;
+			} catch (...) {
+				return Handle<IModel>();
+			}
+		}
+
 		Handle<IModel> PlayerCosmetics::GetHelicopterRotorModel(IRenderer& renderer) {
 			if (g_heliRotorModel)
 				return g_heliRotorModel;
@@ -1103,6 +1522,8 @@ namespace spades {
 			g_simpleToolCache.clear();
 			g_heliFuselageModel = Handle<IModel>();
 			g_heliRotorModel = Handle<IModel>();
+			g_carBodyModel = Handle<IModel>();
+			g_carWheelModel = Handle<IModel>();
 			g_warbirdFuselageAllied = Handle<IModel>();
 			g_warbirdFuselageAxis = Handle<IModel>();
 			g_warbirdPropModel = Handle<IModel>();

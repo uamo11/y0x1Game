@@ -118,6 +118,19 @@ namespace spades {
 					}
 				}
 
+				auto& cState = PlayerCosmetics::GetGlobalCar();
+				if (cState.active && cState.health > 0) {
+					int myPid = static_cast<int>(p.GetId());
+					if (cState.driverId == myPid) {
+						// Conductor del Auto Clásico: Vista en 3ra persona de conducción
+						return ClientCameraMode::ThirdPersonLocal;
+					}
+					if (cState.passId == myPid) {
+						// Copiloto: Vista en 1ra persona para mirar por la ventanilla y disparar
+						return ClientCameraMode::FirstPersonLocal;
+					}
+				}
+
 				if (cg_thirdperson)
 					return ClientCameraMode::ThirdPersonLocal;
 				return ClientCameraMode::FirstPersonLocal;
@@ -439,6 +452,12 @@ namespace spades {
 						if (inHeli) {
 							distance = 18.0F; // Majestic third-person view for 3X scale military combat gunship
 							center = hState.position + MakeVector3(0.0F, 0.0F, -2.5F);
+						}
+						auto& cState = PlayerCosmetics::GetGlobalCar();
+						bool inCar = cState.active && (cState.driverId == pid || cState.passId == pid);
+						if (inCar) {
+							distance = 8.5F; // Natural chase camera for vintage street car
+							center = cState.position + MakeVector3(0.0F, 0.0F, -0.9F);
 						}
 						if (player.IsLocalPlayer()
 							&& !player.IsSpectator()
@@ -803,6 +822,68 @@ namespace spades {
 						                           * Matrix4::Scale(heliScale);
 						hParam.matrix = rotorMat;
 						renderer->RenderModel(*rotor, hParam);
+					}
+				}
+
+				// Draw world classic vintage street car (parked or driven)
+				auto& car = PlayerCosmetics::GetGlobalCar();
+				if (car.active && car.health > 0) {
+					Handle<IModel> carBody = PlayerCosmetics::GetClassicCarBodyModel(*renderer);
+					Handle<IModel> wheel = PlayerCosmetics::GetClassicCarWheelModel(*renderer);
+					if (carBody && wheel) {
+						float yawRad = car.yaw;
+						float pitchRad = car.pitch;
+						float rollRad = car.roll;
+						const float carScale = 0.165F; // Natural classic vintage street proportions
+
+						Vector3 front = MakeVector3(sinf(yawRad), -cosf(yawRad), 0.0F);
+						Vector3 right = MakeVector3(-cosf(yawRad), -sinf(yawRad), 0.0F);
+						Vector3 upSky = MakeVector3(0.0F, 0.0F, -1.0F); // -Z is sky in OpenSpades
+
+						Matrix4 carMat = Matrix4::FromAxis(right, -front, upSky, car.position);
+						if (std::abs(pitchRad) > 0.001F || std::abs(rollRad) > 0.001F) {
+							carMat = carMat * Matrix4::Rotate(MakeVector3(1, 0, 0), pitchRad)
+							                * Matrix4::Rotate(MakeVector3(0, 1, 0), rollRad);
+						}
+
+						// 1. Render Vintage Street Car Body
+						ModelRenderParam cParam;
+						cParam.matrix = carMat * Matrix4::Scale(carScale);
+						renderer->RenderModel(*carBody, cParam);
+
+						// 2. Render 4 Vintage Whitewall Wheels with Dome Chrome Hubcaps
+						struct WheelMount {
+							float x;
+							float y;
+							float z;
+							bool isFront;
+							bool isRight;
+						};
+						WheelMount mounts[4] = {
+							{ -9.5F, -15.0F, 4.0F, true, false },  // Front-Left
+							{  9.5F, -15.0F, 4.0F, true, true },   // Front-Right
+							{ -9.5F,  16.0F, 4.0F, false, false }, // Rear-Left
+							{  9.5F,  16.0F, 4.0F, false, true }   // Rear-Right
+						};
+
+						for (int i = 0; i < 4; ++i) {
+							Matrix4 wMat = carMat * Matrix4::Translate(mounts[i].x * carScale, mounts[i].y * carScale, mounts[i].z * carScale);
+							if (mounts[i].isFront) {
+								// Steer front wheels with Ackermann steering angle
+								wMat = wMat * Matrix4::Rotate(MakeVector3(0, 0, 1), car.steerAngle);
+							}
+							if (mounts[i].isRight) {
+								// Flip right wheel 180° so whitewall & chrome hubcap face outward
+								wMat = wMat * Matrix4::Rotate(MakeVector3(0, 0, 1), static_cast<float>(M_PI));
+							}
+							// Dynamic rolling rotation around axle
+							wMat = wMat * Matrix4::Rotate(MakeVector3(1, 0, 0), car.wheelRotation);
+							wMat = wMat * Matrix4::Scale(carScale);
+
+							ModelRenderParam wParam;
+							wParam.matrix = wMat;
+							renderer->RenderModel(*wheel, wParam);
+						}
 					}
 				}
 

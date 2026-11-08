@@ -1470,6 +1470,51 @@ namespace spades {
 						break;
 					}
 
+					// Intercept classic vintage street car synchronization packets (do not show in chat)
+					if (msg.rfind("[CAR_SYNC]", 0) == 0) {
+						int cId = 1, driverId = -1, passId = -1, hp = 350, maxHp = 350, tier = 3;
+						float cx = 0, cy = 0, cz = 0, cyaw = 0, cpitch = 0, croll = 0, csteer = 0;
+						float cvx = 0, cvy = 0, cvz = 0;
+						int parsed = std::sscanf(msg.c_str(), "[CAR_SYNC] %d %f %f %f %f %f %f %f %d %d %d %d %d %f %f %f",
+						                         &cId, &cx, &cy, &cz, &cyaw, &cpitch, &croll, &csteer, &driverId, &passId,
+						                         &hp, &maxHp, &tier, &cvx, &cvy, &cvz);
+						if (parsed >= 7) {
+							auto& cState = PlayerCosmetics::GetGlobalCar();
+							if (parsed >= 11 && hp <= 0) {
+								if (cState.active && client) {
+									client->GrenadeExplosion(cState.position);
+								}
+								cState.active = false;
+								cState.health = 0;
+								cState.healthTier = 0;
+							} else {
+								Vector3 newPos = MakeVector3(cx, cy, cz);
+								if (!cState.active || (newPos - cState.position).GetSquaredLength() > 100.0F) {
+									cState.position = newPos;
+									cState.yaw = cyaw;
+									cState.pitch = cpitch;
+									cState.roll = croll;
+								}
+								cState.targetPosition = newPos;
+								cState.targetYaw = cyaw;
+								cState.targetPitch = cpitch;
+								cState.targetRoll = croll;
+								cState.targetSteerAngle = csteer;
+								if (parsed >= 16) {
+									cState.velocity = MakeVector3(cvx, cvy, cvz);
+								}
+								cState.active = true;
+								cState.id = cId;
+								cState.driverId = driverId;
+								cState.passId = passId;
+								if (parsed >= 11) cState.health = hp;
+								if (parsed >= 12) cState.maxHealth = maxHp;
+								if (parsed >= 13) cState.healthTier = tier;
+							}
+						}
+						break;
+					}
+
 					// Intercept air battle synchronization packets (do not show in chat)
 					if (msg.rfind("[AIRBATTLE_SYNC]", 0) == 0) {
 						int state = 1;

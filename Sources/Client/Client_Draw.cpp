@@ -2923,6 +2923,78 @@ namespace spades {
 					}
 				}
 
+				// Draw Classic Vintage Car Vehicle HUD Prompts
+				auto& cState = PlayerCosmetics::GetGlobalCar();
+				if (cState.active && cState.health > 0 && player.IsAlive() && !localPlayerIsSpectator) {
+					float sw = renderer->ScreenWidth();
+					float sh = renderer->ScreenHeight();
+					IFont& font = fontManager->GetGuiFont();
+					int myPid = static_cast<int>(player.GetId());
+
+					if (cState.driverId == myPid) {
+						std::string tierName;
+						Vector4 hudColor;
+						if (cState.healthTier == 3) {
+							tierName = "[ ESTADO: OPTIMO ]";
+							hudColor = MakeVector4(0.25F, 1.0F, 0.45F, 1.0F); // Phosphor Green
+						} else if (cState.healthTier == 2) {
+							tierName = "[ ESTADO: MOTOR DANIADO - HUMO ]";
+							hudColor = MakeVector4(1.0F, 0.82F, 0.15F, 1.0F); // Warning Yellow
+						} else {
+							tierName = "[ !ALERTA CRITICA! MOTOR EN LLAMAS ]";
+							hudColor = MakeVector4(1.0F, 0.25F, 0.25F, 1.0F); // Flashing Red
+						}
+
+						std::string statusText = "[ CONDUCTOR: AUTO CLASICO VINTAGE ] HP: " + std::to_string(cState.health) + "/" + std::to_string(cState.maxHealth) + " " + tierName;
+						float txtW1 = font.Measure(statusText).x;
+						float px1 = (sw - txtW1) * 0.5F;
+						float py1 = sh - 130.0F;
+
+						font.DrawShadow(statusText, MakeVector2(px1, py1), 1.0F, hudColor, MakeVector4(0.0F, 0.0F, 0.0F, 0.9F));
+
+						std::string carControls = "[W]: Acelerar | [S]: Frenar/Reversa | [A/D]: Girar | [Clic Izq]: Bocina | [E]: Salir";
+						float txtW2 = font.Measure(carControls).x;
+						float px2 = (sw - txtW2) * 0.5F;
+						float py2 = sh - 105.0F;
+
+						font.DrawShadow(carControls, MakeVector2(px2, py2), 0.95F,
+						                MakeVector4(0.9F, 0.95F, 1.0F, 0.95F),
+						                MakeVector4(0.0F, 0.0F, 0.0F, 0.9F));
+					} else if (cState.passId == myPid) {
+						std::string statusText = "[ COPILOTO / PASAJERO: AUTO CLASICO ] HP AUTO: " + std::to_string(cState.health) + "/" + std::to_string(cState.maxHealth);
+						float txtW1 = font.Measure(statusText).x;
+						float px1 = (sw - txtW1) * 0.5F;
+						float py1 = sh - 130.0F;
+
+						font.DrawShadow(statusText, MakeVector2(px1, py1), 1.0F,
+						                MakeVector4(0.3F, 0.85F, 1.0F, 1.0F), MakeVector4(0.0F, 0.0F, 0.0F, 0.9F));
+
+						std::string passControls = "[Clic Izquierdo]: Disparar por la Ventanilla | [E]: Bajar";
+						float txtW2 = font.Measure(passControls).x;
+						float px2 = (sw - txtW2) * 0.5F;
+						float py2 = sh - 105.0F;
+
+						font.DrawShadow(passControls, MakeVector2(px2, py2), 0.95F,
+						                MakeVector4(0.9F, 0.95F, 1.0F, 0.95F),
+						                MakeVector4(0.0F, 0.0F, 0.0F, 0.9F));
+					} else if (!hState.active || (hState.pilotId != myPid && hState.pass1Id != myPid && hState.pass2Id != myPid)) {
+						float dist = (player.GetOrigin() - cState.position).GetLength();
+						if (dist < 14.0F) {
+							int occupants = (cState.driverId >= 0 ? 1 : 0) + (cState.passId >= 0 ? 1 : 0);
+							if (occupants < 2) {
+								std::string enterText = "[ Presiona 'E' para subirte al Auto Clásico ] (" + std::to_string(occupants) + "/2 Plazas) HP: " + std::to_string(cState.health) + "/" + std::to_string(cState.maxHealth);
+								float txtW = font.Measure(enterText).x;
+								float px = (sw - txtW) * 0.5F;
+								float py = sh * 0.65F;
+
+								font.DrawShadow(enterText, MakeVector2(px, py), 1.0F,
+								                MakeVector4(1.0F, 0.9F, 0.2F, 1.0F),
+								                MakeVector4(0.0F, 0.0F, 0.0F, 0.9F));
+							}
+						}
+					}
+				}
+
 				if (shouldDrawHUD) {
 					// draw firstperson camera player HUD
 					if (IsFirstPerson(GetCameraMode()))

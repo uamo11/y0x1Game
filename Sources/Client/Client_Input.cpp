@@ -1155,8 +1155,23 @@ namespace spades {
 						if (p.IsToolBlock()) {
 							CaptureColor();
 						} else if (activeNet) {
-							// 'E' key interacts with vehicles / helicopters
-							activeNet->SendChat("/heli", false);
+							// 'E' key interacts with vehicles (Classic Car or Helicopter)
+							auto& cState = PlayerCosmetics::GetGlobalCar();
+							auto& hState = PlayerCosmetics::GetGlobalHelicopter();
+							int myPid = static_cast<int>(p.GetId());
+							if (cState.active && (cState.driverId == myPid || cState.passId == myPid)) {
+								activeNet->SendChat("/car", false);
+							} else if (hState.active && (hState.pilotId == myPid || hState.pass1Id == myPid || hState.pass2Id == myPid)) {
+								activeNet->SendChat("/heli", false);
+							} else {
+								float distCar = cState.active ? (p.GetOrigin() - cState.position).GetLength() : 999.0F;
+								float distHeli = hState.active ? (p.GetOrigin() - hState.position).GetLength() : 999.0F;
+								if (distCar < distHeli && distCar < 14.0F) {
+									activeNet->SendChat("/car", false);
+								} else {
+									activeNet->SendChat("/heli", false);
+								}
+							}
 						}
 					}
 				} else if (CheckKey(cg_keyChangeMapScale, name) && down) {
