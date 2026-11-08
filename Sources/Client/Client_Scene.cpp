@@ -456,8 +456,8 @@ namespace spades {
 						auto& cState = PlayerCosmetics::GetGlobalCar();
 						bool inCar = cState.active && (cState.driverId == pid || cState.passId == pid);
 						if (inCar) {
-							distance = 8.5F; // Natural chase camera for vintage street car
-							center = cState.position + MakeVector3(0.0F, 0.0F, -0.9F);
+							distance = 10.2F; // Scaled chase camera for 1.2x vintage street car
+							center = cState.position + MakeVector3(0.0F, 0.0F, -1.1F);
 						}
 						if (player.IsLocalPlayer()
 							&& !player.IsSpectator()
@@ -834,7 +834,7 @@ namespace spades {
 						float yawRad = car.yaw;
 						float pitchRad = car.pitch;
 						float rollRad = car.roll;
-						const float carScale = 0.165F; // Natural classic vintage street proportions
+						const float carScale = 0.198F; // Scaled 1.2x as requested (authentic muscle proportions)
 
 						Vector3 front = MakeVector3(sinf(yawRad), -cosf(yawRad), 0.0F);
 						Vector3 right = MakeVector3(-cosf(yawRad), -sinf(yawRad), 0.0F);

@@ -654,18 +654,50 @@ namespace spades {
 						car.wheelRotation = fmodf(car.wheelRotation, 6.283185F);
 				}
 
-				// Classic vintage engine sound
+				// 1. Non-Repetitive V8 Ignition & Startup Sound
+				if (car.driverId >= 0 && car.lastDriverId < 0 && audioDevice) {
+					try {
+						const char* startSounds[3] = {
+							"Sounds/Vehicles/CarStart1.wav",
+							"Sounds/Vehicles/CarStart2.wav",
+							"Sounds/Vehicles/CarStart3.wav"
+						};
+						const char* chosenStart = startSounds[rand() % 3];
+						Handle<IAudioChunk> startSnd = audioDevice->RegisterSound(chosenStart);
+						if (startSnd) {
+							AudioParam startParam;
+							startParam.volume = 1.0F;
+							audioDevice->Play(startSnd.GetPointerOrNull(), car.position, startParam);
+						}
+					} catch (...) {}
+				}
+				car.lastDriverId = car.driverId;
+
+				// 2. Dynamic Speed & Engine Audio (Idle Rumble vs Throttle Acceleration)
 				if (car.driverId >= 0 && audioDevice) {
 					car.soundTimer -= dt;
 					if (car.soundTimer <= 0.0F) {
-						car.soundTimer = 1.5F;
+						bool isCruising = (carSpeed > 1.5F);
+						car.soundTimer = isCruising ? 2.30F : 1.90F;
 						try {
-							Handle<IAudioChunk> snd = audioDevice->RegisterSound("Sounds/Misc/SwitchMapZoom.opus");
-							if (snd) {
+							const char* sndPath = isCruising
+								? "Sounds/Vehicles/CarAccelerate.wav"
+								: "Sounds/Vehicles/CarIdle.wav";
+							Handle<IAudioChunk> engineSnd = audioDevice->RegisterSound(sndPath);
+							if (engineSnd) {
 								AudioParam param;
-								param.volume = (carSpeed > 2.0F) ? 1.0F : 0.6F;
-								param.pitch = 0.50F + std::min(0.5F, carSpeed * 0.02F);
-								audioDevice->Play(snd.GetPointerOrNull(), car.position, param);
+								param.volume = isCruising ? (0.85F + std::min(0.35F, carSpeed * 0.015F)) : 0.75F;
+								float basePitch = isCruising ? (0.80F + std::min(0.60F, (carSpeed / 24.0F) * 0.50F)) : 1.0F;
+
+								// Sound sputtering/roughness across damage tiers
+								if (car.healthTier == 2) {
+									basePitch *= (0.95F + 0.05F * sinf(curTime * 14.0F)); // Engine stuttering under damage
+								} else if (car.healthTier == 1) {
+									basePitch *= (0.85F + 0.15F * sinf(curTime * 22.0F)); // Severe coughing/misfire
+								}
+								param.pitch = basePitch;
+								param.referenceDistance = 25.0F;
+								audioDevice->Play(engineSnd.GetPointerOrNull(), car.position, param);
 							}
 						} catch (...) {}
 					}
@@ -673,19 +705,19 @@ namespace spades {
 					car.soundTimer = 0.0F;
 				}
 
-				// Radiator steam / engine smoke if damaged
+				// 3. Engine Smoke & Damage Visuals (Cowl vents on 1.2x hood)
 				if (car.healthTier <= 2) {
 					car.smokeTimer -= dt;
 					if (car.smokeTimer <= 0.0F) {
-						car.smokeTimer = (car.healthTier == 2) ? 0.15F : 0.08F;
+						car.smokeTimer = (car.healthTier == 2) ? 0.14F : 0.07F;
 						Vector3 front = MakeVector3(sinf(car.yaw), -cosf(car.yaw), 0.0F);
-						Vector3 hoodPos = car.position + front * 1.5F + MakeVector3(0.0F, 0.0F, -0.6F);
+						Vector3 hoodPos = car.position + front * 2.2F + MakeVector3(0.0F, 0.0F, -0.9F);
 						Vector4 smokeCol = (car.healthTier == 2)
 							? MakeVector4(0.85F, 0.85F, 0.88F, 0.50F)
-							: MakeVector4(0.15F, 0.15F, 0.15F, 0.75F);
-						auto ent = stmp::make_unique<SmokeSpriteEntity>(*this, smokeCol, 25.0F);
-						ent->SetTrajectory(hoodPos, MakeVector3(0.0F, 0.0F, -1.2F));
-						ent->SetRadius(0.8F, 0.3F);
+							: MakeVector4(0.12F, 0.12F, 0.12F, 0.80F);
+						auto ent = stmp::make_unique<SmokeSpriteEntity>(*this, smokeCol, 28.0F);
+						ent->SetTrajectory(hoodPos, MakeVector3(0.0F, 0.0F, -1.4F));
+						ent->SetRadius(car.healthTier == 2 ? 0.9F : 1.3F, 0.4F);
 						ent->SetLifeTime(1.8F, 0.1F, 0.6F);
 						ent->SetBlockHitAction(BlockHitAction::Ignore);
 						localEntities.emplace_back(std::move(ent));

@@ -1042,34 +1042,37 @@ namespace spades {
 				}
 
 				// 8. Hardtop Coupe Cabin & Glasshouse (Y = 24..48, Z = 11..17)
-				// A) Raked Windshield (Y = 25..30, Z = 11..16)
+				// A) Raked Windshield (Y = 25..30, Z = 11..16) - Open window frame for external shooting
 				for (int z = 11; z <= 16; ++z) {
 					int wy = 25 + static_cast<int>((z - 11) * 0.9F);
 					for (int dx = -10; dx <= 10; ++dx) {
 						int x = cx + dx;
 						bool isPillar = (std::abs(dx) >= 10 || z == 11 || z == 16);
-						SetVoxel(x, wy, z, isPillar ? colChrome : colGlass);
+						if (isPillar)
+							SetVoxel(x, wy, z, colChrome);
 					}
 				}
 
-				// B) Side Windows (Y = 30..41, Z = 11..17)
+				// B) Side Windows (Y = 30..41, Z = 11..17) - Open windows for cabin visibility & combat
 				for (int y = 30; y <= 41; ++y) {
 					for (int side : {-1, 1}) {
 						int wx = cx + side * 10;
 						for (int z = 12; z <= 16; ++z) {
 							bool isFrame = (z == 16 || y == 30 || (y >= 40 && z >= 12));
-							SetVoxel(wx, y, z, isFrame ? colWhite : colGlass);
+							if (isFrame)
+								SetVoxel(wx, y, z, colWhite);
 						}
 					}
 				}
 
-				// C) Sloping Fastback Rear Window (Y = 41..47, Z = 16..11)
+				// C) Sloping Fastback Rear Window (Y = 41..47, Z = 16..11) - Open rear window
 				for (int z = 11; z <= 16; ++z) {
 					int ry = 47 - static_cast<int>((z - 11) * 1.1F);
 					for (int dx = -9; dx <= 9; ++dx) {
 						int x = cx + dx;
 						bool isPillar = (std::abs(dx) >= 9 || z == 11 || z == 16);
-						SetVoxel(x, ry, z, isPillar ? colWhite : colGlass);
+						if (isPillar)
+							SetVoxel(x, ry, z, colWhite);
 					}
 				}
 

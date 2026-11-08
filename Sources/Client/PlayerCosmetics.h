@@ -45,6 +45,7 @@ namespace spades {
 			float targetSteerAngle = 0.0F;
 			float wheelRotation = 0.0F;
 			int driverId = -1;
+			int lastDriverId = -1;
 			int passId = -1;
 			int health = 350;
 			int maxHealth = 350;

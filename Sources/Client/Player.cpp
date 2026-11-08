@@ -1505,15 +1505,15 @@ namespace spades {
 				input.crouch = true; // Seated bench pose
 
 				if (isDriverCar) {
-					// Driver: Left front seat behind steering wheel
-					position = cState.position - right * 0.70F - front * 0.30F + MakeVector3(0.0F, 0.0F, -1.35F);
+					// Driver: Left front seat behind steering wheel (1.2x scale cabin)
+					position = cState.position - right * 0.85F - front * 0.35F + MakeVector3(0.0F, 0.0F, -1.60F);
 					RepositionPlayer(position);
 					eye = position + MakeVector3(0.0F, 0.0F, -0.4F);
 					orientation = front;
 					orientationSmoothed = front;
 				} else {
-					// Copiloto / Passenger: Right front seat
-					position = cState.position + right * 0.70F - front * 0.30F + MakeVector3(0.0F, 0.0F, -1.35F);
+					// Copiloto / Passenger: Right front seat (1.2x scale cabin)
+					position = cState.position + right * 0.85F - front * 0.35F + MakeVector3(0.0F, 0.0F, -1.60F);
 					RepositionPlayer(position);
 					eye = position + MakeVector3(0.0F, 0.0F, -0.4F);
 				}
