@@ -796,6 +796,47 @@ namespace spades {
 					}
 				}
 
+				// Draw WWII Air Dogfight Warbird Fighters (Allied vs Axis)
+				auto& battle = PlayerCosmetics::GetGlobalAirBattle();
+				if (battle.active) {
+					for (int i = 0; i < 2; ++i) {
+						auto& plane = battle.planes[i];
+						if (!plane.active)
+							continue;
+
+						Handle<IModel> fuselage = PlayerCosmetics::GetWarbirdFuselageModel(*renderer, plane.team);
+						Handle<IModel> prop = PlayerCosmetics::GetWarbirdPropellerModel(*renderer);
+						if (fuselage && prop) {
+							float yawRad = plane.yaw;
+							float pitchRad = plane.pitch;
+							float rollRad = plane.roll;
+							const float planeScale = 0.20F;
+
+							Vector3 front = MakeVector3(sinf(yawRad), -cosf(yawRad), 0.0F);
+							Vector3 right = MakeVector3(-cosf(yawRad), -sinf(yawRad), 0.0F);
+							Vector3 upSky = MakeVector3(0.0F, 0.0F, -1.0F);
+
+							Matrix4 planeMat = Matrix4::FromAxis(right, -front, upSky, plane.position);
+							if (std::abs(pitchRad) > 0.001F || std::abs(rollRad) > 0.001F) {
+								planeMat = planeMat * Matrix4::Rotate(MakeVector3(1, 0, 0), pitchRad)
+								                    * Matrix4::Rotate(MakeVector3(0, 1, 0), rollRad);
+							}
+
+							// 1. Fuselage & Wings
+							ModelRenderParam pParam;
+							pParam.matrix = planeMat * Matrix4::Scale(planeScale);
+							renderer->RenderModel(*fuselage, pParam);
+
+							// 2. Spinning 3-Blade Propeller (at nose tip)
+							Matrix4 propMat = planeMat * Matrix4::Translate(0.0F, -16.0F * planeScale, 0.0F)
+							                           * Matrix4::Rotate(MakeVector3(0, 1, 0), plane.propAngle)
+							                           * Matrix4::Scale(planeScale);
+							pParam.matrix = propMat;
+							renderer->RenderModel(*prop, pParam);
+						}
+					}
+				}
+
 				for (const auto& ent : localEntities)
 					ent->Render3D();
 

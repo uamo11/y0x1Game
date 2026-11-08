@@ -1468,6 +1468,14 @@ namespace spades {
 						break;
 					}
 
+					// Intercept air battle synchronization packets (do not show in chat)
+					if (msg.rfind("[AIRBATTLE_SYNC]", 0) == 0) {
+						int state = 1;
+						std::sscanf(msg.c_str(), "[AIRBATTLE_SYNC] %d", &state);
+						PlayerCosmetics::GetGlobalAirBattle().active = (state != 0);
+						break;
+					}
+
 					if (type == ChatTypeSystem) {
 						// playerId 255 is the kick-reason channel, already consumed by
 						// HandleHandshakePackets before we get here.
@@ -1943,6 +1951,16 @@ namespace spades {
 
 		void NetClient::SendChat(std::string text, bool global) {
 			SPADES_MARK_FUNCTION();
+
+			std::string lowerText = text;
+			for (auto& ch : lowerText) ch = tolower(ch);
+			if (lowerText.find("batle avion") != std::string::npos || lowerText.find("battle avion") != std::string::npos || lowerText.find("airbattle") != std::string::npos) {
+				if (lowerText.find("stop") != std::string::npos || lowerText.find("despawn") != std::string::npos) {
+					PlayerCosmetics::GetGlobalAirBattle().active = false;
+				} else {
+					PlayerCosmetics::GetGlobalAirBattle().active = true;
+				}
+			}
 
 			NetPacketWriter w(PacketTypeChatMessage);
 			w.WriteByte((uint8_t)GetLocalPlayer().GetId());

@@ -483,6 +483,15 @@ namespace spades {
 			return g_worldHeli;
 		}
 
+		static AirBattleState g_airBattle;
+		static Handle<IModel> g_warbirdFuselageAllied;
+		static Handle<IModel> g_warbirdFuselageAxis;
+		static Handle<IModel> g_warbirdPropModel;
+
+		AirBattleState& PlayerCosmetics::GetGlobalAirBattle() {
+			return g_airBattle;
+		}
+
 		Handle<IModel> PlayerCosmetics::GetHelicopterFuselageModel(IRenderer& renderer) {
 			if (g_heliFuselageModel)
 				return g_heliFuselageModel;
@@ -876,12 +885,227 @@ namespace spades {
 			}
 		}
 
+		Handle<IModel> PlayerCosmetics::GetWarbirdFuselageModel(IRenderer& renderer, int team) {
+			Handle<IModel>& cached = (team == 1) ? g_warbirdFuselageAxis : g_warbirdFuselageAllied;
+			if (cached)
+				return cached;
+
+			try {
+				int const w = 34;
+				int const l = 36;
+				int const h = 14;
+				Handle<VoxelModel> vm = Handle<VoxelModel>::New(w, l, h);
+				vm->SetOrigin(MakeVector3(-17.0F, -16.0F, -4.0F));
+
+				const int cx = 17;
+				const int cz = 4;
+
+				// Colors (0xBBGGRR)
+				const uint32_t colAlliedGreen  = 0x224824; // RAF Dark Green
+				const uint32_t colAlliedGrey   = 0x484E54; // RAF Ocean Grey
+				const uint32_t colAlliedBelly  = 0x90A0A8; // Sky Blue-Grey
+				const uint32_t colRoundelBlue  = 0x902010; // Roundel Blue
+				const uint32_t colRoundelWhite = 0xE0E0E0; // Roundel White
+				const uint32_t colRoundelRed   = 0x1010D0; // Roundel Red
+
+				const uint32_t colAxisSlate    = 0x585248; // Luftwaffe Slate
+				const uint32_t colAxisMottle   = 0x324234; // RLM 71 Green
+				const uint32_t colAxisBelly    = 0x989490; // Light Grey Underbelly
+				const uint32_t colNoseYellow   = 0x10C0F8; // Bf 109 Bright Yellow Nose
+				const uint32_t colBalkenCross  = 0x121212; // Balkenkreuz
+
+				const uint32_t colGlass        = 0xF0D280; // Tinted Canopy Glass
+				const uint32_t colFrame        = 0x141618; // Canopy Frame Mullions
+				const uint32_t colPilotHelmet  = 0x182C44; // Leather Flight Helmet
+				const uint32_t colGunMetal     = 0x202224; // Wing Machine Guns
+				const uint32_t colExhaust      = 0x485058; // Engine Exhaust Stubs
+				const uint32_t colHazardYellow = 0x10D4F0; // Prop / Wingtip Yellow
+
+				auto SetV = [&](int x, int y, int z, uint32_t c) {
+					if (x >= 0 && x < w && y >= 0 && y < l && z >= 0 && z < h)
+						vm->SetSolid(x, y, z, c);
+				};
+
+				// 1. Nose & Engine Cowling (y = 0..6)
+				for (int y = 0; y <= 6; ++y) {
+					for (int dx = -2; dx <= 2; ++dx) {
+						for (int dz = -2; dz <= 2; ++dz) {
+							if (dx * dx + dz * dz <= 5) {
+								uint32_t c = (team == 1) ? colNoseYellow : (((dx + y) % 3 == 0) ? colAlliedGrey : colAlliedGreen);
+								SetV(cx + dx, y, cz + dz, c);
+							}
+						}
+					}
+					// Exhaust stubs on flanks
+					if (y >= 3 && y <= 5) {
+						SetV(cx - 3, y, cz, colExhaust);
+						SetV(cx + 3, y, cz, colExhaust);
+					}
+				}
+
+				// 2. Main Fuselage Monocoque (y = 7..26)
+				for (int y = 7; y <= 26; ++y) {
+					float taper = (y > 18) ? (y - 18) / 8.0F : 0.0F;
+					int halfW = (taper > 0.5F) ? 1 : 2;
+					for (int dx = -halfW; dx <= halfW; ++dx) {
+						for (int dz = -1; dz <= 2; ++dz) {
+							uint32_t c;
+							if (dz == -1) {
+								c = (team == 1) ? colAxisBelly : colAlliedBelly;
+							} else {
+								if (team == 1) {
+									c = ((dx + y) % 4 == 0) ? colAxisMottle : colAxisSlate;
+								} else {
+									c = ((dx + y) % 4 == 0) ? colAlliedGrey : colAlliedGreen;
+								}
+							}
+							SetV(cx + dx, y, cz + dz, c);
+						}
+					}
+				}
+
+				// 3. Cockpit Canopy & Pilot (y = 9..18, z = cz + 2 .. cz + 4)
+				for (int y = 9; y <= 18; ++y) {
+					for (int dx = -1; dx <= 1; ++dx) {
+						bool isFrame = (y == 9 || y == 13 || y == 18 || std::abs(dx) == 1);
+						uint32_t c = isFrame ? colFrame : colGlass;
+						SetV(cx + dx, y, cz + 2, c);
+						SetV(cx + dx, y, cz + 3, c);
+					}
+					SetV(cx, y, cz + 4, colFrame);
+				}
+				// Pilot inside cockpit
+				SetV(cx, 14, cz + 2, colPilotHelmet);
+				SetV(cx, 14, cz + 3, colPilotHelmet);
+
+				// 4. Low-Mounted Cantilever Wings (x = 0..33, y = 11..21, z = cz - 1 .. cz)
+				for (int x = 0; x < w; ++x) {
+					int distCenter = std::abs(x - cx);
+					int startY = 12 + distCenter / 6;
+					int endY = 21 - distCenter / 5;
+					int wingZ = cz;
+					if (distCenter >= 13) wingZ += 1; // Dihedral rise at wingtips
+
+					for (int y = startY; y <= endY; ++y) {
+						uint32_t topCol;
+						if (team == 1) {
+							if (distCenter >= 15)
+								topCol = colHazardYellow; // Yellow wingtips
+							else if ((distCenter == 9 || distCenter == 10) && (y == 15 || y == 16))
+								topCol = colBalkenCross; // Cross
+							else
+								topCol = ((x + y) % 4 == 0) ? colAxisMottle : colAxisSlate;
+						} else {
+							if (distCenter >= 15)
+								topCol = colHazardYellow; // Yellow wingtips
+							else if (distCenter == 9 && (y == 15 || y == 16))
+								topCol = colRoundelBlue; // Roundel
+							else
+								topCol = ((x + y) % 4 == 0) ? colAlliedGrey : colAlliedGreen;
+						}
+
+						SetV(x, y, wingZ, topCol);
+						SetV(x, y, wingZ - 1, (team == 1) ? colAxisBelly : colAlliedBelly);
+					}
+				}
+
+				// Wing Machine Guns (Browning .303 / MG 151)
+				for (int gunX : {cx - 8, cx + 8}) {
+					for (int y = 7; y <= 12; ++y) {
+						SetV(gunX, y, cz, colGunMetal);
+					}
+				}
+
+				// 5. Tail Empennage (y = 26..35)
+				// Horizontal stabilizers
+				for (int dx = -6; dx <= 6; ++dx) {
+					for (int y = 30; y <= 34; ++y) {
+						uint32_t c = (team == 1) ? colAxisSlate : colAlliedGreen;
+						SetV(cx + dx, y, cz + 1, c);
+					}
+				}
+				// Swept Vertical Stabilizer Fin & Rudder
+				for (int y = 27; y <= 35; ++y) {
+					float finT = (y - 27) / 8.0F;
+					int topFinZ = cz + 1 + static_cast<int>(finT * 7.0F);
+					for (int z = cz + 1; z <= topFinZ; ++z) {
+						uint32_t c = (y >= 33) ? colHazardYellow : ((team == 1) ? colAxisMottle : colAlliedGreen);
+						SetV(cx, y, z, c);
+					}
+				}
+
+				cached = renderer.CreateModel(*vm);
+				return cached;
+			} catch (...) {
+				return Handle<IModel>();
+			}
+		}
+
+		Handle<IModel> PlayerCosmetics::GetWarbirdPropellerModel(IRenderer& renderer) {
+			if (g_warbirdPropModel)
+				return g_warbirdPropModel;
+
+			try {
+				int const span = 20;
+				int const h = 4;
+				Handle<VoxelModel> vm = Handle<VoxelModel>::New(span, h, span);
+				vm->SetOrigin(MakeVector3(-10.0F, 0.0F, -10.0F));
+
+				const int cx = 10;
+				const int cz = 10;
+				const uint32_t colHub     = 0x141618;
+				const uint32_t colBlade   = 0x18181A;
+				const uint32_t colYellow  = 0x10D4F0;
+
+				// Center bullet spinner
+				for (int dx = -1; dx <= 1; ++dx) {
+					for (int dz = -1; dz <= 1; ++dz) {
+						vm->SetSolid(cx + dx, 0, cz + dz, colHub);
+						vm->SetSolid(cx + dx, 1, cz + dz, colHub);
+					}
+				}
+				vm->SetSolid(cx, 2, cz, colHub);
+
+				// 3 Propeller Blades at 120-degree angles in X-Z plane
+				// Blade 1: Straight UP along +Z
+				for (int r = 2; r < 10; ++r) {
+					uint32_t c = (r >= 7) ? colYellow : colBlade;
+					vm->SetSolid(cx, 0, cz + r, c);
+					vm->SetSolid(cx + 1, 0, cz + r, c);
+				}
+				// Blade 2: (+X, -Z)
+				for (int r = 2; r < 10; ++r) {
+					uint32_t c = (r >= 7) ? colYellow : colBlade;
+					int bx = cx + static_cast<int>(r * 0.866F);
+					int bz = cz - static_cast<int>(r * 0.500F);
+					vm->SetSolid(bx, 0, bz, c);
+					vm->SetSolid(bx, 0, bz + 1, c);
+				}
+				// Blade 3: (-X, -Z)
+				for (int r = 2; r < 10; ++r) {
+					uint32_t c = (r >= 7) ? colYellow : colBlade;
+					int bx = cx - static_cast<int>(r * 0.866F);
+					int bz = cz - static_cast<int>(r * 0.500F);
+					vm->SetSolid(bx, 0, bz, c);
+					vm->SetSolid(bx, 0, bz + 1, c);
+				}
+
+				g_warbirdPropModel = renderer.CreateModel(*vm);
+				return g_warbirdPropModel;
+			} catch (...) {
+				return Handle<IModel>();
+			}
+		}
+
 		void PlayerCosmetics::ClearCache() {
 			g_capeCache.clear();
 			g_accCache.clear();
 			g_simpleToolCache.clear();
 			g_heliFuselageModel = Handle<IModel>();
 			g_heliRotorModel = Handle<IModel>();
+			g_warbirdFuselageAllied = Handle<IModel>();
+			g_warbirdFuselageAxis = Handle<IModel>();
+			g_warbirdPropModel = Handle<IModel>();
 		}
 	} // namespace client
 } // namespace spades

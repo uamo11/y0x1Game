@@ -53,6 +53,34 @@ namespace spades {
 			int healthTier = 3;
 		};
 
+		struct WarbirdPlane {
+			bool active = false;
+			int team = 0; // 0 = Allied (Spitfire/Mustang), 1 = Axis (Bf 109)
+			Vector3 position = MakeVector3(0.0F, 0.0F, 0.0F);
+			Vector3 velocity = MakeVector3(0.0F, 0.0F, 0.0F);
+			float yaw = 0.0F;
+			float pitch = 0.0F;
+			float roll = 0.0F;
+			float propAngle = 0.0F;
+			float speed = 40.0F;
+			float health = 100.0F;
+			int state = 0; // 0: Cruise, 1: Chase, 2: Evade, 3: Dive Flyby, 4: Spiral Death, 5: Respawn
+			float stateTimer = 0.0F;
+			float burstTimer = 0.0F;
+			float engineSoundTimer = 0.0F;
+			float smokeTimer = 0.0F;
+			float flybySoundTimer = 0.0F;
+		};
+
+		struct AirBattleState {
+			bool active = false;
+			WarbirdPlane planes[2];
+			float globalTimer = 0.0F;
+			int hunterIndex = 0;
+			float roleSwitchTimer = 14.0F;
+			float flybyTimer = 18.0F;
+		};
+
 		/**
 		 * Centralized in-game cosmetic system for ySpades.
 		 * Handles procedural voxel generation, caching, and color mapping for
@@ -62,6 +90,15 @@ namespace spades {
 		public:
 			/** Global helicopter vehicle state */
 			static HelicopterState& GetGlobalHelicopter();
+
+			/** Global WWII Air Dogfight state */
+			static AirBattleState& GetGlobalAirBattle();
+
+			/** Returns (and caches) procedural 3D WWII warbird fighter plane model */
+			static Handle<IModel> GetWarbirdFuselageModel(IRenderer& renderer, int team);
+
+			/** Returns (and caches) procedural 3D WWII warbird 3-blade propeller model */
+			static Handle<IModel> GetWarbirdPropellerModel(IRenderer& renderer);
 			/** Returns uniform tint color based on chosen skinId or team color fallback */
 			static Vector3 GetSkinColor(const std::string& skinId, const Vector3& defaultColor);
 

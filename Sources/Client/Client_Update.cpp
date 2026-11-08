@@ -615,6 +615,297 @@ namespace spades {
 					}
 				}
 			}
+
+			// =====================================================================
+			// WWII Air Dogfight Simulation (Zero-Cost, Dynamic Combat AI)
+			// =====================================================================
+			auto& battle = PlayerCosmetics::GetGlobalAirBattle();
+			if (battle.active) {
+				battle.globalTimer += dt;
+				Vector3 playerPos = lastSceneDef.viewOrigin;
+
+				// Spawn / Initialize the two rival warbirds if not active
+				if (!battle.planes[0].active && !battle.planes[1].active && battle.planes[0].state != 5 && battle.planes[1].state != 5) {
+					// Plane 0: Allied Spitfire
+					auto& p0 = battle.planes[0];
+					p0.active = true;
+					p0.team = 0;
+					p0.position = playerPos + MakeVector3(-60.0F, -70.0F, -26.0F);
+					p0.yaw = 0.85F;
+					p0.pitch = -0.05F;
+					p0.roll = 0.0F;
+					p0.speed = 42.0F;
+					p0.health = 100.0F;
+					p0.state = 1; // Hunter
+
+					// Plane 1: Axis Bf 109
+					auto& p1 = battle.planes[1];
+					p1.active = true;
+					p1.team = 1;
+					p1.position = playerPos + MakeVector3(30.0F, -30.0F, -24.0F);
+					p1.yaw = 0.65F;
+					p1.pitch = -0.05F;
+					p1.roll = 0.25F;
+					p1.speed = 40.0F;
+					p1.health = 100.0F;
+					p1.state = 2; // Target
+				}
+
+				// Role switching between Hunter and Prey
+				battle.roleSwitchTimer -= dt;
+				if (battle.roleSwitchTimer <= 0.0F) {
+					battle.roleSwitchTimer = 14.0F + static_cast<float>(rand() % 8);
+					battle.hunterIndex = 1 - battle.hunterIndex;
+					if (battle.planes[0].state != 4 && battle.planes[1].state != 4) {
+						battle.planes[battle.hunterIndex].state = 1;     // Hunter
+						battle.planes[1 - battle.hunterIndex].state = 2; // Target
+					}
+				}
+
+				// Low-Altitude Near-Miss Flyby Trigger ("sentías que se iban a estrellar contra ti")
+				battle.flybyTimer -= dt;
+				if (battle.flybyTimer <= 0.0F) {
+					battle.flybyTimer = 24.0F + static_cast<float>(rand() % 10);
+					int flybyIdx = rand() % 2;
+					if (battle.planes[flybyIdx].active && battle.planes[flybyIdx].state != 4) {
+						battle.planes[flybyIdx].state = 3; // Dive Flyby
+						battle.planes[flybyIdx].stateTimer = 6.0F;
+					}
+				}
+
+				// Simulate both fighters
+				for (int i = 0; i < 2; ++i) {
+					auto& p = battle.planes[i];
+					auto& targetP = battle.planes[1 - i];
+
+					// Respawning after crash
+					if (!p.active) {
+						if (p.state == 5) {
+							p.stateTimer -= dt;
+							if (p.stateTimer <= 0.0F) {
+								p.active = true;
+								p.team = i;
+								p.position = playerPos + MakeVector3(static_cast<float>((rand() % 160) - 80), -140.0F, -30.0F);
+								p.yaw = static_cast<float>(rand() % 628) * 0.01F;
+								p.pitch = -0.08F;
+								p.roll = 0.0F;
+								p.speed = 42.0F;
+								p.health = 100.0F;
+								p.state = 1;
+							}
+						}
+						continue;
+					}
+
+					p.propAngle += dt * 140.0F; // High-RPM spinning propeller
+
+					// 1. Flight AI & Trajectory Behavior
+					Vector3 forward = MakeVector3(sinf(p.yaw), -cosf(p.yaw), sinf(p.pitch)).Normalize();
+					Vector3 right = MakeVector3(-cosf(p.yaw), -sinf(p.yaw), 0.0F).Normalize();
+
+					if (p.state == 1) {
+						// CHASE (Pursuer): Intercept target plane
+						Vector3 toTarget = targetP.position - p.position;
+						float distTarget = toTarget.GetLength();
+						float desiredYaw = atan2f(toTarget.x, -toTarget.y);
+						float yawDiff = (desiredYaw - p.yaw + 3.14159F);
+						yawDiff = fmodf(yawDiff, 6.283185F) - 3.14159F;
+						p.yaw += yawDiff * (1.8F * dt);
+
+						float desiredPitch = -toTarget.z / std::max(20.0F, distTarget) * 0.7F;
+						desiredPitch = std::max(-0.45F, std::min(0.45F, desiredPitch));
+						p.pitch += (desiredPitch - p.pitch) * (2.2F * dt);
+						p.roll += (-yawDiff * 2.8F - p.roll) * (3.5F * dt);
+						p.speed = 44.0F;
+
+						// Machine Gun Firing when aligned behind target
+						if (distTarget < 85.0F && std::abs(yawDiff) < 0.55F && targetP.active && targetP.state != 4) {
+							p.burstTimer -= dt;
+							if (p.burstTimer <= 0.0F) {
+								p.burstTimer = 0.12F;
+								// Twin wing machine gun tracers
+								Vector3 muzzleL = p.position + right * 1.6F + forward * 2.5F;
+								Vector3 muzzleR = p.position - right * 1.6F + forward * 2.5F;
+								Vector3 hitL = targetP.position + MakeVector3(static_cast<float>((rand() % 10 - 5)) * 0.3F, static_cast<float>((rand() % 10 - 5)) * 0.3F, static_cast<float>((rand() % 10 - 5)) * 0.3F);
+								Vector3 hitR = targetP.position + MakeVector3(static_cast<float>((rand() % 10 - 5)) * 0.3F, static_cast<float>((rand() % 10 - 5)) * 0.3F, static_cast<float>((rand() % 10 - 5)) * 0.3F);
+
+								AddLocalEntity(stmp::make_unique<Tracer>(*this, muzzleL, hitL, 400.0F, false));
+								AddLocalEntity(stmp::make_unique<Tracer>(*this, muzzleR, hitR, 400.0F, false));
+
+								// 3D Positional Machine Gun Audio
+								if (audioDevice) {
+									static const char* mgSounds[4] = {
+										"Sounds/Weapons/SMG/V2Third1.opus",
+										"Sounds/Weapons/SMG/V2Third2.opus",
+										"Sounds/Weapons/SMG/V2Third3.opus",
+										"Sounds/Weapons/SMG/V2Third4.opus"
+									};
+									Handle<IAudioChunk> mgChunk = audioDevice->RegisterSound(mgSounds[rand() % 4]);
+									if (mgChunk) {
+										AudioParam aParam;
+										aParam.volume = 2.4F;
+										aParam.referenceDistance = 45.0F;
+										audioDevice->Play(mgChunk.GetPointerOrNull(), p.position, aParam);
+									}
+								}
+
+								// Target plane damage
+								targetP.health -= 3.2F;
+								if (targetP.health <= 0.0F) {
+									targetP.state = 4; // Enter spiral of death
+									targetP.health = 0.0F;
+								}
+							}
+						}
+					} else if (p.state == 2) {
+						// EVADE: Evasive banking, barrel rolls, climbing chandelles
+						float t = battle.globalTimer * 1.8F;
+						p.yaw += sinf(t * 0.8F) * 0.9F * dt;
+						p.pitch = sinf(t * 1.2F) * 0.35F;
+						p.roll += (sinf(t * 2.2F) * 1.2F - p.roll) * (3.0F * dt);
+						p.speed = 46.0F;
+					} else if (p.state == 3) {
+						// LOW DIVE FLYBY ("Sentías que se iban a estrellar contra ti")
+						p.stateTimer -= dt;
+						Vector3 flybyTarget = MakeVector3(playerPos.x, playerPos.y, playerPos.z - 8.0F);
+						Vector3 toPlayer = flybyTarget - p.position;
+						float distToPlayer = toPlayer.GetLength();
+
+						if (p.stateTimer > 2.5F && p.position.z < playerPos.z - 6.0F) {
+							// Steep screaming dive straight towards ground player!
+							float desYaw = atan2f(toPlayer.x, -toPlayer.y);
+							float yDiff = (desYaw - p.yaw + 3.14159F);
+							yDiff = fmodf(yDiff, 6.283185F) - 3.14159F;
+							p.yaw += yDiff * (2.2F * dt);
+							p.pitch += (0.42F - p.pitch) * (3.0F * dt); // Nose pointed down
+							p.speed = 62.0F;                            // Roaring dive speed!
+						} else {
+							// Pull up hard right over the player's head!
+							p.pitch += (-0.65F - p.pitch) * (4.5F * dt); // Pull up violently
+							p.roll += sinf(battle.globalTimer * 4.0F) * dt * 2.0F;
+							if (p.stateTimer <= 0.0F) {
+								p.state = 1; // Resume dogfight
+							}
+						}
+
+						// Near-miss sound cue when swooping past (< 38 blocks)
+						p.flybySoundTimer -= dt;
+						if (distToPlayer < 38.0F && p.flybySoundTimer <= 0.0F) {
+							p.flybySoundTimer = 4.0F;
+							if (audioDevice) {
+								Handle<IAudioChunk> whoosh = audioDevice->RegisterSound("Sounds/Vehicles/HelicopterRotor.wav");
+								if (whoosh) {
+									AudioParam wparam;
+									wparam.volume = 4.5F;
+									wparam.pitch = 2.35F; // Screaming prop dive sound
+									wparam.referenceDistance = 50.0F;
+									audioDevice->Play(whoosh.GetPointerOrNull(), p.position, wparam);
+								}
+							}
+						}
+					} else if (p.state == 4) {
+						// SPIRAL DEATH: Fiery uncontrolled death dive
+						p.roll += 14.0F * dt;
+						p.pitch += (1.35F - p.pitch) * (2.5F * dt); // Point straight down
+						p.speed = 65.0F;
+
+						// Dense black smoke & fiery sparks trailing from engine
+						p.smokeTimer -= dt;
+						if (p.smokeTimer <= 0.0F) {
+							p.smokeTimer = 0.05F;
+							auto smoke = stmp::make_unique<SmokeSpriteEntity>(*this, MakeVector4(0.08F, 0.08F, 0.08F, 0.85F), 35.0F);
+							smoke->SetTrajectory(p.position, -forward * 8.0F);
+							smoke->SetRadius(1.4F, 0.4F);
+							smoke->SetLifeTime(2.2F, 0.1F, 0.6F);
+							smoke->SetBlockHitAction(BlockHitAction::Ignore);
+							localEntities.emplace_back(std::move(smoke));
+
+							auto fire = stmp::make_unique<SmokeSpriteEntity>(*this, MakeVector4(1.0F, 0.45F, 0.10F, 0.90F), 45.0F);
+							fire->SetTrajectory(p.position, -forward * 5.0F);
+							fire->SetRadius(0.8F, 0.2F);
+							fire->SetLifeTime(0.6F, 0.05F, 0.3F);
+							fire->SetBlockHitAction(BlockHitAction::Ignore);
+							localEntities.emplace_back(std::move(fire));
+						}
+
+						// Cataclysmic ground collision
+						bool hitGround = (p.position.z >= 58.0F);
+						if (map && !hitGround) {
+							int ix = static_cast<int>(p.position.x);
+							int iy = static_cast<int>(p.position.y);
+							int iz = static_cast<int>(p.position.z);
+							if (ix >= 0 && ix < map->Width() && iy >= 0 && iy < map->Height() && iz >= 0 && iz < map->Depth()) {
+								hitGround = map->IsSolid(ix, iy, iz);
+							}
+						}
+
+						if (hitGround) {
+							GrenadeExplosion(p.position);
+							if (audioDevice) {
+								Handle<IAudioChunk> crashSnd = audioDevice->RegisterSound("Sounds/Weapons/Grenade/ExplodeFarStereo.opus");
+								if (crashSnd) {
+									AudioParam cparam;
+									cparam.volume = 5.0F;
+									cparam.referenceDistance = 80.0F;
+									audioDevice->Play(crashSnd.GetPointerOrNull(), p.position, cparam);
+								}
+							}
+							p.active = false;
+							p.state = 5; // Respawn countdown
+							p.stateTimer = 6.0F;
+							continue;
+						}
+					}
+
+					// Light smoke trail when damaged (health < 40 HP)
+					if (p.health < 40.0F && p.state != 4) {
+						p.smokeTimer -= dt;
+						if (p.smokeTimer <= 0.0F) {
+							p.smokeTimer = 0.12F;
+							auto trail = stmp::make_unique<SmokeSpriteEntity>(*this, MakeVector4(0.35F, 0.35F, 0.35F, 0.50F), 25.0F);
+							trail->SetTrajectory(p.position, -forward * 6.0F);
+							trail->SetRadius(0.9F, 0.3F);
+							trail->SetLifeTime(1.5F, 0.1F, 0.5F);
+							trail->SetBlockHitAction(BlockHitAction::Ignore);
+							localEntities.emplace_back(std::move(trail));
+						}
+					}
+
+					// Integrate position
+					p.velocity = forward * p.speed;
+					p.position += p.velocity * dt;
+
+					// Altitude and map boundary containment
+					p.position.z = std::max(4.0F, std::min(60.0F, p.position.z));
+					if (p.position.x < 20.0F || p.position.x > 492.0F) {
+						p.yaw += 1.8F * dt;
+					}
+					if (p.position.y < 20.0F || p.position.y > 492.0F) {
+						p.yaw += 1.8F * dt;
+					}
+
+					// Engine Audio with dynamic Doppler and dive pitch shift
+					p.engineSoundTimer -= dt;
+					if (p.engineSoundTimer <= 0.0F) {
+						p.engineSoundTimer = 2.0F;
+						if (audioDevice) {
+							Handle<IAudioChunk> eng = audioDevice->RegisterSound("Sounds/Vehicles/HelicopterRotor.wav");
+							if (eng) {
+								AudioParam ep;
+								ep.referenceDistance = 35.0F;
+								if (p.state == 3 || p.state == 4) {
+									ep.volume = 3.6F;
+									ep.pitch = 2.25F; // Screaming dive
+								} else {
+									ep.volume = 2.2F;
+									ep.pitch = 1.70F + (p.speed - 40.0F) * 0.02F;
+								}
+								audioDevice->Play(eng.GetPointerOrNull(), p.position, ep);
+							}
+						}
+					}
+				}
+			}
 		}
 
 		/** Handles movement of spectating local player. */

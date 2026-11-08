@@ -75,6 +75,7 @@ DEFINE_SPADES_SETTING(cg_chatTranslate, "1");
 DEFINE_SPADES_SETTING(cg_fog, "1");
 DEFINE_SPADES_SETTING(cg_volumetricSky, "1");
 DEFINE_SPADES_SETTING(cg_helicopter, "1");
+DEFINE_SPADES_SETTING(cg_airBattle, "0");
 
 SPADES_SETTING(cg_playerName);
 SPADES_SETTING(cg_centerMessageSmallFont);
