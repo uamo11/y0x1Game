@@ -1470,14 +1470,19 @@ namespace spades {
 						break;
 					}
 
-					// Intercept classic vintage street car synchronization packets (do not show in chat)
+					// Intercept vehicle synchronization packets (do not show in chat)
 					if (msg.rfind("[CAR_SYNC]", 0) == 0) {
-						int cId = 1, driverId = -1, passId = -1, hp = 350, maxHp = 350, tier = 3;
+						int cId = 1, driverId = -1, passId = -1, hp = 350, maxHp = 350, tier = 3, modelType = 1;
 						float cx = 0, cy = 0, cz = 0, cyaw = 0, cpitch = 0, croll = 0, csteer = 0;
 						float cvx = 0, cvy = 0, cvz = 0;
-						int parsed = std::sscanf(msg.c_str(), "[CAR_SYNC] %d %f %f %f %f %f %f %f %d %d %d %d %d %f %f %f",
+						int parsed = std::sscanf(msg.c_str(), "[CAR_SYNC] %d %f %f %f %f %f %f %f %d %d %d %d %d %f %f %f %d",
 						                         &cId, &cx, &cy, &cz, &cyaw, &cpitch, &croll, &csteer, &driverId, &passId,
-						                         &hp, &maxHp, &tier, &cvx, &cvy, &cvz);
+						                         &hp, &maxHp, &tier, &cvx, &cvy, &cvz, &modelType);
+						if (parsed >= 17) {
+							PlayerCosmetics::GetGlobalCar().modelType = modelType;
+						} else if (cId >= 1 && cId <= 5) {
+							PlayerCosmetics::GetGlobalCar().modelType = cId;
+						}
 						if (parsed >= 7) {
 							auto& cState = PlayerCosmetics::GetGlobalCar();
 							if (parsed >= 11 && hp <= 0) {

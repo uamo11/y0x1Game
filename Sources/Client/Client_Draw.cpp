@@ -2945,7 +2945,15 @@ namespace spades {
 							hudColor = MakeVector4(1.0F, 0.25F, 0.25F, 1.0F); // Flashing Red
 						}
 
-						std::string statusText = "[ CONDUCTOR: AUTO CLASICO VINTAGE ] HP: " + std::to_string(cState.health) + "/" + std::to_string(cState.maxHealth) + " " + tierName;
+						std::string vName;
+						switch (cState.modelType) {
+							case 2: vName = "TOYOTA LAND CRUISER 79 4X4"; break;
+							case 3: vName = "ISV BUGGY MILITAR TACTICO"; break;
+							case 4: vName = "GMC SIERRA DENALI 4X4"; break;
+							case 5: vName = "FIAT UNO TURBO I.E."; break;
+							default: vName = "CHEVROLET CHEVELLE V8"; break;
+						}
+						std::string statusText = "[ CONDUCTOR: " + vName + " ] HP: " + std::to_string(cState.health) + "/" + std::to_string(cState.maxHealth) + " " + tierName;
 						float txtW1 = font.Measure(statusText).x;
 						float px1 = (sw - txtW1) * 0.5F;
 						float py1 = sh - 130.0F;
@@ -2961,7 +2969,15 @@ namespace spades {
 						                MakeVector4(0.9F, 0.95F, 1.0F, 0.95F),
 						                MakeVector4(0.0F, 0.0F, 0.0F, 0.9F));
 					} else if (cState.passId == myPid) {
-						std::string statusText = "[ COPILOTO / PASAJERO: AUTO CLASICO ] HP AUTO: " + std::to_string(cState.health) + "/" + std::to_string(cState.maxHealth);
+						std::string vName;
+						switch (cState.modelType) {
+							case 2: vName = "TOYOTA LAND CRUISER 79"; break;
+							case 3: vName = "ISV BUGGY MILITAR"; break;
+							case 4: vName = "GMC SIERRA DENALI"; break;
+							case 5: vName = "FIAT UNO TURBO"; break;
+							default: vName = "CHEVROLET CHEVELLE"; break;
+						}
+						std::string statusText = "[ COPILOTO / PASAJERO: " + vName + " ] HP: " + std::to_string(cState.health) + "/" + std::to_string(cState.maxHealth);
 						float txtW1 = font.Measure(statusText).x;
 						float px1 = (sw - txtW1) * 0.5F;
 						float py1 = sh - 130.0F;

@@ -1504,16 +1504,21 @@ namespace spades {
 
 				input.crouch = true; // Seated bench pose
 
+				int cType = cState.modelType;
+				float seatX = 0.85F, seatY = 0.35F, seatZ = 1.60F;
+				if (cType == 2) { seatX = 0.90F; seatY = 0.30F; seatZ = 1.85F; }
+				else if (cType == 3) { seatX = 0.90F; seatY = 0.35F; seatZ = 1.70F; }
+				else if (cType == 4) { seatX = 0.98F; seatY = 0.40F; seatZ = 1.80F; }
+				else if (cType == 5) { seatX = 0.72F; seatY = 0.25F; seatZ = 1.45F; }
+
 				if (isDriverCar) {
-					// Driver: Left front seat behind steering wheel (1.2x scale cabin)
-					position = cState.position - right * 0.85F - front * 0.35F + MakeVector3(0.0F, 0.0F, -1.60F);
+					position = cState.position - right * seatX - front * seatY + MakeVector3(0.0F, 0.0F, -seatZ);
 					RepositionPlayer(position);
 					eye = position + MakeVector3(0.0F, 0.0F, -0.4F);
 					orientation = front;
 					orientationSmoothed = front;
 				} else {
-					// Copiloto / Passenger: Right front seat (1.2x scale cabin)
-					position = cState.position + right * 0.85F - front * 0.35F + MakeVector3(0.0F, 0.0F, -1.60F);
+					position = cState.position + right * seatX - front * seatY + MakeVector3(0.0F, 0.0F, -seatZ);
 					RepositionPlayer(position);
 					eye = position + MakeVector3(0.0F, 0.0F, -0.4F);
 				}

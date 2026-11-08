@@ -712,7 +712,10 @@ namespace spades {
 					if (car.smokeTimer <= 0.0F) {
 						car.smokeTimer = (car.healthTier == 2) ? 0.14F : 0.07F;
 						Vector3 front = MakeVector3(sinf(car.yaw), -cosf(car.yaw), 0.0F);
-						Vector3 hoodPos = car.position + front * 2.2F + MakeVector3(0.0F, 0.0F, -0.9F);
+						float hoodDist = 2.2F;
+						if (car.modelType == 4) hoodDist = 2.5F;
+						else if (car.modelType == 5) hoodDist = 1.7F;
+						Vector3 hoodPos = car.position + front * hoodDist + MakeVector3(0.0F, 0.0F, -0.9F);
 						Vector4 smokeCol = (car.healthTier == 2)
 							? MakeVector4(0.85F, 0.85F, 0.88F, 0.50F)
 							: MakeVector4(0.12F, 0.12F, 0.12F, 0.80F);

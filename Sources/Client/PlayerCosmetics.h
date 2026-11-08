@@ -29,9 +29,18 @@ namespace spades {
 		class IRenderer;
 		class IModel;
 
+		enum VehicleType {
+			VEHICLE_CHEVELLE = 1,
+			VEHICLE_TOYOTA_LC79 = 2,
+			VEHICLE_MILITARY_ISV = 3,
+			VEHICLE_GMC_DENALI = 4,
+			VEHICLE_FIAT_UNO = 5
+		};
+
 		struct ClassicCarState {
 			bool active = false;
 			int id = 1;
+			int modelType = 1; // 1: Chevelle Coupe, 2: Toyota LC79, 3: Military ISV, 4: GMC Denali, 5: Fiat Uno Turbo
 			Vector3 position = MakeVector3(0.0F, 0.0F, 0.0F);
 			Vector3 targetPosition = MakeVector3(0.0F, 0.0F, 0.0F);
 			Vector3 velocity = MakeVector3(0.0F, 0.0F, 0.0F);
@@ -124,10 +133,16 @@ namespace spades {
 			/** Global classic vintage car vehicle state */
 			static ClassicCarState& GetGlobalCar();
 
-			/** Returns (and caches) procedural 3D vintage street car chassis & body model */
+			/** Returns (and caches) procedural 3D vehicle chassis & body model by vehicle type (1: Chevelle, 2: Toyota LC79, 3: Military ISV, 4: GMC Denali, 5: Fiat Uno Turbo) */
+			static Handle<IModel> GetCarBodyModel(IRenderer& renderer, int carType = 1);
+
+			/** Returns (and caches) procedural 3D vehicle wheel model by vehicle type */
+			static Handle<IModel> GetCarWheelModel(IRenderer& renderer, int carType = 1);
+
+			/** Returns (and caches) procedural 3D vintage street car chassis & body model (Chevelle default) */
 			static Handle<IModel> GetClassicCarBodyModel(IRenderer& renderer);
 
-			/** Returns (and caches) procedural 3D vintage whitewall spoked wheel model */
+			/** Returns (and caches) procedural 3D vintage whitewall spoked wheel model (Chevelle default) */
 			static Handle<IModel> GetClassicCarWheelModel(IRenderer& renderer);
 
 			/** Global WWII Air Dogfight state */

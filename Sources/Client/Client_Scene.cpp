@@ -456,8 +456,23 @@ namespace spades {
 						auto& cState = PlayerCosmetics::GetGlobalCar();
 						bool inCar = cState.active && (cState.driverId == pid || cState.passId == pid);
 						if (inCar) {
-							distance = 10.2F; // Scaled chase camera for 1.2x vintage street car
-							center = cState.position + MakeVector3(0.0F, 0.0F, -1.1F);
+							int cType = cState.modelType;
+							if (cType == 2) {
+								distance = 11.2F;
+								center = cState.position + MakeVector3(0.0F, 0.0F, -1.35F);
+							} else if (cType == 3) {
+								distance = 10.5F;
+								center = cState.position + MakeVector3(0.0F, 0.0F, -1.20F);
+							} else if (cType == 4) {
+								distance = 11.8F;
+								center = cState.position + MakeVector3(0.0F, 0.0F, -1.40F);
+							} else if (cType == 5) {
+								distance = 9.2F;
+								center = cState.position + MakeVector3(0.0F, 0.0F, -0.95F);
+							} else {
+								distance = 10.2F;
+								center = cState.position + MakeVector3(0.0F, 0.0F, -1.1F);
+							}
 						}
 						if (player.IsLocalPlayer()
 							&& !player.IsSpectator()
@@ -825,20 +840,67 @@ namespace spades {
 					}
 				}
 
-				// Draw world classic vintage street car (parked or driven)
+				// Draw world vehicle (Chevelle, Toyota LC79, Military ISV, GMC Denali, Fiat Uno Turbo)
 				auto& car = PlayerCosmetics::GetGlobalCar();
 				if (car.active && car.health > 0) {
-					Handle<IModel> carBody = PlayerCosmetics::GetClassicCarBodyModel(*renderer);
-					Handle<IModel> wheel = PlayerCosmetics::GetClassicCarWheelModel(*renderer);
+					int carType = car.modelType;
+					if (carType < 1 || carType > 5) carType = 1;
+
+					Handle<IModel> carBody = PlayerCosmetics::GetCarBodyModel(*renderer, carType);
+					Handle<IModel> wheel = PlayerCosmetics::GetCarWheelModel(*renderer, carType);
 					if (carBody && wheel) {
 						float yawRad = car.yaw;
 						float pitchRad = car.pitch;
 						float rollRad = car.roll;
-						const float carScale = 0.198F; // Scaled 1.2x as requested (authentic muscle proportions)
+
+						struct WheelMount {
+							float x, y, z;
+							bool isFront, isRight;
+						};
+						WheelMount mounts[4];
+						float carScale = 0.198F;
+
+						switch (carType) {
+							case 2: // Toyota Land Cruiser 79 4x4
+								carScale = 0.205F;
+								mounts[0] = { -10.0F, -18.0F, 5.0F, true, false };
+								mounts[1] = {  10.0F, -18.0F, 5.0F, true, true };
+								mounts[2] = { -10.0F,  17.0F, 5.0F, false, false };
+								mounts[3] = {  10.0F,  17.0F, 5.0F, false, true };
+								break;
+							case 3: // Military ISV Buggy
+								carScale = 0.200F;
+								mounts[0] = { -10.5F, -17.5F, 4.5F, true, false };
+								mounts[1] = {  10.5F, -17.5F, 4.5F, true, true };
+								mounts[2] = { -10.5F,  16.5F, 4.5F, false, false };
+								mounts[3] = {  10.5F,  16.5F, 4.5F, false, true };
+								break;
+							case 4: // GMC Sierra Denali Crew Cab
+								carScale = 0.210F;
+								mounts[0] = { -10.5F, -20.0F, 4.0F, true, false };
+								mounts[1] = {  10.5F, -20.0F, 4.0F, true, true };
+								mounts[2] = { -10.5F,  18.0F, 4.0F, false, false };
+								mounts[3] = {  10.5F,  18.0F, 4.0F, false, true };
+								break;
+							case 5: // Fiat Uno Turbo i.e.
+								carScale = 0.178F;
+								mounts[0] = { -8.5F, -14.0F, 3.2F, true, false };
+								mounts[1] = {  8.5F, -14.0F, 3.2F, true, true };
+								mounts[2] = { -8.5F,  13.0F, 3.2F, false, false };
+								mounts[3] = {  8.5F,  13.0F, 3.2F, false, true };
+								break;
+							default: // 1: Chevelle Coupe
+								carScale = 0.198F;
+								mounts[0] = { -9.5F, -17.0F, 3.5F, true, false };
+								mounts[1] = {  9.5F, -17.0F, 3.5F, true, true };
+								mounts[2] = { -9.5F,  15.0F, 3.5F, false, false };
+								mounts[3] = {  9.5F,  15.0F, 3.5F, false, true };
+								break;
+						}
 
 						Vector3 front = MakeVector3(sinf(yawRad), -cosf(yawRad), 0.0F);
 						Vector3 right = MakeVector3(-cosf(yawRad), -sinf(yawRad), 0.0F);
-						Vector3 upSky = MakeVector3(0.0F, 0.0F, -1.0F); // -Z is sky in OpenSpades
+						Vector3 upSky = MakeVector3(0.0F, 0.0F, -1.0F);
 
 						Matrix4 carMat = Matrix4::FromAxis(right, -front, upSky, car.position);
 						if (std::abs(pitchRad) > 0.001F || std::abs(rollRad) > 0.001F) {
@@ -846,25 +908,12 @@ namespace spades {
 							                * Matrix4::Rotate(MakeVector3(0, 1, 0), rollRad);
 						}
 
-						// 1. Render Vintage Street Car Body
+						// 1. Render Vehicle Body
 						ModelRenderParam cParam;
 						cParam.matrix = carMat * Matrix4::Scale(carScale);
 						renderer->RenderModel(*carBody, cParam);
 
-						// 2. Render 4 Vintage Whitewall Wheels with Dome Chrome Hubcaps
-						struct WheelMount {
-							float x;
-							float y;
-							float z;
-							bool isFront;
-							bool isRight;
-						};
-						WheelMount mounts[4] = {
-							{ -9.5F, -17.0F, 3.5F, true, false },  // Front-Left
-							{  9.5F, -17.0F, 3.5F, true, true },   // Front-Right
-							{ -9.5F,  15.0F, 3.5F, false, false }, // Rear-Left
-							{  9.5F,  15.0F, 3.5F, false, true }   // Rear-Right
-						};
+						// 2. Render 4 Wheels
 
 						for (int i = 0; i < 4; ++i) {
 							Matrix4 wMat = carMat * Matrix4::Translate(mounts[i].x * carScale, mounts[i].y * carScale, mounts[i].z * carScale);
