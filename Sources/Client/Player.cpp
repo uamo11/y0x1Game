@@ -1506,14 +1506,14 @@ namespace spades {
 
 				if (isDriverCar) {
 					// Driver: Left front seat behind steering wheel
-					position = cState.position - right * 0.70F - front * 0.30F + MakeVector3(0.0F, 0.0F, -0.65F);
+					position = cState.position - right * 0.70F - front * 0.30F + MakeVector3(0.0F, 0.0F, -1.35F);
 					RepositionPlayer(position);
 					eye = position + MakeVector3(0.0F, 0.0F, -0.4F);
 					orientation = front;
 					orientationSmoothed = front;
 				} else {
 					// Copiloto / Passenger: Right front seat
-					position = cState.position + right * 0.70F - front * 0.30F + MakeVector3(0.0F, 0.0F, -0.65F);
+					position = cState.position + right * 0.70F - front * 0.30F + MakeVector3(0.0F, 0.0F, -1.35F);
 					RepositionPlayer(position);
 					eye = position + MakeVector3(0.0F, 0.0F, -0.4F);
 				}
