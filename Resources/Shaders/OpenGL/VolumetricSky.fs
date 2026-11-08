@@ -1,7 +1,7 @@
 /*
  Copyright (c) 2013-2026 yvt / ySpades contributors
  Ultra-lightweight Fake Volumetric Atmospheric Sky & Clouds Shader
- Zero-performance impact (<0.04ms): Single-pass analytical pseudo-volumetric atmosphere
+ Zero-performance impact (<0.03ms): Single-pass analytical pseudo-volumetric atmosphere
 */
 
 uniform vec3 viewOrigin;
@@ -14,18 +14,18 @@ uniform int isHDR;
 varying vec2 texCoord;
 varying vec3 viewDir;
 
-// Ultra-fast hash function
+// Dave Hoskins robust hash without sine
 float hash(vec2 p) {
-	p = fract(p * vec2(123.34, 456.21));
-	p += dot(p, p + 45.32);
-	return fract(p.x * p.y);
+	vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+	p3 += dot(p3, p3.yzx + 33.33);
+	return fract((p3.x + p3.y) * p3.z);
 }
 
-// 2D smooth value noise
+// 2D smooth value noise with cubic Hermite interpolation
 float noise(vec2 p) {
 	vec2 i = floor(p);
 	vec2 f = fract(p);
-	vec2 u = f * f * (3.0 - 2.0 * f); // Hermite curve
+	vec2 u = f * f * (3.0 - 2.0 * f);
 	return mix(
 		mix(hash(i + vec2(0.0, 0.0)), hash(i + vec2(1.0, 0.0)), u.x),
 		mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x),
@@ -33,11 +33,12 @@ float noise(vec2 p) {
 	);
 }
 
-// 3-Octave billowy fractal Brownian motion for fluffy cumulus clouds
+// 4-Octave Fractal Brownian Motion for rich volumetric cloud billows
 float fbm(vec2 p) {
-	float f = 0.500 * noise(p); p *= 2.02;
-	f += 0.250 * noise(p); p *= 2.03;
-	f += 0.125 * noise(p);
+	float f = 0.5000 * noise(p); p = p * 2.02 + vec2(1.7, 9.2);
+	f += 0.2500 * noise(p); p = p * 2.03 + vec2(8.3, 2.8);
+	f += 0.1250 * noise(p); p = p * 2.01 + vec2(4.1, 5.5);
+	f += 0.0625 * noise(p);
 	return f;
 }
 
@@ -49,7 +50,7 @@ void main() {
 	vec3 sunDir = normalize(sunDirection);
 	float sunCos = clamp(dot(rayDir, sunDir), -1.0, 1.0);
 
-	// Brightness and day/night detection based on map fogColor
+	// Map fog luminance for day / night detection
 	float fogLum = dot(fogColor, vec3(0.299, 0.587, 0.114));
 	bool isNight = (fogLum < 0.20);
 
@@ -57,15 +58,15 @@ void main() {
 	vec3 horizonColor = fogColor;
 	vec3 zenithColor;
 	if (isNight) {
-		zenithColor = mix(vec3(0.015, 0.02, 0.04), fogColor * 0.4, 0.5);
+		zenithColor = mix(vec3(0.015, 0.02, 0.04), fogColor * 0.35, 0.5);
 	} else {
-		// Vibrant daylight zenith gradient matching fog atmosphere
-		vec3 deepSkyBlue = vec3(0.09, 0.32, 0.72);
-		zenithColor = mix(deepSkyBlue, fogColor * vec3(0.5, 0.7, 0.95), 0.65);
+		// Deep rich celestial blue zenith fading seamlessly into warm horizon fog
+		vec3 deepSkyBlue = vec3(0.12, 0.38, 0.82);
+		zenithColor = mix(deepSkyBlue, fogColor * vec3(0.55, 0.75, 1.0), 0.55);
 	}
 
 	float skyGrad = clamp(upAmount, 0.0, 1.0);
-	float rayleighCurve = pow(skyGrad, 0.42);
+	float rayleighCurve = pow(skyGrad, 0.55);
 	vec3 sky = mix(horizonColor, zenithColor, rayleighCurve);
 
 	// Below horizon haze (looking down into canyons or from helicopter)
@@ -75,75 +76,82 @@ void main() {
 	}
 
 	// Atmospheric horizon warm haze near the sun
-	float horizonSunGlow = pow(max(0.0, sunCos), 4.0) * 0.35 * exp(-abs(upAmount) * 3.5);
-	vec3 sunHazeColor = isNight ? vec3(0.4, 0.5, 0.7) : vec3(1.0, 0.82, 0.55);
+	float horizonSunGlow = pow(max(0.0, sunCos), 4.0) * 0.28 * exp(-abs(upAmount) * 2.8);
+	vec3 sunHazeColor = isNight ? vec3(0.3, 0.4, 0.6) : vec3(1.0, 0.85, 0.62);
 	sky += sunHazeColor * horizonSunGlow;
 
 	// --- 2. Solar Core & Atmospheric Corona (Mie Scattering) ---
-	if (sunCos > 0.85) {
-		float sunDisk = smoothstep(0.9980, 0.9992, sunCos);
-		float sunCorona = pow(max(0.0, sunCos), 12.0) * 0.55 + pow(max(0.0, sunCos), 64.0) * 0.75;
-		vec3 sunLight = isNight ? vec3(0.8, 0.9, 1.0) : vec3(1.0, 0.96, 0.88);
-		sky += sunLight * (sunDisk * 3.5 + sunCorona * 1.1);
+	// Perfectly smooth exponential falloff without any cutoff lines
+	if (sunCos > 0.0) {
+		float coronaFade = smoothstep(0.40, 0.88, sunCos);
+		float sunCorona = (pow(sunCos, 6.0) * 0.25 + pow(sunCos, 24.0) * 0.45 + pow(sunCos, 96.0) * 0.80) * coronaFade;
+		float sunDisk = smoothstep(0.9984, 0.9995, sunCos);
+		vec3 sunLight = isNight ? vec3(0.8, 0.9, 1.0) : vec3(1.0, 0.97, 0.92);
+		sky += sunLight * (sunDisk * 3.0 + sunCorona * 0.85);
 	}
 
 	// --- 3. Night Sky Twinkling Stars (if nighttime map) ---
-	if (isNight && upAmount > 0.1) {
-		vec2 starCoord = rayDir.xy / (abs(rayDir.z) + 0.1) * 220.0;
+	if (isNight && upAmount > 0.08) {
+		vec2 starCoord = rayDir.xy / (abs(rayDir.z) + 0.12) * 200.0;
 		float starNoise = hash(floor(starCoord));
 		if (starNoise > 0.985) {
 			float twinkle = 0.5 + 0.5 * sin(time * 3.0 + starNoise * 60.0);
-			sky += vec3(0.85, 0.92, 1.0) * (starNoise - 0.985) * 55.0 * twinkle * smoothstep(0.1, 0.3, upAmount);
+			sky += vec3(0.85, 0.92, 1.0) * (starNoise - 0.985) * 60.0 * twinkle * smoothstep(0.08, 0.3, upAmount);
 		}
 	}
 
 	// --- 4. Fake Volumetric Clouds (Zero-Cost Analytical Layers) ---
-	if (upAmount > 0.02) {
-		// Layer 1: Low-altitude Fluffy Cumulus Clouds (Height = 260 blocks)
-		float h1 = 260.0;
-		float dist1 = h1 / max(upAmount, 0.025);
-		vec2 cloudPos1 = viewOrigin.xy + rayDir.xy * dist1;
-		vec2 wind1 = vec2(time * 0.015, time * 0.005);
-		vec2 uv1 = cloudPos1 * 0.00075 + wind1;
+	if (upAmount > 0.01) {
+		// Dome perspective projection: clouds recede realistically towards the horizon
+		float domeScale = 1.0 / (upAmount + 0.22);
+		vec2 domeCoords = rayDir.xy * domeScale;
+
+		// Layer 1: Puffy 3D Cumulus Clouds
+		vec2 wind1 = vec2(time * 0.010, time * 0.004);
+		vec2 playerParallax1 = viewOrigin.xy * 0.0006;
+		vec2 uv1 = domeCoords * 1.85 + playerParallax1 + wind1;
 
 		float rawDensity1 = fbm(uv1);
-		// Billowy shape
-		float density1 = smoothstep(0.40, 0.86, rawDensity1);
+		// Cloud coverage threshold: distinct, fluffy, billowy cumulus formations
+		float cloudCoverage = 0.44;
+		float density1 = smoothstep(cloudCoverage, cloudCoverage + 0.28, rawDensity1);
 
-		// Volumetric 3D Shading:
-		// A. Directional sun shadowing (deep crevices between billows)
-		float shadowSample = fbm(uv1 - sunDir.xy * 0.032);
-		float selfShadow = clamp(0.32 + 0.68 * (density1 - shadowSample * 0.65 + 0.35), 0.22, 1.0);
+		if (density1 > 0.001) {
+			// Volumetric 3D directional shadowing: sample offset toward sunlight
+			vec2 sunOffset = -sunDir.xy * 0.075;
+			float shadowDensity = smoothstep(cloudCoverage, cloudCoverage + 0.28, fbm(uv1 + sunOffset));
+			float selfShadow = clamp(1.0 - shadowDensity * 0.65, 0.35, 1.0);
 
-		// B. Forward Mie scattering (Silver Lining on sun-facing edges)
-		float silverLining = pow(max(0.0, sunCos), 16.0) * (1.0 - density1) * density1 * 2.6;
+			// Forward Mie scattering (Silver Lining on illuminated cloud rims)
+			float forwardMie = pow(max(0.0, sunCos), 10.0);
+			float silverLining = forwardMie * (1.0 - density1) * density1 * 2.8;
 
-		// C. Cloud Color: Bright sunlit tops + soft ambient occlusion on undersides
-		vec3 directSun = isNight ? vec3(0.5, 0.6, 0.75) : vec3(1.0, 0.98, 0.92);
-		vec3 cloudAmbient = mix(fogColor * 1.1, vec3(0.48, 0.58, 0.72), 0.45);
-		vec3 cloudColor1 = mix(cloudAmbient, directSun, selfShadow) + directSun * silverLining;
+			// Cloud coloring: warm direct sunlight on top, soft atmospheric ambient underneath
+			vec3 directSun = isNight ? vec3(0.5, 0.6, 0.75) : vec3(1.0, 0.98, 0.95);
+			vec3 cloudAmbient = mix(fogColor * 1.05, vec3(0.42, 0.55, 0.72), 0.52);
+			vec3 cloudColor1 = mix(cloudAmbient, directSun, selfShadow) + directSun * silverLining;
 
-		// Layer 2: High-Altitude Wispy Cirrus Veil (Height = 650 blocks)
-		float h2 = 650.0;
-		float dist2 = h2 / max(upAmount, 0.025);
-		vec2 cloudPos2 = viewOrigin.xy + rayDir.xy * dist2;
-		vec2 wind2 = vec2(time * 0.008, -time * 0.004);
-		vec2 uv2 = cloudPos2 * 0.00038 + wind2;
+			// Distance & horizon atmospheric attenuation
+			float horizonFade = smoothstep(0.01, 0.22, upAmount);
+			float cloudAlpha1 = density1 * 0.94 * horizonFade;
+
+			sky = mix(sky, cloudColor1, cloudAlpha1);
+		}
+
+		// Layer 2: High-Altitude Wispy Cirrus Veil
+		vec2 wind2 = vec2(time * 0.005, -time * 0.002);
+		vec2 playerParallax2 = viewOrigin.xy * 0.00025;
+		vec2 uv2 = domeCoords * 3.4 + playerParallax2 + wind2;
 
 		float rawDensity2 = fbm(uv2);
-		float density2 = smoothstep(0.48, 0.78, rawDensity2) * 0.40;
-		vec3 cloudColor2 = mix(cloudAmbient * 1.15, directSun, 0.75) + directSun * (pow(max(0.0, sunCos), 8.0) * 0.45);
+		float density2 = smoothstep(0.52, 0.76, rawDensity2) * 0.35;
 
-		// Horizon Fog Fade: Softly blend clouds into atmospheric horizon haze
-		float horizonFade = smoothstep(0.02, 0.20, upAmount);
-		float distanceFade = exp(-dist1 * 0.00055);
-
-		float alpha1 = density1 * 0.96;
-		float alpha2 = density2 * (1.0 - alpha1);
-		float totalCloudAlpha = clamp((alpha1 + alpha2) * horizonFade * distanceFade, 0.0, 1.0);
-
-		vec3 finalCloudColor = mix(cloudColor2, cloudColor1, alpha1 / max(0.001, alpha1 + alpha2));
-		sky = mix(sky, finalCloudColor, totalCloudAlpha);
+		if (density2 > 0.001) {
+			float horizonFade2 = smoothstep(0.02, 0.25, upAmount);
+			vec3 cirrusColor = isNight ? vec3(0.6, 0.7, 0.85) : vec3(0.96, 0.98, 1.0);
+			cirrusColor += cirrusColor * (pow(max(0.0, sunCos), 6.0) * 0.30);
+			sky = mix(sky, cirrusColor, density2 * horizonFade2);
+		}
 	}
 
 	gl_FragColor = vec4(sky, 1.0);
