@@ -491,7 +491,7 @@ namespace spades {
 		static Handle<IModel> g_carBodyModel;
 		static Handle<IModel> g_carWheelModel;
 
-		AirBattleState& PlayerCosmetics::GetGlobalAirBattle() {
+		static AirBattleState g_airBattle;
 		static Handle<IModel> g_warbirdFuselageAllied;
 		static Handle<IModel> g_warbirdFuselageAxis;
 		static Handle<IModel> g_warbirdPropModel;
