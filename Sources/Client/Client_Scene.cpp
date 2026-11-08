@@ -43,6 +43,7 @@
 
 #include "NetClient.h"
 #include "PlayerCosmetics.h"
+#include "WeatherSystem.h"
 
 DEFINE_SPADES_SETTING(cg_fov, "68");
 DEFINE_SPADES_SETTING(cg_horizontalFov, "0");
@@ -65,6 +66,9 @@ SPADES_SETTING(cg_spadeDigPreview);
 SPADES_SETTING(cg_spadeDigPreviewRed);
 SPADES_SETTING(cg_autoBridge3);
 SPADES_SETTING(cg_autoBridge3Preview);
+SPADES_SETTING(cg_weatherFogDistance);
+SPADES_SETTING(cg_weatherRain);
+SPADES_SETTING(cg_weatherLightning);
 
 namespace spades {
 	namespace client {
@@ -247,7 +251,13 @@ namespace spades {
 
 			if (world) {
 				IntVector3 fogColor = world->GetFogColor();
-				renderer->SetFogColor(ConvertColorRGB(fogColor));
+				auto& weather = WeatherSystem::GetInstance();
+				if (cg_weatherFogDistance) {
+					renderer->SetFogDistance(weather.GetCurrentFogDistance());
+					renderer->SetFogColor(weather.GetCurrentFogColor());
+				} else {
+					renderer->SetFogColor(ConvertColorRGB(fogColor));
+				}
 
 				int shakeLevel = cg_shake;
 
@@ -841,6 +851,21 @@ namespace spades {
 					ent->Render3D();
 
 				bloodMarks->Draw();
+
+				// Dynamic Weather Precipitation Streaks (Rain / Storm)
+				if (cg_weatherRain) {
+					WeatherSystem::GetInstance().RenderWeatherEffects(*renderer, lastSceneDef.viewOrigin);
+				}
+
+				// Dynamic Lightning Atmospheric Flash Light
+				if (cg_weatherLightning && WeatherSystem::GetInstance().GetLightningIntensity() > 0.05F) {
+					DynamicLightParam dl;
+					dl.type = DynamicLightTypePoint;
+					dl.origin = lastSceneDef.viewOrigin + MakeVector3(0.0F, 0.0F, -30.0F);
+					dl.radius = 140.0F;
+					dl.color = MakeVector3(1.8F, 2.0F, 2.5F) * WeatherSystem::GetInstance().GetLightningIntensity();
+					renderer->AddLight(dl);
+				}
 
 				if (maybePlayer) { // localplayer exists
 					Player& p = maybePlayer.value();

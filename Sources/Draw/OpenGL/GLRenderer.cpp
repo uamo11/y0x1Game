@@ -65,6 +65,7 @@
 #include "IGLDevice.h"
 #include "IGLShadowMapRenderer.h"
 #include <Client/GameMap.h>
+#include <Client/WeatherSystem.h>
 #include <Core/Bitmap.h>
 #include <Core/Debug.h>
 #include <Core/Exception.h>
@@ -784,6 +785,13 @@ namespace spades {
 			static GLProgramUniform sunDirectionUniform("sunDirection");
 			static GLProgramUniform isHDRUniform("isHDR");
 
+			// Dynamic Weather Uniforms
+			static GLProgramUniform weatherZenithColorUniform("weatherZenithColor");
+			static GLProgramUniform weatherCloudColorUniform("weatherCloudColor");
+			static GLProgramUniform weatherCloudCoverageUniform("weatherCloudCoverage");
+			static GLProgramUniform weatherRainIntensityUniform("weatherRainIntensity");
+			static GLProgramUniform weatherLightningUniform("weatherLightning");
+
 			positionAttribute(skyProgram);
 			viewOriginUniform(skyProgram);
 			viewAxisUpUniform(skyProgram);
@@ -795,6 +803,11 @@ namespace spades {
 			timeUniform(skyProgram);
 			sunDirectionUniform(skyProgram);
 			isHDRUniform(skyProgram);
+			weatherZenithColorUniform(skyProgram);
+			weatherCloudColorUniform(skyProgram);
+			weatherCloudCoverageUniform(skyProgram);
+			weatherRainIntensityUniform(skyProgram);
+			weatherLightningUniform(skyProgram);
 
 			skyProgram->Use();
 
@@ -829,6 +842,16 @@ namespace spades {
 			sunDirectionUniform.SetValue(sunDir.x, sunDir.y, sunDir.z);
 
 			isHDRUniform.SetValue(settings.r_hdr ? 1 : 0);
+
+			// Set Dynamic Weather Uniforms
+			auto& weather = client::WeatherSystem::GetInstance();
+			Vector3 zCol = weather.GetCurrentZenithColor();
+			Vector3 cCol = weather.GetCurrentCloudColor();
+			weatherZenithColorUniform.SetValue(zCol.x, zCol.y, zCol.z);
+			weatherCloudColorUniform.SetValue(cCol.x, cCol.y, cCol.z);
+			weatherCloudCoverageUniform.SetValue(weather.GetCurrentCloudCoverage());
+			weatherRainIntensityUniform.SetValue(weather.GetCurrentRainIntensity());
+			weatherLightningUniform.SetValue(weather.GetLightningIntensity());
 
 			// Configure OpenGL states:
 			// DepthFunc LessOrEqual with quad at z=1.0: only shades unoccluded background sky!

@@ -57,6 +57,7 @@
 #include "Corpse.h"
 #include "SmokeSpriteEntity.h"
 #include "PlayerCosmetics.h"
+#include "WeatherSystem.h"
 
 #include "GameMap.h"
 #include "Weapon.h"
@@ -76,6 +77,11 @@ DEFINE_SPADES_SETTING(cg_fog, "1");
 DEFINE_SPADES_SETTING(cg_volumetricSky, "1");
 DEFINE_SPADES_SETTING(cg_helicopter, "1");
 DEFINE_SPADES_SETTING(cg_airBattle, "0");
+DEFINE_SPADES_SETTING(cg_weather, "auto");
+DEFINE_SPADES_SETTING(cg_weatherRain, "1");
+DEFINE_SPADES_SETTING(cg_weatherLightning, "1");
+DEFINE_SPADES_SETTING(cg_weatherAudio, "1");
+DEFINE_SPADES_SETTING(cg_weatherFogDistance, "1");
 
 SPADES_SETTING(cg_playerName);
 SPADES_SETTING(cg_centerMessageSmallFont);
@@ -1509,6 +1515,9 @@ namespace spades {
 		void Client::ServerSentMessage(bool system, const std::string& msg) {
 			NetLog("%s", msg.c_str());
 			scriptedUI->RecordChatLog(msg);
+
+			// Synchronize global server weather
+			WeatherSystem::GetInstance().OnServerMessage(msg);
 
 			if (cg_serverAlert) {
 				if (msg.substr(0, 3) == CHATPREFIX_BIG) {

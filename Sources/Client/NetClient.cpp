@@ -35,6 +35,7 @@
 #include "Grenade.h"
 #include "NetClient.h"
 #include "PlayerCosmetics.h"
+#include "WeatherSystem.h"
 #include "Socks5UdpRelay.h"
 #include <Gui/ProxyManager.h>
 #include "Player.h"
@@ -1966,6 +1967,17 @@ namespace spades {
 				} else {
 					PlayerCosmetics::GetGlobalAirBattle().active = true;
 					cg_airBattle = 1;
+				}
+			}
+
+			if (lowerText.substr(0, 8) == "/weather" || lowerText.substr(0, 6) == "/clima") {
+				std::string sub = (lowerText.substr(0, 8) == "/weather") ? lowerText.substr(8) : lowerText.substr(6);
+				size_t start = sub.find_first_not_of(" ");
+				if (start != std::string::npos) {
+					sub = sub.substr(start);
+					size_t end = sub.find_first_of(" ");
+					if (end != std::string::npos) sub = sub.substr(0, end);
+					WeatherSystem::GetInstance().SetWeatherByName(sub, true);
 				}
 			}
 

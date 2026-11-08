@@ -50,6 +50,7 @@
 
 #include "NetClient.h"
 #include "PlayerCosmetics.h"
+#include "WeatherSystem.h"
 
 DEFINE_SPADES_SETTING(cg_ragdoll, "1");
 SPADES_SETTING(cg_blood);
@@ -529,6 +530,16 @@ namespace spades {
 				}
 				++it;
 			}
+
+			// Update dynamic weather system & precipitation
+			Vector3 weatherPos = lastSceneDef.viewOrigin;
+			if (world) {
+				stmp::optional<Player&> lp = world->GetLocalPlayer();
+				if (lp) {
+					weatherPos = lp.value().GetEyePosition();
+				}
+			}
+			WeatherSystem::GetInstance().Update(dt, weatherPos, *this);
 
 			// Update helicopter vehicle physics, rotor animation & 3D spatial audio
 			auto& heli = PlayerCosmetics::GetGlobalHelicopter();
