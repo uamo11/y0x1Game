@@ -690,6 +690,8 @@ namespace spades {
 					p0.health = 100.0F;
 					p0.state = 1; // Hunter
 					p0.burstTimer = 0.05F; // Immediately start firing machine gun bursts!
+
+					battle.flybyTimer = 6.0F; // First screaming dive occurs quickly (6s) so player hears the sirens immediately
 				}
 
 				// Role switching between Hunter and Prey
@@ -703,14 +705,15 @@ namespace spades {
 					}
 				}
 
-				// Low-Altitude Near-Miss Flyby Trigger ("sentías que se iban a estrellar contra ti")
+				// Low-Altitude Near-Miss Flyby Trigger ("sentías que se iban a estrellar contra ti" / Stuka Dive Siren)
 				battle.flybyTimer -= dt;
 				if (battle.flybyTimer <= 0.0F) {
-					battle.flybyTimer = 24.0F + static_cast<float>(rand() % 10);
+					battle.flybyTimer = 15.0F + static_cast<float>(rand() % 8);
 					int flybyIdx = rand() % 2;
 					if (battle.planes[flybyIdx].active && battle.planes[flybyIdx].state != 4) {
 						battle.planes[flybyIdx].state = 3; // Dive Flyby
-						battle.planes[flybyIdx].stateTimer = 6.0F;
+						battle.planes[flybyIdx].stateTimer = 6.5F;
+						battle.planes[flybyIdx].flybySoundTimer = 0.0F; // Trigger dive siren immediately on entry!
 					}
 				}
 
@@ -838,26 +841,51 @@ namespace spades {
 							}
 						}
 
-						// Near-miss sound cue when swooping past (< 40 blocks)
+						// Near-miss Stuka Jericho dive siren ("Trompetas de Jericó" - 3 variations)
 						p.flybySoundTimer -= dt;
-						if (distToPlayer < 40.0F && p.flybySoundTimer <= 0.0F) {
-							p.flybySoundTimer = 3.5F;
+						if (p.flybySoundTimer <= 0.0F) {
+							p.flybySoundTimer = 3.6F;
 							if (audioDevice) {
-								Handle<IAudioChunk> whoosh = audioDevice->RegisterSound("Sounds/Vehicles/HelicopterRotor.wav");
+								static const char* const stukaDiveSounds[3] = {
+									"Sounds/Vehicles/StukaDive1.wav",
+									"Sounds/Vehicles/StukaDive2.wav",
+									"Sounds/Vehicles/StukaDive3.wav"
+								};
+								Handle<IAudioChunk> whoosh = audioDevice->RegisterSound(stukaDiveSounds[rand() % 3]);
 								if (whoosh) {
 									AudioParam wparam;
-									wparam.volume = 5.0F;
-									wparam.pitch = 2.4F; // Screaming prop dive sound
-									wparam.referenceDistance = 60.0F;
+									wparam.volume = 5.6F;
+									wparam.pitch = 1.0F + (p.speed - 50.0F) * 0.012F;
+									wparam.referenceDistance = 85.0F;
 									audioDevice->Play(whoosh.GetPointerOrNull(), p.position, wparam);
 								}
 							}
 						}
 					} else if (p.state == 4) {
-						// SPIRAL DEATH: Fiery uncontrolled death dive
+						// SPIRAL DEATH: Fiery uncontrolled death dive with screaming dive wail
 						p.roll += 14.0F * dt;
 						p.pitch += (1.35F - p.pitch) * (2.5F * dt); // Point straight down
 						p.speed = 65.0F;
+
+						p.flybySoundTimer -= dt;
+						if (p.flybySoundTimer <= 0.0F) {
+							p.flybySoundTimer = 2.8F;
+							if (audioDevice) {
+								static const char* const stukaDiveSounds[3] = {
+									"Sounds/Vehicles/StukaDive1.wav",
+									"Sounds/Vehicles/StukaDive2.wav",
+									"Sounds/Vehicles/StukaDive3.wav"
+								};
+								Handle<IAudioChunk> siren = audioDevice->RegisterSound(stukaDiveSounds[rand() % 3]);
+								if (siren) {
+									AudioParam sparam;
+									sparam.volume = 5.8F;
+									sparam.pitch = 1.15F;
+									sparam.referenceDistance = 90.0F;
+									audioDevice->Play(siren.GetPointerOrNull(), p.position, sparam);
+								}
+							}
+						}
 
 						// Dense black smoke & fiery sparks trailing from engine
 						p.smokeTimer -= dt;
@@ -937,22 +965,17 @@ namespace spades {
 						p.roll += (-yawDiff * 2.2F - p.roll) * (3.0F * dt);
 					}
 
-					// Engine Audio with dynamic Doppler and dive pitch shift
+					// Engine Audio: Authentic WWII Warbird V12 Engine (Rolls-Royce Merlin / DB 601)
 					p.engineSoundTimer -= dt;
 					if (p.engineSoundTimer <= 0.0F) {
 						p.engineSoundTimer = 2.0F;
-						if (audioDevice) {
-							Handle<IAudioChunk> eng = audioDevice->RegisterSound("Sounds/Vehicles/HelicopterRotor.wav");
+						if (audioDevice && p.state != 3 && p.state != 4) {
+							Handle<IAudioChunk> eng = audioDevice->RegisterSound("Sounds/Vehicles/WarbirdEngine.wav");
 							if (eng) {
 								AudioParam ep;
-								ep.referenceDistance = 35.0F;
-								if (p.state == 3 || p.state == 4) {
-									ep.volume = 3.6F;
-									ep.pitch = 2.25F; // Screaming dive
-								} else {
-									ep.volume = 2.2F;
-									ep.pitch = 1.70F + (p.speed - 40.0F) * 0.02F;
-								}
+								ep.referenceDistance = 45.0F;
+								ep.volume = 2.4F;
+								ep.pitch = 0.95F + (p.speed - 40.0F) * 0.015F;
 								audioDevice->Play(eng.GetPointerOrNull(), p.position, ep);
 							}
 						}
