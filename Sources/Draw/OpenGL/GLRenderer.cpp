@@ -840,7 +840,7 @@ namespace spades {
 			device->Enable(IGLDevice::CullFace, false);
 
 			GLQuadRenderer qr(*device);
-			qr.SetCoordAttributeIndex(positionAttribute.GetIndex());
+			qr.SetCoordAttributeIndex(positionAttribute());
 			qr.Draw();
 
 			// Restore depth mask
