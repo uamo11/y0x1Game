@@ -690,6 +690,7 @@ namespace spades {
 								float basePitch = isCruising ? (0.80F + std::min(0.60F, (carSpeed / 24.0F) * 0.50F)) : 1.0F;
 
 								// Sound sputtering/roughness across damage tiers
+								float const curTime = world ? world->GetTime() : 0.0F;
 								if (car.healthTier == 2) {
 									basePitch *= (0.95F + 0.05F * sinf(curTime * 14.0F)); // Engine stuttering under damage
 								} else if (car.healthTier == 1) {
