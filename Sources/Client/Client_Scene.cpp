@@ -860,10 +860,10 @@ namespace spades {
 							bool isRight;
 						};
 						WheelMount mounts[4] = {
-							{ -9.5F, -15.0F, 4.0F, true, false },  // Front-Left
-							{  9.5F, -15.0F, 4.0F, true, true },   // Front-Right
-							{ -9.5F,  16.0F, 4.0F, false, false }, // Rear-Left
-							{  9.5F,  16.0F, 4.0F, false, true }   // Rear-Right
+							{ -9.5F, -17.0F, 3.5F, true, false },  // Front-Left
+							{  9.5F, -17.0F, 3.5F, true, true },   // Front-Right
+							{ -9.5F,  15.0F, 3.5F, false, false }, // Rear-Left
+							{  9.5F,  15.0F, 3.5F, false, true }   // Rear-Right
 						};
 
 						for (int i = 0; i < 4; ++i) {
