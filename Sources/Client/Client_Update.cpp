@@ -536,7 +536,7 @@ namespace spades {
 			if (world) {
 				stmp::optional<Player&> lp = world->GetLocalPlayer();
 				if (lp) {
-					weatherPos = lp.value().GetEyePosition();
+					weatherPos = lp.value().GetPosition();
 				}
 			}
 			WeatherSystem::GetInstance().Update(dt, weatherPos, *this);
