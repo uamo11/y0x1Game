@@ -72,8 +72,6 @@ namespace spades {
 			float chassisRollLean = 0.0F;
 		};
 
-		static int GetVehicleMaxCapacity(int carType);
-		static void GetVehicleSeatOffset(int carType, int seatIdx, float& lat, float& lon, float& vert);
 
 		struct HelicopterState {
 			bool active = false;
@@ -143,6 +141,12 @@ namespace spades {
 
 			/** Global classic vintage car vehicle state */
 			static ClassicCarState& GetGlobalCar();
+
+			/** Returns maximum passenger capacity for vehicle type */
+			static int GetVehicleMaxCapacity(int carType);
+
+			/** Computes 3D seat offset for vehicle type and seat index */
+			static void GetVehicleSeatOffset(int carType, int seatIdx, float& lat, float& lon, float& vert);
 
 			/** Returns (and caches) procedural 3D vehicle chassis & body model by vehicle type (1: Chevelle, 2: Toyota LC79, 3: Military ISV, 4: GMC Denali, 5: Fiat Uno Turbo) */
 			static Handle<IModel> GetCarBodyModel(IRenderer& renderer, int carType = 1);
