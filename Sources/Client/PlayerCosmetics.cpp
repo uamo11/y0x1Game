@@ -2673,5 +2673,51 @@ namespace spades {
 			g_warbirdFuselageAxis = Handle<IModel>();
 			g_warbirdPropModel = Handle<IModel>();
 		}
+
+		int PlayerCosmetics::GetVehicleMaxCapacity(int carType) {
+			switch (carType) {
+				case 2: return 4;
+				case 3: return 6;
+				case 4: return 6;
+				case 5: return 2;
+				default: return 2;
+			}
+		}
+
+		void PlayerCosmetics::GetVehicleSeatOffset(int carType, int seatIdx, float& lat, float& lon, float& vert) {
+			lat = 0.0F; lon = 0.0F; vert = 1.40F;
+			switch (carType) {
+				case 2:
+					if (seatIdx == 0)      { lat = -0.88F; lon = -0.10F; vert = 1.60F; }
+					else if (seatIdx == 1) { lat =  0.88F; lon = -0.10F; vert = 1.60F; }
+					else if (seatIdx == 2) { lat = -0.75F; lon = -2.10F; vert = 1.50F; }
+					else if (seatIdx == 3) { lat =  0.75F; lon = -2.10F; vert = 1.50F; }
+					break;
+				case 3:
+					if (seatIdx == 0)      { lat = -0.85F; lon =  0.45F; vert = 1.42F; }
+					else if (seatIdx == 1) { lat =  0.85F; lon =  0.45F; vert = 1.42F; }
+					else if (seatIdx == 2) { lat = -0.85F; lon = -0.65F; vert = 1.42F; }
+					else if (seatIdx == 3) { lat =  0.85F; lon = -0.65F; vert = 1.42F; }
+					else if (seatIdx == 4) { lat = -0.80F; lon = -1.85F; vert = 1.42F; }
+					else if (seatIdx == 5) { lat =  0.80F; lon = -1.85F; vert = 1.42F; }
+					break;
+				case 4:
+					if (seatIdx == 0)      { lat = -0.92F; lon =  0.40F; vert = 1.55F; }
+					else if (seatIdx == 1) { lat =  0.92F; lon =  0.40F; vert = 1.55F; }
+					else if (seatIdx == 2) { lat = -0.92F; lon = -0.75F; vert = 1.55F; }
+					else if (seatIdx == 3) { lat =  0.92F; lon = -0.75F; vert = 1.55F; }
+					else if (seatIdx == 4) { lat = -0.85F; lon = -2.25F; vert = 1.50F; }
+					else if (seatIdx == 5) { lat =  0.85F; lon = -2.25F; vert = 1.50F; }
+					break;
+				case 5:
+					if (seatIdx == 0)      { lat = -0.68F; lon = -0.05F; vert = 1.25F; }
+					else                   { lat =  0.68F; lon = -0.05F; vert = 1.25F; }
+					break;
+				default:
+					if (seatIdx == 0)      { lat = -0.85F; lon = -0.35F; vert = 1.40F; }
+					else                   { lat =  0.85F; lon = -0.35F; vert = 1.40F; }
+					break;
+			}
+		}
 	} // namespace client
 } // namespace spades

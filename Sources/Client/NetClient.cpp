@@ -1470,14 +1470,22 @@ namespace spades {
 						break;
 					}
 
+					// Intercept vehicle horn trigger packets
+					if (msg.rfind("[CAR_HORN]", 0) == 0) {
+						PlayerCosmetics::GetGlobalCar().hornTimer = 1.0F;
+						break;
+					}
+
 					// Intercept vehicle synchronization packets (do not show in chat)
 					if (msg.rfind("[CAR_SYNC]", 0) == 0) {
 						int cId = 1, driverId = -1, passId = -1, hp = 350, maxHp = 350, tier = 3, modelType = 1;
+						int occ2 = -1, occ3 = -1, occ4 = -1, occ5 = -1;
 						float cx = 0, cy = 0, cz = 0, cyaw = 0, cpitch = 0, croll = 0, csteer = 0;
 						float cvx = 0, cvy = 0, cvz = 0;
-						int parsed = std::sscanf(msg.c_str(), "[CAR_SYNC] %d %f %f %f %f %f %f %f %d %d %d %d %d %f %f %f %d",
+						int parsed = std::sscanf(msg.c_str(), "[CAR_SYNC] %d %f %f %f %f %f %f %f %d %d %d %d %d %f %f %f %d %d %d %d %d",
 						                         &cId, &cx, &cy, &cz, &cyaw, &cpitch, &croll, &csteer, &driverId, &passId,
-						                         &hp, &maxHp, &tier, &cvx, &cvy, &cvz, &modelType);
+						                         &hp, &maxHp, &tier, &cvx, &cvy, &cvz, &modelType,
+						                         &occ2, &occ3, &occ4, &occ5);
 						if (parsed >= 17) {
 							PlayerCosmetics::GetGlobalCar().modelType = modelType;
 						} else if (cId >= 1 && cId <= 5) {
@@ -1492,6 +1500,7 @@ namespace spades {
 								cState.active = false;
 								cState.health = 0;
 								cState.healthTier = 0;
+								for (int s = 0; s < 6; ++s) cState.occupantIds[s] = -1;
 							} else {
 								Vector3 newPos = MakeVector3(cx, cy, cz);
 								if (!cState.active || (newPos - cState.position).GetSquaredLength() > 100.0F) {
@@ -1512,6 +1521,12 @@ namespace spades {
 								cState.id = cId;
 								cState.driverId = driverId;
 								cState.passId = passId;
+								cState.occupantIds[0] = driverId;
+								cState.occupantIds[1] = passId;
+								cState.occupantIds[2] = (parsed >= 18) ? occ2 : -1;
+								cState.occupantIds[3] = (parsed >= 19) ? occ3 : -1;
+								cState.occupantIds[4] = (parsed >= 20) ? occ4 : -1;
+								cState.occupantIds[5] = (parsed >= 21) ? occ5 : -1;
 								if (parsed >= 11) cState.health = hp;
 								if (parsed >= 12) cState.maxHealth = maxHp;
 								if (parsed >= 13) cState.healthTier = tier;

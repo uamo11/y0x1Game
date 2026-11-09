@@ -2931,7 +2931,7 @@ namespace spades {
 					IFont& font = fontManager->GetGuiFont();
 					int myPid = static_cast<int>(player.GetId());
 
-					if (cState.driverId == myPid) {
+					if (cState.driverId == myPid || cState.occupantIds[0] == myPid) {
 						std::string tierName;
 						Vector4 hudColor;
 						if (cState.healthTier == 3) {
@@ -2996,7 +2996,13 @@ namespace spades {
 					} else if (!hState.active || (hState.pilotId != myPid && hState.pass1Id != myPid && hState.pass2Id != myPid)) {
 						float dist = (player.GetOrigin() - cState.position).GetLength();
 						if (dist < 14.0F) {
-							int occupants = (cState.driverId >= 0 ? 1 : 0) + (cState.passId >= 0 ? 1 : 0);
+							int occupants = 0;
+							for (int s = 0; s < 6; ++s) {
+								if (cState.occupantIds[s] >= 0) occupants++;
+							}
+							if (occupants == 0) {
+								occupants = (cState.driverId >= 0 ? 1 : 0) + (cState.passId >= 0 ? 1 : 0);
+							}
 							if (occupants < 2) {
 								std::string enterText = "[ Presiona 'E' para subirte al Auto Clásico ] (" + std::to_string(occupants) + "/2 Plazas) HP: " + std::to_string(cState.health) + "/" + std::to_string(cState.maxHealth);
 								float txtW = font.Measure(enterText).x;

@@ -1159,7 +1159,11 @@ namespace spades {
 							auto& cState = PlayerCosmetics::GetGlobalCar();
 							auto& hState = PlayerCosmetics::GetGlobalHelicopter();
 							int myPid = static_cast<int>(p.GetId());
-							if (cState.active && (cState.driverId == myPid || cState.passId == myPid)) {
+							bool inCar = (cState.driverId == myPid || cState.passId == myPid);
+							for (int s = 0; s < 6; ++s) {
+								if (cState.occupantIds[s] == myPid) inCar = true;
+							}
+							if (cState.active && inCar) {
 								activeNet->SendChat("/car", false);
 							} else if (hState.active && (hState.pilotId == myPid || hState.pass1Id == myPid || hState.pass2Id == myPid)) {
 								activeNet->SendChat("/heli", false);

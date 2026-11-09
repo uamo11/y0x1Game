@@ -343,8 +343,8 @@ namespace spades {
 				auto& hState = PlayerCosmetics::GetGlobalHelicopter();
 				auto& cState = PlayerCosmetics::GetGlobalCar();
 				if ((hState.active && hState.health > 0 && hState.pilotId == static_cast<int>(GetId())) ||
-				    (cState.active && cState.health > 0 && cState.driverId == static_cast<int>(GetId()))) {
-					// Driver in cockpit/car: Primary click controls vehicle, not handheld weapon fire
+				    (cState.active && cState.health > 0 && (cState.driverId == static_cast<int>(GetId()) || cState.occupantIds[0] == static_cast<int>(GetId())))) {
+					// Driver in cockpit/car: Primary click controls vehicle horn, not handheld weapon fire
 					weapon->SetShooting(false);
 				} else {
 					weapon->SetShooting(newInput.primary);
@@ -1492,36 +1492,42 @@ namespace spades {
 				return;
 			}
 
-			// Keep driver and passenger seated naturally inside the classic vintage car
+			// Keep all occupants (driver and passengers up to 6) seated naturally without clipping
 			auto& cState = PlayerCosmetics::GetGlobalCar();
 			bool isCarActive = cState.active && cState.health > 0;
-			bool isDriverCar = isCarActive && cState.driverId == static_cast<int>(GetId());
-			bool isPassCar = isCarActive && cState.passId == static_cast<int>(GetId());
+			int mySeat = -1;
+			int myPid = static_cast<int>(GetId());
+			for (int s = 0; s < 6; ++s) {
+				if (cState.occupantIds[s] == myPid) {
+					mySeat = s;
+					break;
+				}
+			}
+			if (mySeat < 0) {
+				if (cState.driverId == myPid) mySeat = 0;
+				else if (cState.passId == myPid) mySeat = 1;
+			}
 
-			if (isDriverCar || isPassCar) {
+			if (isCarActive && mySeat >= 0) {
 				Vector3 front = Vector3(sinf(cState.yaw), -cosf(cState.yaw), 0.0F);
 				Vector3 right = Vector3(-cosf(cState.yaw), -sinf(cState.yaw), 0.0F);
 
-				input.crouch = true; // Seated bench pose
+				input.crouch = true; // Seated natural bench/bucket posture
 
-				int cType = cState.modelType;
-				float seatX = 0.85F, seatY = 0.35F, seatZ = 1.60F;
-				if (cType == 2) { seatX = 0.90F; seatY = 0.30F; seatZ = 1.85F; }
-				else if (cType == 3) { seatX = 0.90F; seatY = 0.35F; seatZ = 1.70F; }
-				else if (cType == 4) { seatX = 0.98F; seatY = 0.40F; seatZ = 1.80F; }
-				else if (cType == 5) { seatX = 0.72F; seatY = 0.25F; seatZ = 1.45F; }
+				float lat = 0.0F, lon = 0.0F, vert = 1.40F;
+				PlayerCosmetics::GetVehicleSeatOffset(cState.modelType, mySeat, lat, lon, vert);
 
-				if (isDriverCar) {
-					position = cState.position - right * seatX - front * seatY + MakeVector3(0.0F, 0.0F, -seatZ);
-					RepositionPlayer(position);
-					eye = position + MakeVector3(0.0F, 0.0F, -0.4F);
+				position = cState.position + right * lat + front * lon + MakeVector3(0.0F, 0.0F, -vert);
+				RepositionPlayer(position);
+				eye = position + MakeVector3(0.0F, 0.0F, -0.4F);
+
+				if (mySeat == 0) {
+					// Driver looks forward along vehicle heading
 					orientation = front;
 					orientationSmoothed = front;
-				} else {
-					position = cState.position + right * seatX - front * seatY + MakeVector3(0.0F, 0.0F, -seatZ);
-					RepositionPlayer(position);
-					eye = position + MakeVector3(0.0F, 0.0F, -0.4F);
 				}
+				// Passengers retain free aim to shoot out windows/flatbed/roll-cage!
+
 				velocity = MakeVector3(0.0F, 0.0F, 0.0F);
 				airborne = true;
 				return;

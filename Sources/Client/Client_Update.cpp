@@ -688,40 +688,50 @@ namespace spades {
 						car.wheelRotation = fmodf(car.wheelRotation, 6.283185F);
 				}
 
-				// 1. Non-Repetitive V8 Ignition & Startup Sound
+				// 1. Vehicle-Specific Startup & Ignition Audio (3 non-repetitive variants per vehicle)
 				if (car.driverId >= 0 && car.lastDriverId < 0 && audioDevice) {
 					try {
-						const char* startSounds[3] = {
-							"Sounds/Vehicles/CarStart1.wav",
-							"Sounds/Vehicles/CarStart2.wav",
-							"Sounds/Vehicles/CarStart3.wav"
-						};
-						const char* chosenStart = startSounds[rand() % 3];
-						Handle<IAudioChunk> startSnd = audioDevice->RegisterSound(chosenStart);
+						char startPath[64];
+						std::snprintf(startPath, sizeof(startPath), "Sounds/Vehicles/Car%d_Start%d.wav", car.modelType, 1 + (rand() % 3));
+						Handle<IAudioChunk> startSnd = audioDevice->RegisterSound(startPath);
+						if (!startSnd) {
+							std::snprintf(startPath, sizeof(startPath), "Sounds/Vehicles/CarStart%d.wav", 1 + (rand() % 3));
+							startSnd = audioDevice->RegisterSound(startPath);
+						}
 						if (startSnd) {
 							AudioParam startParam;
 							startParam.volume = 1.0F;
+							startParam.referenceDistance = 30.0F;
 							audioDevice->Play(startSnd.GetPointerOrNull(), car.position, startParam);
 						}
 					} catch (...) {}
 				}
 				car.lastDriverId = car.driverId;
 
-				// 2. Dynamic Speed & Engine Audio (Idle Rumble vs Throttle Acceleration)
+				// 2. Vehicle-Specific Engine Audio (Idle Rumble vs Throttle Acceleration)
 				if (car.driverId >= 0 && audioDevice) {
 					car.soundTimer -= dt;
 					if (car.soundTimer <= 0.0F) {
 						bool isCruising = (carSpeed > 1.5F);
 						car.soundTimer = isCruising ? 2.30F : 1.90F;
 						try {
-							const char* sndPath = isCruising
-								? "Sounds/Vehicles/CarAccelerate.wav"
-								: "Sounds/Vehicles/CarIdle.wav";
+							char sndPath[64];
+							if (isCruising) {
+								std::snprintf(sndPath, sizeof(sndPath), "Sounds/Vehicles/Car%d_Accelerate.wav", car.modelType);
+							} else {
+								std::snprintf(sndPath, sizeof(sndPath), "Sounds/Vehicles/Car%d_Idle.wav", car.modelType);
+							}
 							Handle<IAudioChunk> engineSnd = audioDevice->RegisterSound(sndPath);
+							if (!engineSnd) {
+								engineSnd = audioDevice->RegisterSound(isCruising ? "Sounds/Vehicles/CarAccelerate.wav" : "Sounds/Vehicles/CarIdle.wav");
+							}
 							if (engineSnd) {
 								AudioParam param;
 								param.volume = isCruising ? (0.85F + std::min(0.35F, carSpeed * 0.015F)) : 0.75F;
 								float basePitch = isCruising ? (0.80F + std::min(0.60F, (carSpeed / 24.0F) * 0.50F)) : 1.0F;
+
+								// Subtle variation per cycle (+-3% pitch) so loops never sound identical
+								basePitch *= (0.97F + 0.06F * ((rand() % 100) / 100.0F));
 
 								// Sound sputtering/roughness across damage tiers
 								float const curTime = world ? world->GetTime() : 0.0F;
@@ -731,13 +741,46 @@ namespace spades {
 									basePitch *= (0.85F + 0.15F * sinf(curTime * 22.0F)); // Severe coughing/misfire
 								}
 								param.pitch = basePitch;
-								param.referenceDistance = 25.0F;
+								param.referenceDistance = 28.0F;
 								audioDevice->Play(engineSnd.GetPointerOrNull(), car.position, param);
 							}
 						} catch (...) {}
 					}
 				} else {
 					car.soundTimer = 0.0F;
+				}
+
+				// 3. Dynamic Horn Playback per Vehicle
+				if (car.hornTimer > 0.0F && audioDevice) {
+					car.hornTimer = 0.0F;
+					try {
+						char hornPath[64];
+						std::snprintf(hornPath, sizeof(hornPath), "Sounds/Vehicles/Car%d_Horn.wav", car.modelType);
+						Handle<IAudioChunk> hornSnd = audioDevice->RegisterSound(hornPath);
+						if (hornSnd) {
+							AudioParam hParam;
+							hParam.volume = 1.0F;
+							hParam.referenceDistance = 35.0F;
+							audioDevice->Play(hornSnd.GetPointerOrNull(), car.position, hParam);
+						}
+					} catch (...) {}
+				}
+
+				// 4. Dynamic Turbo Blow-Off Valve on Throttle Release / Deceleration
+				if (car.blowOffCooldown > 0.0F) {
+					car.blowOffCooldown -= dt;
+				}
+				if (accel < -7.0F && carSpeed > 5.0F && car.blowOffCooldown <= 0.0F && audioDevice && (car.modelType == 2 || car.modelType == 3 || car.modelType == 5)) {
+					car.blowOffCooldown = 2.0F;
+					try {
+						Handle<IAudioChunk> blowSnd = audioDevice->RegisterSound("Sounds/Vehicles/Car_BlowOff.wav");
+						if (blowSnd) {
+							AudioParam bParam;
+							bParam.volume = 0.75F;
+							bParam.pitch = 0.95F + 0.1F * ((rand() % 100) / 100.0F);
+							audioDevice->Play(blowSnd.GetPointerOrNull(), car.position, bParam);
+						}
+					} catch (...) {}
 				}
 
 				// 3. Engine Smoke & Damage Visuals (Cowl vents on 1.2x hood)

@@ -56,18 +56,24 @@ namespace spades {
 			int driverId = -1;
 			int lastDriverId = -1;
 			int passId = -1;
+			int occupantIds[6] = { -1, -1, -1, -1, -1, -1 }; // 0: Driver, 1: Front Pass, 2..5: Mid/Rear/Bed Pass
 			int health = 350;
 			int maxHealth = 350;
 			int healthTier = 3;
 			float soundTimer = 0.0F;
 			float smokeTimer = 0.0F;
 			float hornTimer = 0.0F;
+			float prevAvgComp = 0.0F;
+			float blowOffCooldown = 0.0F;
 			// Dynamic Weight-Aware 4-Wheel Independent Suspension
 			float wheelCompression[4] = { 0.0F, 0.0F, 0.0F, 0.0F }; // 0: FL, 1: FR, 2: RL, 3: RR
 			float prevCarSpeed = 0.0F;
 			float chassisPitchSquat = 0.0F;
 			float chassisRollLean = 0.0F;
 		};
+
+		static int GetVehicleMaxCapacity(int carType);
+		static void GetVehicleSeatOffset(int carType, int seatIdx, float& lat, float& lon, float& vert);
 
 		struct HelicopterState {
 			bool active = false;

@@ -121,13 +121,15 @@ namespace spades {
 				auto& cState = PlayerCosmetics::GetGlobalCar();
 				if (cState.active && cState.health > 0) {
 					int myPid = static_cast<int>(p.GetId());
-					if (cState.driverId == myPid) {
-						// Conductor del Auto Clásico: Vista en 3ra persona de conducción
+					if (cState.driverId == myPid || cState.occupantIds[0] == myPid) {
+						// Conductor del Auto: Vista en 3ra persona de conducción
 						return ClientCameraMode::ThirdPersonLocal;
 					}
-					if (cState.passId == myPid) {
-						// Copiloto: Vista en 1ra persona para mirar por la ventanilla y disparar
-						return ClientCameraMode::FirstPersonLocal;
+					// Todos los demás ocupantes (1..5): Vista en 1ra persona para mirar por la ventana/batea/jaula y disparar
+					for (int s = 1; s < 6; ++s) {
+						if (cState.occupantIds[s] == myPid || (s == 1 && cState.passId == myPid)) {
+							return ClientCameraMode::FirstPersonLocal;
+						}
 					}
 				}
 
@@ -455,6 +457,9 @@ namespace spades {
 						}
 						auto& cState = PlayerCosmetics::GetGlobalCar();
 						bool inCar = cState.active && (cState.driverId == pid || cState.passId == pid);
+						for (int s = 0; s < 6; ++s) {
+							if (cState.occupantIds[s] == pid) inCar = true;
+						}
 						if (inCar) {
 							int cType = cState.modelType;
 							if (cType == 2) {
