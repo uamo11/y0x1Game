@@ -859,38 +859,56 @@ namespace spades {
 						};
 						WheelMount mounts[4];
 						float carScale = 0.198F;
+						float staticSag = 0.6F;   // voxels settled under vehicle weight
+						float maxBump = 2.4F;     // voxels max compression
+						float maxDroop = 2.2F;    // voxels max extension
 
 						switch (carType) {
-							case 2: // Toyota Land Cruiser 79 4x4 (Macho) - Wheelbase: -18.0F, +16.0F
+							case 2: // Toyota Land Cruiser 79 4x4 (Macho) - 2400 kg
 								carScale = 0.205F;
+								staticSag = 0.8F;
+								maxBump = 2.8F;
+								maxDroop = 2.6F;
 								mounts[0] = { -10.5F, -18.0F, 4.8F, true, false };
 								mounts[1] = {  10.5F, -18.0F, 4.8F, true, true };
 								mounts[2] = { -10.5F,  16.0F, 4.8F, false, false };
 								mounts[3] = {  10.5F,  16.0F, 4.8F, false, true };
 								break;
-							case 3: // Military ISV Buggy - Wheelbase: -18.0F, +16.0F
+							case 3: // Military ISV Buggy - 2200 kg
 								carScale = 0.200F;
+								staticSag = 0.8F;
+								maxBump = 2.8F;
+								maxDroop = 2.8F;
 								mounts[0] = { -10.5F, -18.0F, 4.5F, true, false };
 								mounts[1] = {  10.5F, -18.0F, 4.5F, true, true };
 								mounts[2] = { -10.5F,  16.0F, 4.5F, false, false };
 								mounts[3] = {  10.5F,  16.0F, 4.5F, false, true };
 								break;
-							case 4: // GMC Sierra Denali Crew Cab - Wheelbase: -20.0F, +17.0F
+							case 4: // GMC Sierra Denali Crew Cab - 2800 kg (Heavy American Truck)
 								carScale = 0.210F;
+								staticSag = 1.2F; // Deep authoritative weight settle
+								maxBump = 2.5F;
+								maxDroop = 1.8F;
 								mounts[0] = { -11.0F, -20.0F, 4.2F, true, false };
 								mounts[1] = {  11.0F, -20.0F, 4.2F, true, true };
 								mounts[2] = { -11.0F,  17.0F, 4.2F, false, false };
 								mounts[3] = {  11.0F,  17.0F, 4.2F, false, true };
 								break;
-							case 5: // Fiat Uno Turbo i.e. - Wheelbase: -14.0F, +13.0F
+							case 5: // Fiat Uno Turbo i.e. - 845 kg (Ultralight Hot Hatch)
 								carScale = 0.178F;
+								staticSag = 0.4F; // Stiff rally setup
+								maxBump = 1.8F;
+								maxDroop = 1.4F;
 								mounts[0] = { -8.8F, -14.0F, 3.5F, true, false };
 								mounts[1] = {  8.8F, -14.0F, 3.5F, true, true };
 								mounts[2] = { -8.8F,  13.0F, 3.5F, false, false };
 								mounts[3] = {  8.8F,  13.0F, 3.5F, false, true };
 								break;
-							default: // 1: Chevelle Muscle Coupe - Wheelbase: -17.0F, +15.0F
+							default: // 1: Chevelle Muscle Coupe - 1650 kg
 								carScale = 0.198F;
+								staticSag = 0.6F;
+								maxBump = 2.2F;
+								maxDroop = 2.0F;
 								mounts[0] = { -9.8F, -17.0F, 4.0F, true, false };
 								mounts[1] = {  9.8F, -17.0F, 4.0F, true, true };
 								mounts[2] = { -9.8F,  15.0F, 4.0F, false, false };
@@ -902,10 +920,38 @@ namespace spades {
 						Vector3 right = MakeVector3(-cosf(yawRad), -sinf(yawRad), 0.0F);
 						Vector3 upSky = MakeVector3(0.0F, 0.0F, -1.0F);
 
-						Matrix4 carMat = Matrix4::FromAxis(right, -front, upSky, car.position);
-						if (std::abs(pitchRad) > 0.001F || std::abs(rollRad) > 0.001F) {
-							carMat = carMat * Matrix4::Rotate(MakeVector3(1, 0, 0), pitchRad)
-							                * Matrix4::Rotate(MakeVector3(0, 1, 0), rollRad);
+						// Dynamic 4-Wheel Independent Suspension Terrain Probing (Ultra-fast bitwise query, zero FPS loss)
+						float sumComp = 0.0F;
+						for (int i = 0; i < 4; ++i) {
+							Vector3 wWorld = car.position + right * (mounts[i].x * carScale) - front * (mounts[i].y * carScale);
+							int wx = static_cast<int>(floorf(wWorld.x));
+						int wy = static_cast<int>(floorf(wWorld.y));
+							float gndZ = 63.0F;
+							if (map && wx >= 0 && wx < map->Width() && wy >= 0 && wy < map->Height()) {
+								gndZ = static_cast<float>(map->GetTop(wx, wy));
+							}
+							// Tire bottom in world Z (World +Z is down, upSky is up)
+							float tireBottomWorldZ = car.position.z - (mounts[i].z - 4.0F) * carScale;
+							float penetration = tireBottomWorldZ - gndZ;
+							float targetComp = (penetration / carScale) + staticSag;
+							targetComp = std::max(-maxDroop, std::min(maxBump, targetComp));
+							car.wheelCompression[i] += (targetComp - car.wheelCompression[i]) * 0.35F;
+							sumComp += car.wheelCompression[i];
+						}
+						float avgComp = sumComp * 0.25F;
+
+						// Dynamic body orientation with pitch squat & roll lean
+						float dynPitch = pitchRad + car.chassisPitchSquat;
+						float dynRoll = rollRad + car.chassisRollLean;
+
+						// Settle body vertically according to vehicle mass and suspension compression
+						float bodyWeightDrop = (avgComp - staticSag) * 0.5F * carScale;
+						Vector3 dynCarPos = car.position + upSky * bodyWeightDrop;
+
+						Matrix4 carMat = Matrix4::FromAxis(right, -front, upSky, dynCarPos);
+						if (std::abs(dynPitch) > 0.001F || std::abs(dynRoll) > 0.001F) {
+							carMat = carMat * Matrix4::Rotate(MakeVector3(1, 0, 0), dynPitch)
+							                * Matrix4::Rotate(MakeVector3(0, 1, 0), dynRoll);
 						}
 
 						// 1. Render Vehicle Body
@@ -913,10 +959,10 @@ namespace spades {
 						cParam.matrix = carMat * Matrix4::Scale(carScale);
 						renderer->RenderModel(*carBody, cParam);
 
-						// 2. Render 4 Wheels
-
+						// 2. Render 4 Wheels with Individual Dynamic Suspension Travel
 						for (int i = 0; i < 4; ++i) {
-							Matrix4 wMat = carMat * Matrix4::Translate(mounts[i].x * carScale, mounts[i].y * carScale, mounts[i].z * carScale);
+							float dynZ = mounts[i].z + car.wheelCompression[i];
+							Matrix4 wMat = carMat * Matrix4::Translate(mounts[i].x * carScale, mounts[i].y * carScale, dynZ * carScale);
 							if (mounts[i].isFront) {
 								// Steer front wheels with Ackermann steering angle
 								wMat = wMat * Matrix4::Rotate(MakeVector3(0, 0, 1), car.steerAngle);

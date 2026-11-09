@@ -647,6 +647,40 @@ namespace spades {
 
 				// Dynamic wheel rolling rotation proportional to ground velocity
 				float carSpeed = car.velocity.GetLength2D();
+
+				// Dynamic Weight-Aware Acceleration Squat & Cornering Roll Lean
+				float accel = (carSpeed - car.prevCarSpeed) / std::max(0.001F, dt);
+				car.prevCarSpeed = carSpeed;
+
+				float pitchFactor = 0.0025F;
+				float rollFactor = 0.035F;
+				switch (car.modelType) {
+					case 2: // Toyota LC79 4x4 (2400 kg)
+						pitchFactor = 0.0020F;
+						rollFactor = 0.045F;
+						break;
+					case 3: // Military ISV (2200 kg)
+						pitchFactor = 0.0022F;
+						rollFactor = 0.030F;
+						break;
+					case 4: // GMC Sierra Denali (2800 kg - Heavy Duty)
+						pitchFactor = 0.0016F;
+						rollFactor = 0.028F;
+						break;
+					case 5: // Fiat Uno Turbo (845 kg - Ultra Light)
+						pitchFactor = 0.0035F;
+						rollFactor = 0.022F;
+						break;
+					default: // 1: Chevelle SS (1650 kg)
+						pitchFactor = 0.0030F;
+						rollFactor = 0.038F;
+						break;
+				}
+				float targetSquat = -accel * pitchFactor;
+				car.chassisPitchSquat += (targetSquat - car.chassisPitchSquat) * std::min(1.0F, 12.0F * dt);
+
+				float targetRoll = -car.steerAngle * (carSpeed / 18.0F) * rollFactor;
+				car.chassisRollLean += (targetRoll - car.chassisRollLean) * std::min(1.0F, 14.0F * dt);
 				if (carSpeed > 0.04F) {
 					// Voxel wheel radius = 4 * 0.165 = 0.66 blocks -> perimeter ~4.15 blocks
 					car.wheelRotation += (carSpeed / 0.66F) * dt;

@@ -62,6 +62,11 @@ namespace spades {
 			float soundTimer = 0.0F;
 			float smokeTimer = 0.0F;
 			float hornTimer = 0.0F;
+			// Dynamic Weight-Aware 4-Wheel Independent Suspension
+			float wheelCompression[4] = { 0.0F, 0.0F, 0.0F, 0.0F }; // 0: FL, 1: FR, 2: RL, 3: RR
+			float prevCarSpeed = 0.0F;
+			float chassisPitchSquat = 0.0F;
+			float chassisRollLean = 0.0F;
 		};
 
 		struct HelicopterState {
