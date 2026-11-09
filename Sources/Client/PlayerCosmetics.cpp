@@ -2704,10 +2704,10 @@ namespace spades {
 				case 4:
 					if (seatIdx == 0)      { lat = -0.92F; lon =  0.40F; vert = 1.55F; }
 					else if (seatIdx == 1) { lat =  0.92F; lon =  0.40F; vert = 1.55F; }
-					else if (seatIdx == 2) { lat = -0.92F; lon = -0.75F; vert = 1.55F; }
-					else if (seatIdx == 3) { lat =  0.92F; lon = -0.75F; vert = 1.55F; }
-					else if (seatIdx == 4) { lat = -0.75F; lon = -2.25F; vert = 2.10F; }
-					else if (seatIdx == 5) { lat =  0.75F; lon = -2.25F; vert = 2.10F; }
+					else if (seatIdx == 2) { lat = -0.92F; lon = -1.85F; vert = 1.55F; }
+					else if (seatIdx == 3) { lat =  0.92F; lon = -1.85F; vert = 1.55F; }
+					else if (seatIdx == 4) { lat = -0.75F; lon = -4.20F; vert = 2.15F; }
+					else if (seatIdx == 5) { lat =  0.75F; lon = -4.20F; vert = 2.15F; }
 					break;
 				case 5:
 					if (seatIdx == 0)      { lat = -0.68F; lon = -0.05F; vert = 1.25F; }
