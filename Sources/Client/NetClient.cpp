@@ -1476,11 +1476,6 @@ namespace spades {
 						break;
 					}
 
-					// Drop any stray synchronization fragments or repeated -1 numbers
-					if (msg.find("-1 -1") != std::string::npos) {
-						break;
-					}
-
 					// Intercept compact vehicle synchronization packets (guaranteed < 80 chars, no chat wrapping)
 					if (msg.rfind("[CS] ", 0) == 0) {
 						int cId = 1, hp = 350, tier = 3;
@@ -1594,6 +1589,11 @@ namespace spades {
 						std::sscanf(msg.c_str(), "[AIRBATTLE_SYNC] %d", &state);
 						PlayerCosmetics::GetGlobalAirBattle().active = (state != 0);
 						cg_airBattle = state;
+						break;
+					}
+
+					// Drop any stray synchronization fragments or repeated -1 numbers
+					if (msg.find("-1 -1") != std::string::npos) {
 						break;
 					}
 
