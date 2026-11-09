@@ -1512,7 +1512,11 @@ namespace spades {
 				Vector3 front = Vector3(sinf(cState.yaw), -cosf(cState.yaw), 0.0F);
 				Vector3 right = Vector3(-cosf(cState.yaw), -sinf(cState.yaw), 0.0F);
 
-				input.crouch = true; // Seated natural bench/bucket posture
+				if ((cState.modelType == 2 && mySeat >= 2) || (cState.modelType == 4 && mySeat >= 4)) {
+					input.crouch = false; // Standing combat gunner in open pickup flatbed / cargo box
+				} else {
+					input.crouch = true; // Seated natural bench/bucket posture
+				}
 
 				float lat = 0.0F, lon = 0.0F, vert = 1.40F;
 				PlayerCosmetics::GetVehicleSeatOffset(cState.modelType, mySeat, lat, lon, vert);

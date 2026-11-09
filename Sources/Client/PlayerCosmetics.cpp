@@ -2690,8 +2690,8 @@ namespace spades {
 				case 2:
 					if (seatIdx == 0)      { lat = -0.88F; lon = -0.10F; vert = 1.60F; }
 					else if (seatIdx == 1) { lat =  0.88F; lon = -0.10F; vert = 1.60F; }
-					else if (seatIdx == 2) { lat = -0.75F; lon = -2.10F; vert = 1.50F; }
-					else if (seatIdx == 3) { lat =  0.75F; lon = -2.10F; vert = 1.50F; }
+					else if (seatIdx == 2) { lat = -0.65F; lon = -2.00F; vert = 2.05F; }
+					else if (seatIdx == 3) { lat =  0.65F; lon = -2.00F; vert = 2.05F; }
 					break;
 				case 3:
 					if (seatIdx == 0)      { lat = -0.85F; lon =  0.45F; vert = 1.42F; }
@@ -2706,8 +2706,8 @@ namespace spades {
 					else if (seatIdx == 1) { lat =  0.92F; lon =  0.40F; vert = 1.55F; }
 					else if (seatIdx == 2) { lat = -0.92F; lon = -0.75F; vert = 1.55F; }
 					else if (seatIdx == 3) { lat =  0.92F; lon = -0.75F; vert = 1.55F; }
-					else if (seatIdx == 4) { lat = -0.85F; lon = -2.25F; vert = 1.50F; }
-					else if (seatIdx == 5) { lat =  0.85F; lon = -2.25F; vert = 1.50F; }
+					else if (seatIdx == 4) { lat = -0.75F; lon = -2.25F; vert = 2.10F; }
+					else if (seatIdx == 5) { lat =  0.75F; lon = -2.25F; vert = 2.10F; }
 					break;
 				case 5:
 					if (seatIdx == 0)      { lat = -0.68F; lon = -0.05F; vert = 1.25F; }
