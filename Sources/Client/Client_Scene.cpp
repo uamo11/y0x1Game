@@ -861,40 +861,40 @@ namespace spades {
 						float carScale = 0.198F;
 
 						switch (carType) {
-							case 2: // Toyota Land Cruiser 79 4x4
+							case 2: // Toyota Land Cruiser 79 4x4 (Macho) - Wheelbase: -18.0F, +16.0F
 								carScale = 0.205F;
-								mounts[0] = { -10.0F, -18.0F, 5.0F, true, false };
-								mounts[1] = {  10.0F, -18.0F, 5.0F, true, true };
-								mounts[2] = { -10.0F,  17.0F, 5.0F, false, false };
-								mounts[3] = {  10.0F,  17.0F, 5.0F, false, true };
+								mounts[0] = { -10.5F, -18.0F, 4.8F, true, false };
+								mounts[1] = {  10.5F, -18.0F, 4.8F, true, true };
+								mounts[2] = { -10.5F,  16.0F, 4.8F, false, false };
+								mounts[3] = {  10.5F,  16.0F, 4.8F, false, true };
 								break;
-							case 3: // Military ISV Buggy
+							case 3: // Military ISV Buggy - Wheelbase: -18.0F, +16.0F
 								carScale = 0.200F;
-								mounts[0] = { -10.5F, -17.5F, 4.5F, true, false };
-								mounts[1] = {  10.5F, -17.5F, 4.5F, true, true };
-								mounts[2] = { -10.5F,  16.5F, 4.5F, false, false };
-								mounts[3] = {  10.5F,  16.5F, 4.5F, false, true };
+								mounts[0] = { -10.5F, -18.0F, 4.5F, true, false };
+								mounts[1] = {  10.5F, -18.0F, 4.5F, true, true };
+								mounts[2] = { -10.5F,  16.0F, 4.5F, false, false };
+								mounts[3] = {  10.5F,  16.0F, 4.5F, false, true };
 								break;
-							case 4: // GMC Sierra Denali Crew Cab
+							case 4: // GMC Sierra Denali Crew Cab - Wheelbase: -20.0F, +17.0F
 								carScale = 0.210F;
-								mounts[0] = { -10.5F, -20.0F, 4.0F, true, false };
-								mounts[1] = {  10.5F, -20.0F, 4.0F, true, true };
-								mounts[2] = { -10.5F,  18.0F, 4.0F, false, false };
-								mounts[3] = {  10.5F,  18.0F, 4.0F, false, true };
+								mounts[0] = { -11.0F, -20.0F, 4.2F, true, false };
+								mounts[1] = {  11.0F, -20.0F, 4.2F, true, true };
+								mounts[2] = { -11.0F,  17.0F, 4.2F, false, false };
+								mounts[3] = {  11.0F,  17.0F, 4.2F, false, true };
 								break;
-							case 5: // Fiat Uno Turbo i.e.
+							case 5: // Fiat Uno Turbo i.e. - Wheelbase: -14.0F, +13.0F
 								carScale = 0.178F;
-								mounts[0] = { -8.5F, -14.0F, 3.2F, true, false };
-								mounts[1] = {  8.5F, -14.0F, 3.2F, true, true };
-								mounts[2] = { -8.5F,  13.0F, 3.2F, false, false };
-								mounts[3] = {  8.5F,  13.0F, 3.2F, false, true };
+								mounts[0] = { -8.8F, -14.0F, 3.5F, true, false };
+								mounts[1] = {  8.8F, -14.0F, 3.5F, true, true };
+								mounts[2] = { -8.8F,  13.0F, 3.5F, false, false };
+								mounts[3] = {  8.8F,  13.0F, 3.5F, false, true };
 								break;
-							default: // 1: Chevelle Coupe
+							default: // 1: Chevelle Muscle Coupe - Wheelbase: -17.0F, +15.0F
 								carScale = 0.198F;
-								mounts[0] = { -9.5F, -17.0F, 3.5F, true, false };
-								mounts[1] = {  9.5F, -17.0F, 3.5F, true, true };
-								mounts[2] = { -9.5F,  15.0F, 3.5F, false, false };
-								mounts[3] = {  9.5F,  15.0F, 3.5F, false, true };
+								mounts[0] = { -9.8F, -17.0F, 4.0F, true, false };
+								mounts[1] = {  9.8F, -17.0F, 4.0F, true, true };
+								mounts[2] = { -9.8F,  15.0F, 4.0F, false, false };
+								mounts[3] = {  9.8F,  15.0F, 4.0F, false, true };
 								break;
 						}
 
