@@ -1476,7 +1476,60 @@ namespace spades {
 						break;
 					}
 
-					// Intercept vehicle synchronization packets (do not show in chat)
+					// Drop any stray synchronization fragments or repeated -1 numbers
+					if (msg.find("-1 -1") != std::string::npos) {
+						break;
+					}
+
+					// Intercept compact vehicle synchronization packets (guaranteed < 80 chars, no chat wrapping)
+					if (msg.rfind("[CS] ", 0) == 0) {
+						int cId = 1, hp = 350, tier = 3;
+						int occ[6] = { -1, -1, -1, -1, -1, -1 };
+						float cx = 0, cy = 0, cz = 0, cyaw = 0, cpitch = 0, croll = 0, csteer = 0;
+						int parsed = std::sscanf(msg.c_str(), "[CS] %d %f %f %f %f %f %f %f %d %d %d %d %d %d %d %d",
+						                         &cId, &cx, &cy, &cz, &cyaw, &cpitch, &croll, &csteer,
+						                         &hp, &tier,
+						                         &occ[0], &occ[1], &occ[2], &occ[3], &occ[4], &occ[5]);
+						if (parsed >= 10) {
+							auto& cState = PlayerCosmetics::GetGlobalCar();
+							cState.modelType = (cId >= 1 && cId <= 5) ? cId : 1;
+							if (hp <= 0) {
+								if (cState.active && client) {
+									client->GrenadeExplosion(cState.position);
+								}
+								cState.active = false;
+								cState.health = 0;
+								cState.healthTier = 0;
+								for (int s = 0; s < 6; ++s) cState.occupantIds[s] = -1;
+							} else {
+								Vector3 newPos = MakeVector3(cx, cy, cz);
+								if (!cState.active || (newPos - cState.position).GetSquaredLength() > 100.0F) {
+									cState.position = newPos;
+									cState.yaw = cyaw;
+									cState.pitch = cpitch;
+									cState.roll = croll;
+								}
+								cState.targetPosition = newPos;
+								cState.targetYaw = cyaw;
+								cState.targetPitch = cpitch;
+								cState.targetRoll = croll;
+								cState.targetSteerAngle = csteer;
+								cState.active = true;
+								cState.id = cId;
+								cState.health = hp;
+								cState.maxHealth = (cId == 4) ? 450 : ((cId == 2 || cId == 3) ? 380 : 350);
+								cState.healthTier = tier;
+								for (int s = 0; s < 6; ++s) {
+									cState.occupantIds[s] = (parsed >= 11 + s) ? occ[s] : -1;
+								}
+								cState.driverId = cState.occupantIds[0];
+								cState.passId = cState.occupantIds[1];
+							}
+						}
+						break;
+					}
+
+					// Intercept legacy vehicle synchronization packets (do not show in chat)
 					if (msg.rfind("[CAR_SYNC]", 0) == 0) {
 						int cId = 1, driverId = -1, passId = -1, hp = 350, maxHp = 350, tier = 3, modelType = 1;
 						int occ2 = -1, occ3 = -1, occ4 = -1, occ5 = -1;

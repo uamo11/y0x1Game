@@ -925,22 +925,31 @@ namespace spades {
 						Vector3 right = MakeVector3(-cosf(yawRad), -sinf(yawRad), 0.0F);
 						Vector3 upSky = MakeVector3(0.0F, 0.0F, -1.0F);
 
-						// Dynamic 4-Wheel Independent Suspension Terrain Probing (Ultra-fast bitwise query, zero FPS loss)
+						float tireRadius = 3.8F;
+						switch (carType) {
+							case 2: tireRadius = 4.2F; break;
+							case 3: tireRadius = 3.8F; break;
+							case 4: tireRadius = 4.2F; break;
+							case 5: tireRadius = 3.2F; break;
+							default: tireRadius = 3.8F; break;
+						}
+
+						// Dynamic 4-Wheel Independent Suspension Terrain Probing (Physical contact & droop, zero FPS loss)
 						float sumComp = 0.0F;
 						for (int i = 0; i < 4; ++i) {
 							Vector3 wWorld = car.position + right * (mounts[i].x * carScale) - front * (mounts[i].y * carScale);
 							int wx = static_cast<int>(floorf(wWorld.x));
-						int wy = static_cast<int>(floorf(wWorld.y));
+							int wy = static_cast<int>(floorf(wWorld.y));
 							float gndZ = 63.0F;
 							if (map && wx >= 0 && wx < map->Width() && wy >= 0 && wy < map->Height()) {
 								gndZ = static_cast<float>(map->GetTop(wx, wy));
 							}
-							// Tire bottom in world Z (World +Z is down, upSky is up)
-							float tireBottomWorldZ = car.position.z - (mounts[i].z - 4.0F) * carScale;
-							float penetration = tireBottomWorldZ - gndZ;
-							float targetComp = (penetration / carScale) + staticSag;
+							// Exact physical suspension contact & droop:
+							// When tire rests on ground, tireBottomWorldZ == gndZ.
+							// If airborne or suspended, targetComp hits -maxDroop extending the wheel downward.
+							float targetComp = (tireRadius - mounts[i].z) + ((car.position.z - gndZ) / carScale);
 							targetComp = std::max(-maxDroop, std::min(maxBump, targetComp));
-							car.wheelCompression[i] += (targetComp - car.wheelCompression[i]) * 0.35F;
+							car.wheelCompression[i] += (targetComp - car.wheelCompression[i]) * 0.40F;
 							sumComp += car.wheelCompression[i];
 						}
 						float avgComp = sumComp * 0.25F;
@@ -949,8 +958,8 @@ namespace spades {
 						float dynPitch = pitchRad + car.chassisPitchSquat;
 						float dynRoll = rollRad + car.chassisRollLean;
 
-						// Settle body vertically according to vehicle mass and suspension compression
-						float bodyWeightDrop = (avgComp - staticSag) * 0.5F * carScale;
+						// Settle body slightly under suspension load
+						float bodyWeightDrop = (avgComp - (tireRadius - mounts[0].z)) * 0.35F * carScale;
 						Vector3 dynCarPos = car.position + upSky * bodyWeightDrop;
 
 						Matrix4 carMat = Matrix4::FromAxis(right, -front, upSky, dynCarPos);

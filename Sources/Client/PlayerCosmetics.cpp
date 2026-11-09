@@ -2685,37 +2685,37 @@ namespace spades {
 		}
 
 		void PlayerCosmetics::GetVehicleSeatOffset(int carType, int seatIdx, float& lat, float& lon, float& vert) {
-			lat = 0.0F; lon = 0.0F; vert = 1.40F;
+			lat = 0.0F; lon = 0.0F; vert = 2.10F;
 			switch (carType) {
-				case 2:
-					if (seatIdx == 0)      { lat = -0.88F; lon = -0.10F; vert = 1.60F; }
-					else if (seatIdx == 1) { lat =  0.88F; lon = -0.10F; vert = 1.60F; }
-					else if (seatIdx == 2) { lat = -0.65F; lon = -2.00F; vert = 2.05F; }
-					else if (seatIdx == 3) { lat =  0.65F; lon = -2.00F; vert = 2.05F; }
+				case 2: // Toyota Land Cruiser LC79 (2 Cab + 2 Flatbed)
+					if (seatIdx == 0)      { lat = -0.88F; lon = -0.10F; vert = 2.50F; } // Seated driver
+					else if (seatIdx == 1) { lat =  0.88F; lon = -0.10F; vert = 2.50F; } // Seated passenger
+					else if (seatIdx == 2) { lat = -0.65F; lon = -3.35F; vert = 3.85F; } // Left standing flatbed gunner
+					else if (seatIdx == 3) { lat =  0.65F; lon = -3.35F; vert = 3.85F; } // Right standing flatbed gunner
 					break;
-				case 3:
-					if (seatIdx == 0)      { lat = -0.85F; lon =  0.45F; vert = 1.42F; }
-					else if (seatIdx == 1) { lat =  0.85F; lon =  0.45F; vert = 1.42F; }
-					else if (seatIdx == 2) { lat = -0.85F; lon = -0.65F; vert = 1.42F; }
-					else if (seatIdx == 3) { lat =  0.85F; lon = -0.65F; vert = 1.42F; }
-					else if (seatIdx == 4) { lat = -0.80F; lon = -1.85F; vert = 1.42F; }
-					else if (seatIdx == 5) { lat =  0.80F; lon = -1.85F; vert = 1.42F; }
+				case 3: // Military ISV Buggy (6 Tactical Seats: 3 rows of 2)
+					if (seatIdx == 0)      { lat = -0.85F; lon =  0.95F; vert = 2.15F; } // Front Left (Driver)
+					else if (seatIdx == 1) { lat =  0.85F; lon =  0.95F; vert = 2.15F; } // Front Right (Copilot)
+					else if (seatIdx == 2) { lat = -0.85F; lon = -1.35F; vert = 2.15F; } // Mid Left
+					else if (seatIdx == 3) { lat =  0.85F; lon = -1.35F; vert = 2.15F; } // Mid Right
+					else if (seatIdx == 4) { lat = -0.80F; lon = -3.80F; vert = 2.25F; } // Rear Left
+					else if (seatIdx == 5) { lat =  0.80F; lon = -3.80F; vert = 2.25F; } // Rear Right
 					break;
-				case 4:
-					if (seatIdx == 0)      { lat = -0.92F; lon =  0.40F; vert = 1.55F; }
-					else if (seatIdx == 1) { lat =  0.92F; lon =  0.40F; vert = 1.55F; }
-					else if (seatIdx == 2) { lat = -0.92F; lon = -1.85F; vert = 1.55F; }
-					else if (seatIdx == 3) { lat =  0.92F; lon = -1.85F; vert = 1.55F; }
-					else if (seatIdx == 4) { lat = -0.75F; lon = -4.20F; vert = 2.15F; }
-					else if (seatIdx == 5) { lat =  0.75F; lon = -4.20F; vert = 2.15F; }
+				case 4: // GMC Sierra Denali Crew Cab (4 Cab + 2 Truck Bed)
+					if (seatIdx == 0)      { lat = -0.92F; lon =  0.80F; vert = 2.55F; } // Front Left (Driver)
+					else if (seatIdx == 1) { lat =  0.92F; lon =  0.80F; vert = 2.55F; } // Front Right (Copilot)
+					else if (seatIdx == 2) { lat = -0.92F; lon = -1.60F; vert = 2.55F; } // Rear Cab Left
+					else if (seatIdx == 3) { lat =  0.92F; lon = -1.60F; vert = 2.55F; } // Rear Cab Right
+					else if (seatIdx == 4) { lat = -0.75F; lon = -4.40F; vert = 3.90F; } // Bed Left Standing Gunner
+					else if (seatIdx == 5) { lat =  0.75F; lon = -4.40F; vert = 3.90F; } // Bed Right Standing Gunner
 					break;
-				case 5:
-					if (seatIdx == 0)      { lat = -0.68F; lon = -0.05F; vert = 1.25F; }
-					else                   { lat =  0.68F; lon = -0.05F; vert = 1.25F; }
+				case 5: // Fiat Uno Turbo (2 Seated)
+					if (seatIdx == 0)      { lat = -0.68F; lon = -0.05F; vert = 2.05F; }
+					else                   { lat =  0.68F; lon = -0.05F; vert = 2.05F; }
 					break;
-				default:
-					if (seatIdx == 0)      { lat = -0.85F; lon = -0.35F; vert = 1.40F; }
-					else                   { lat =  0.85F; lon = -0.35F; vert = 1.40F; }
+				default: // 1: Chevelle Muscle Coupe (2 Seated)
+					if (seatIdx == 0)      { lat = -0.85F; lon = -0.35F; vert = 2.30F; }
+					else                   { lat =  0.85F; lon = -0.35F; vert = 2.30F; }
 					break;
 			}
 		}
