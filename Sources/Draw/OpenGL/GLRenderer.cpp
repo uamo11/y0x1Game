@@ -845,13 +845,22 @@ namespace spades {
 
 			// Set Dynamic Weather Uniforms
 			auto& weather = client::WeatherSystem::GetInstance();
-			Vector3 zCol = weather.GetCurrentZenithColor();
-			Vector3 cCol = weather.GetCurrentCloudColor();
-			weatherZenithColorUniform.SetValue(zCol.x, zCol.y, zCol.z);
-			weatherCloudColorUniform.SetValue(cCol.x, cCol.y, cCol.z);
-			weatherCloudCoverageUniform.SetValue(weather.GetCurrentCloudCoverage());
-			weatherRainIntensityUniform.SetValue(weather.GetCurrentRainIntensity());
-			weatherLightningUniform.SetValue(weather.GetLightningIntensity());
+			if (weather.IsServerWeatherActive()) {
+				Vector3 zCol = weather.GetCurrentZenithColor();
+				Vector3 cCol = weather.GetCurrentCloudColor();
+				weatherZenithColorUniform.SetValue(zCol.x, zCol.y, zCol.z);
+				weatherCloudColorUniform.SetValue(cCol.x, cCol.y, cCol.z);
+				weatherCloudCoverageUniform.SetValue(weather.GetCurrentCloudCoverage());
+				weatherRainIntensityUniform.SetValue(weather.GetCurrentRainIntensity());
+				weatherLightningUniform.SetValue(weather.GetLightningIntensity());
+			} else {
+				// Classic server fog-color-driven atmospheric sky (no forced blue override)
+				weatherZenithColorUniform.SetValue(0.0f, 0.0f, 0.0f);
+				weatherCloudColorUniform.SetValue(0.0f, 0.0f, 0.0f);
+				weatherCloudCoverageUniform.SetValue(0.0f);
+				weatherRainIntensityUniform.SetValue(0.0f);
+				weatherLightningUniform.SetValue(0.0f);
+			}
 
 			// Configure OpenGL states:
 			// DepthFunc LessOrEqual with quad at z=1.0: only shades unoccluded background sky!

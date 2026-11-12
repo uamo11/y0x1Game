@@ -745,24 +745,24 @@ namespace spades {
 			if (client.flashlightOn && p.IsLocalPlayer()) {
 				float brightness = client.time - client.flashlightOnTime;
 				brightness = 1.0F - expf(-brightness * 5.0F);
-				brightness *= r_hdr ? 3.0F : 1.5F;
+				brightness *= r_hdr ? 3.2F : 1.65F;
 
-				// add flash light
+				static IRenderer* s_spotImgRenderer = nullptr;
+				static Handle<IImage> s_spotImg;
+				if (s_spotImgRenderer != &renderer) {
+					s_spotImg = renderer.RegisterImage("Gfx/Spotlight.jpg");
+					s_spotImgRenderer = &renderer;
+				}
+
+				// Single optimized spotlight pass (eliminates redundant second point-light pass for solid 60+ FPS)
 				DynamicLightParam light;
 				light.type = DynamicLightTypeSpotlight;
 				light.origin = eyeMatrix.GetOrigin();
-				light.radius = 60.0F;
-				light.color = MakeVector3(1.0F, 0.7F, 0.5F) * brightness;
-				light.spotAngle = DEG2RAD(90);
+				light.radius = 48.0F;
+				light.color = MakeVector3(1.0F, 0.78F, 0.58F) * brightness;
+				light.spotAngle = DEG2RAD(75);
 				light.spotAxis = GetFlashlightAxes();
-				Handle<IImage> img = renderer.RegisterImage("Gfx/Spotlight.jpg");
-				light.image = img.GetPointerOrNull();
-				renderer.AddLight(light);
-
-				light.type = DynamicLightTypePoint;
-				light.radius = 10.0F;
-				light.color *= 0.3F;
-				light.image = nullptr;
+				light.image = s_spotImg.GetPointerOrNull();
 				renderer.AddLight(light);
 			}
 

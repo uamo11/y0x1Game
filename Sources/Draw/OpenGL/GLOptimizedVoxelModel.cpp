@@ -776,10 +776,31 @@ namespace spades {
 		}
 
 		void GLOptimizedVoxelModel::RenderDynamicLightPass(
-			std::vector<client::ModelRenderParam> params, std::vector<GLDynamicLight> lights) {
+			std::vector<client::ModelRenderParam> params, const std::vector<GLDynamicLight>& lights) {
 			SPADES_MARK_FUNCTION();
 
 			bool mirror = renderer.IsRenderingMirror();
+
+			// Early-out before binding textures, VBOs, IBOs or shader program if no instance is lit
+			bool anyLit = false;
+			for (const auto& param : params) {
+				if ((mirror && param.depthHack) || param.ghost)
+					continue;
+				const auto& modelMatrix = param.matrix;
+				const auto& modelOrigin = modelMatrix.GetOrigin();
+				float rad = radius * modelMatrix.GetAxis(0).GetLength();
+				if (!renderer.SphereFrustrumCull(modelOrigin, rad))
+					continue;
+				for (const auto& light : lights) {
+					if (light.SphereCull(modelOrigin, rad)) {
+						anyLit = true;
+						break;
+					}
+				}
+				if (anyLit) break;
+			}
+			if (!anyLit)
+				return;
 
 			const auto& viewOrigin = renderer.GetSceneDef().viewOrigin;
 			const auto& viewMatrix = renderer.GetViewMatrix();

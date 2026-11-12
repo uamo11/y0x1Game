@@ -223,6 +223,8 @@ namespace spades {
 			if (world.get() == w)
 				return;
 
+			WeatherSystem::GetInstance().ResetServerWeather();
+
 			scriptedUI->CloseUI();
 
 			RemoveAllLocalEntities();

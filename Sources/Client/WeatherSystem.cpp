@@ -128,6 +128,7 @@ namespace spades {
 		    : activeType(WeatherType::Sunny),
 		      serverType(WeatherType::Sunny),
 		      isAuto(true),
+		      hasServerWeather(false),
 		      curFogDistance(180.0F),
 		      curFogColor(MakeVector3(0.60F, 0.78F, 0.98F)),
 		      curZenithColor(MakeVector3(0.18F, 0.46F, 0.88F)),
@@ -198,6 +199,14 @@ namespace spades {
 			SetWeather(ParseWeatherType(name), userOverride);
 		}
 
+		void WeatherSystem::ResetServerWeather() {
+			hasServerWeather = false;
+			serverType = WeatherType::Sunny;
+			if (isAuto) {
+				activeType = WeatherType::Sunny;
+			}
+		}
+
 		void WeatherSystem::OnServerMessage(const std::string& msg) {
 			size_t tagPos = msg.find("[WEATHER]");
 			if (tagPos == std::string::npos)
@@ -217,6 +226,7 @@ namespace spades {
 				token = token.substr(0, end);
 			}
 
+			hasServerWeather = true;
 			serverType = ParseWeatherType(token);
 			if (isAuto) {
 				activeType = serverType;

@@ -293,7 +293,7 @@ namespace spades {
 			device.BindTexture(IGLDevice::Texture2D, 0);
 		}
 
-		void GLMapRenderer::RenderDynamicLightPass(std::vector<GLDynamicLight> lights) {
+		void GLMapRenderer::RenderDynamicLightPass(const std::vector<GLDynamicLight>& lights) {
 			SPADES_MARK_FUNCTION();
 
 			GLProfiler::Context profiler(renderer.GetGLProfiler(), "Map");
@@ -302,6 +302,19 @@ namespace spades {
 				return;
 
 			const auto& viewOrigin = renderer.GetSceneDef().viewOrigin;
+
+			// Compute tightest chunk radius covering all active dynamic lights
+			float maxReach = 0.0F;
+			for (const auto& light : lights) {
+				const auto& lp = light.GetParam();
+				float d = (lp.origin - viewOrigin).GetLength() + lp.radius;
+				if (lp.type == client::DynamicLightTypeLinear) {
+					float d2 = (lp.point2 - viewOrigin).GetLength() + lp.radius;
+					if (d2 > d) d = d2;
+				}
+				if (d > maxReach) maxReach = d;
+			}
+			int maxChunkDist = std::min(128 / GLMapChunk::Size, static_cast<int>(ceilf(maxReach / static_cast<float>(GLMapChunk::Size))) + 1);
 
 			device.ActiveTexture(0);
 			device.BindTexture(IGLDevice::Texture2D, 0);
@@ -349,7 +362,7 @@ namespace spades {
 			// TODO: optimize call
 			//	ex. don't call a chunk'r render method if
 			//  no dlight lights it
-			for (int dist = 1; dist <= 128 / GLMapChunk::Size; dist++) {
+			for (int dist = 1; dist <= maxChunkDist; dist++) {
 				for (int x = c.x - dist; x <= c.x + dist; x++) {
 					DrawColumnDynamicLight(x, c.y + dist, c.z, viewOrigin, lights);
 					DrawColumnDynamicLight(x, c.y - dist, c.z, viewOrigin, lights);

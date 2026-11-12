@@ -267,11 +267,15 @@ namespace spades {
 			if (world) {
 				IntVector3 fogColor = world->GetFogColor();
 				auto& weather = WeatherSystem::GetInstance();
-				if (cg_weatherFogDistance) {
-					renderer->SetFogDistance(weather.GetCurrentFogDistance());
+				if (weather.IsServerWeatherActive() && cg_weatherFogDistance) {
+					float wFog = weather.GetCurrentFogDistance();
+					renderer->SetFogDistance(wFog);
 					renderer->SetFogColor(weather.GetCurrentFogColor());
+					def.zFar = std::max(200.0F, wFog + 48.0F);
 				} else {
+					renderer->SetFogDistance(128.0F);
 					renderer->SetFogColor(ConvertColorRGB(fogColor));
+					def.zFar = 200.0F;
 				}
 
 				int shakeLevel = cg_shake;

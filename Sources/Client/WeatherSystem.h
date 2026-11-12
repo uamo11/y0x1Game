@@ -53,6 +53,7 @@ namespace spades {
 			WeatherType activeType;
 			WeatherType serverType;
 			bool isAuto;
+			bool hasServerWeather;
 
 			// Smoothly interpolated values for fluid atmospheric transitions
 			float curFogDistance;
@@ -87,6 +88,8 @@ namespace spades {
 			void Update(float dt, const Vector3& playerPos, Client& client);
 			void RenderWeatherEffects(IRenderer& renderer, const Vector3& viewOrigin);
 			void OnServerMessage(const std::string& msg);
+			void ResetServerWeather();
+			bool IsServerWeatherActive() const { return hasServerWeather || !isAuto; }
 			void SetWeather(WeatherType type, bool userOverride = false);
 			void SetWeatherByName(const std::string& name, bool userOverride = false);
 

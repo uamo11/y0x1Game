@@ -840,11 +840,11 @@ namespace spades {
 
 				// Spawn / Initialize the two rival warbirds if not active
 				if (!battle.planes[0].active && !battle.planes[1].active && battle.planes[0].state != 5 && battle.planes[1].state != 5) {
-					// Base focal position directly in front of player's camera view
+					// Base focal position directly in front of player's camera view (stays inside fog distance & supports high-altitude players)
 					Vector3 spawnCenter = playerPos;
-					spawnCenter.x += fwd2D.x * 52.0F;
-					spawnCenter.y += fwd2D.y * 52.0F;
-					spawnCenter.z = std::max(6.0F, std::min(22.0F, playerPos.z - 16.0F));
+					spawnCenter.x += fwd2D.x * 42.0F;
+					spawnCenter.y += fwd2D.y * 42.0F;
+					spawnCenter.z = std::min(22.0F, playerPos.z - 14.0F);
 
 					// Keep within map boundaries
 					spawnCenter.x = std::max(70.0F, std::min(442.0F, spawnCenter.x));
@@ -919,11 +919,11 @@ namespace spades {
 								p.active = true;
 								p.team = i;
 								Vector3 respawnPos = playerPos;
-								respawnPos.x += fwd2D.x * 60.0F + static_cast<float>((rand() % 60) - 30);
-								respawnPos.y += fwd2D.y * 60.0F + static_cast<float>((rand() % 60) - 30);
+								respawnPos.x += fwd2D.x * 45.0F + static_cast<float>((rand() % 40) - 20);
+								respawnPos.y += fwd2D.y * 45.0F + static_cast<float>((rand() % 40) - 20);
 								respawnPos.x = std::max(60.0F, std::min(452.0F, respawnPos.x));
 								respawnPos.y = std::max(60.0F, std::min(452.0F, respawnPos.y));
-								respawnPos.z = std::max(8.0F, std::min(22.0F, playerPos.z - 16.0F));
+								respawnPos.z = std::min(22.0F, playerPos.z - 14.0F);
 								p.position = respawnPos;
 								p.yaw = static_cast<float>(rand() % 628) * 0.01F;
 								p.pitch = -0.05F;
@@ -1193,22 +1193,23 @@ namespace spades {
 					p.velocity = forward * p.speed;
 					p.position += p.velocity * dt;
 
-					// Dynamic Safe Floor & Map Bounds (Universal for any map environment)
+					// Dynamic Safe Floor & Map Bounds (Supports high-altitude players & dense block structures)
 					int mapW = map ? map->Width() : 512;
 					int mapH = map ? map->Height() : 512;
 					int mapD = map ? map->Depth() : 64;
 
 					int groundAtPos = (map && map->IsValidMapCoord(static_cast<int>(p.position.x), static_cast<int>(p.position.y), 0)) ? map->GetTop(static_cast<int>(p.position.x), static_cast<int>(p.position.y)) : 58;
 					if (groundAtPos <= 0) groundAtPos = 58;
-					float floorLimitZ = std::max(4.0F, static_cast<float>(groundAtPos) - 2.5F);
+					float floorLimitZ = static_cast<float>(groundAtPos) - 2.5F;
+					float minAltZ = std::min(-35.0F, playerPos.z - 26.0F);
 
-					// Check direct voxel collision with structure/terrain
-					bool voxelCollision = (p.position.z >= floorLimitZ);
+					// Check direct voxel collision with structure/terrain (only real solid blocks or water)
+					bool voxelCollision = (p.position.z >= static_cast<float>(mapD) - 2.0F);
 					if (map && !voxelCollision) {
 						int vx = static_cast<int>(p.position.x);
 						int vy = static_cast<int>(p.position.y);
 						int vz = static_cast<int>(p.position.z);
-						if (map->IsValidMapCoord(vx, vy, vz)) {
+						if (vz >= 0 && vz < mapD && map->IsValidMapCoord(vx, vy, vz)) {
 							voxelCollision = map->IsSolid(vx, vy, vz);
 						}
 					}
@@ -1231,13 +1232,17 @@ namespace spades {
 						continue;
 					}
 
-					// Ground proximity auto pull-up when not in death plunge
-					if (p.position.z >= floorLimitZ - 0.5F && p.state != 4) {
-						p.pitch += (-0.58F - p.pitch) * (6.0F * dt);
+					// Ground / structure proximity auto pull-up when not in death plunge
+					if (p.position.z >= floorLimitZ - 1.5F && p.state != 4) {
+						p.pitch += (-0.62F - p.pitch) * (6.5F * dt);
 					}
-					p.position.z = std::max(3.0F, std::min(floorLimitZ, p.position.z));
+					// Also gently match player's high-altitude band if player is way above blocks
+					if (playerPos.z < 12.0F && p.position.z > playerPos.z - 4.0F && p.state != 3 && p.state != 4) {
+						p.pitch += (-0.45F - p.pitch) * (3.0F * dt);
+					}
+					p.position.z = std::max(minAltZ, std::min(static_cast<float>(mapD) - 2.0F, p.position.z));
 
-					// Map boundary containment: steer back towards combat arena
+					// Map boundary & fog-distance containment: keep planes inside player's visible fog range
 					float boundMinX = 40.0F;
 					float boundMaxX = static_cast<float>(mapW) - 45.0F;
 					float boundMinY = 40.0F;
@@ -1245,7 +1250,7 @@ namespace spades {
 
 					Vector2 toPlayer2D = MakeVector2(playerPos.x - p.position.x, playerPos.y - p.position.y);
 					float distToP2D = toPlayer2D.GetLength();
-					if (p.position.x < boundMinX || p.position.x > boundMaxX || p.position.y < boundMinY || p.position.y > boundMaxY || distToP2D > 175.0F) {
+					if (p.position.x < boundMinX || p.position.x > boundMaxX || p.position.y < boundMinY || p.position.y > boundMaxY || distToP2D > 110.0F) {
 						float returnYaw = atan2f(toPlayer2D.x, -toPlayer2D.y);
 						float yawDiff = (returnYaw - p.yaw + 3.14159F);
 						yawDiff = fmodf(yawDiff, 6.283185F) - 3.14159F;
