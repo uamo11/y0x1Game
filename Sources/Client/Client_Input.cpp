@@ -1115,22 +1115,37 @@ namespace spades {
 									camFront.z = sinf(sharedState.pitch);
 									p.SetOrientation(camFront);
 
-									Handle<IAudioChunk> c =
-									  audioDevice->RegisterSound("Sounds/Weapons/AimDownSight.opus");
-									audioDevice->PlayLocal(c.GetPointerOrNull(), AudioParam());
+									try {
+										Handle<IAudioChunk> c =
+										  audioDevice->RegisterSound("Sounds/Weapons/AimDownSightLocal.opus");
+										if (c)
+											audioDevice->PlayLocal(c.GetPointerOrNull(), AudioParam());
+									} catch (...) {}
 								} else {
-									Handle<IAudioChunk> c =
-									  audioDevice->RegisterSound("Sounds/Weapons/AimUpSight.opus");
-									audioDevice->PlayLocal(c.GetPointerOrNull(), AudioParam());
+									try {
+										Handle<IAudioChunk> c =
+										  audioDevice->RegisterSound("Sounds/Weapons/AimDownSightLocal.opus");
+										if (c) {
+											AudioParam param;
+											param.pitch = 0.85F;
+											audioDevice->PlayLocal(c.GetPointerOrNull(), param);
+										}
+									} catch (...) {}
 								}
 							} else {
 								// Al soltar: si se mantuvo presionado (hold-to-aim), desactivar apuntado
 								if (time - thirdPersonAimDownTime >= 0.22F || cg_holdAimDownSight) {
 									if (thirdPersonAim) {
 										thirdPersonAim = false;
-										Handle<IAudioChunk> c =
-										  audioDevice->RegisterSound("Sounds/Weapons/AimUpSight.opus");
-										audioDevice->PlayLocal(c.GetPointerOrNull(), AudioParam());
+										try {
+											Handle<IAudioChunk> c =
+											  audioDevice->RegisterSound("Sounds/Weapons/AimDownSightLocal.opus");
+											if (c) {
+												AudioParam param;
+												param.pitch = 0.85F;
+												audioDevice->PlayLocal(c.GetPointerOrNull(), param);
+											}
+										} catch (...) {}
 									}
 								}
 							}
