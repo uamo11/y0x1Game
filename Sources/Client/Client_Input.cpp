@@ -1075,6 +1075,22 @@ namespace spades {
 					playerInput.jump = down;
 				} else if (CheckKey(cg_keyAttack, name)) {
 					weapInput.primary = down;
+					if (cameraMode == ClientCameraMode::ThirdPersonLocal && localPlayerIsAlive && down) {
+						auto& hState = PlayerCosmetics::GetGlobalHelicopter();
+						auto& cState = PlayerCosmetics::GetGlobalCar();
+						int myPid = static_cast<int>(p.GetId());
+						bool inHeli = (hState.active && hState.pilotId == myPid);
+						bool inCar = (cState.active && (cState.driverId == myPid || cState.occupantIds[0] == myPid));
+						if (!inHeli && !inCar) {
+							// Alinear orientación del personaje con la cámara al atacar/disparar en 3ra persona
+							auto& sharedState = followAndFreeCameraState;
+							Vector3 camFront;
+							camFront.x = cosf(sharedState.pitch) * -cosf(sharedState.yaw);
+							camFront.y = cosf(sharedState.pitch) * -sinf(sharedState.yaw);
+							camFront.z = sinf(sharedState.pitch);
+							p.SetOrientation(camFront);
+						}
+					}
 					if (p.IsToolWeapon() && weapInput.primary && !CanLocalPlayerUseWeapon())
 						PlayerDryFiredWeapon(p);
 				} else if (CheckKey(cg_keyAltAttack, name)) {

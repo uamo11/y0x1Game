@@ -548,7 +548,7 @@ namespace spades {
 							if (desiredDir.GetLength() > 1.5F) {
 								Vector3 aimDir = desiredDir.Normalize();
 								Vector3 currentFront = player.GetFront();
-								player.SetOrientation(Vector3::Normalize(Mix(currentFront, aimDir, thirdPersonAimTransition)));
+								player.SetOrientation(Mix(currentFront, aimDir, thirdPersonAimTransition).Normalize());
 							}
 						}
 

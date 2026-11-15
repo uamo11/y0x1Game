@@ -2227,10 +2227,10 @@ namespace spades {
 			World::WeaponRayCastResult rayRes = world->WeaponRayCast(aimOrigin, aimDir, pid);
 
 			Vector4 mainColor = MakeVector4(1.0F, 1.0F, 1.0F, 0.95F * alpha); // Blanco nítido estándar
-			if (rayRes.hit && rayRes.playerHit && rayRes.playerId >= 0) {
-				auto maybeTarget = world->GetPlayer(rayRes.playerId);
+			if (rayRes.hit && rayRes.playerId) {
+				auto maybeTarget = world->GetPlayer(rayRes.playerId.value());
 				if (maybeTarget && maybeTarget->IsAlive()) {
-					if (maybeTarget->GetTeam() == maybePlayer->GetTeam() && !activeNet->GetGameProperties()->isTeamDamageAllowed) {
+					if (maybePlayer->IsTeammate(maybeTarget.value())) {
 						mainColor = MakeVector4(0.2F, 1.0F, 0.3F, 0.95F * alpha); // Verde aliado
 					} else {
 						mainColor = MakeVector4(1.0F, 0.22F, 0.22F, 0.95F * alpha); // Rojo enemigo
