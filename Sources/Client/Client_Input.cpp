@@ -222,6 +222,62 @@ namespace spades {
 					}
 
 					auto& sharedState = followAndFreeCameraState;
+
+					if (cameraMode == ClientCameraMode::ThirdPersonLocal && world) {
+						auto maybeP = world->GetLocalPlayer();
+						if (maybeP && maybeP->IsAlive()) {
+							auto& hState = PlayerCosmetics::GetGlobalHelicopter();
+							auto& cState = PlayerCosmetics::GetGlobalCar();
+							int myPid = static_cast<int>(maybeP->GetId());
+							bool inHeli = (hState.active && hState.pilotId == myPid);
+							bool inCar = (cState.active && (cState.driverId == myPid || cState.occupantIds[0] == myPid));
+
+							if (inHeli) {
+								sharedState.yaw -= x * 0.003F;
+								sharedState.pitch -= y * 0.003F;
+								if (sharedState.pitch > DEG2RAD(89))
+									sharedState.pitch = DEG2RAD(89);
+								if (sharedState.pitch < -DEG2RAD(89))
+									sharedState.pitch = -DEG2RAD(89);
+								sharedState.yaw = fmodf(sharedState.yaw, DEG2RAD(360));
+
+								Vector3 camFront;
+								camFront.x = cosf(sharedState.pitch) * -cosf(sharedState.yaw);
+								camFront.y = cosf(sharedState.pitch) * -sinf(sharedState.yaw);
+								camFront.z = sinf(sharedState.pitch);
+								maybeP->SetOrientation(camFront);
+								break;
+							} else if (thirdPersonAim && !inCar) {
+								// Control táctico de apuntado en 3ra persona con ratón
+								float sensScale;
+								switch ((int)cg_mouseSensScale) {
+									case 1: sensScale = 1.0F / 10.0F * 0.005F; break;
+									case 2: sensScale = 1.0F / 5.0F * 0.002F; break;
+									case 3: sensScale = DEG2RAD(0.022F); break;
+									case 4: sensScale = DEG2RAD(0.0066F); break;
+									case 5: sensScale = DEG2RAD(0.07F); break;
+									default: sensScale = 0.003F; break;
+								}
+								float sens = static_cast<float>(cg_mouseSensitivity) * sensScale;
+
+								sharedState.yaw -= x * sens;
+								sharedState.pitch -= y * sens;
+								if (sharedState.pitch > DEG2RAD(89))
+									sharedState.pitch = DEG2RAD(89);
+								if (sharedState.pitch < -DEG2RAD(89))
+									sharedState.pitch = -DEG2RAD(89);
+								sharedState.yaw = fmodf(sharedState.yaw, DEG2RAD(360));
+
+								Vector3 camFront;
+								camFront.x = cosf(sharedState.pitch) * -cosf(sharedState.yaw);
+								camFront.y = cosf(sharedState.pitch) * -sinf(sharedState.yaw);
+								camFront.z = sinf(sharedState.pitch);
+								maybeP->SetOrientation(camFront);
+								break;
+							}
+						}
+					}
+
 					sharedState.yaw -= x * 0.003F;
 					sharedState.pitch -= y * 0.003F;
 					if (sharedState.pitch > DEG2RAD(89))
@@ -229,21 +285,6 @@ namespace spades {
 					if (sharedState.pitch < -DEG2RAD(89))
 						sharedState.pitch = -DEG2RAD(89);
 					sharedState.yaw = fmodf(sharedState.yaw, DEG2RAD(360));
-
-					// Si el jugador local es el Conductor del helicóptero en 3ra persona, alinear exactamente su orientación con la cámara
-					if (cameraMode == ClientCameraMode::ThirdPersonLocal && world) {
-						auto maybeP = world->GetLocalPlayer();
-						if (maybeP && maybeP->IsAlive()) {
-							auto& hState = PlayerCosmetics::GetGlobalHelicopter();
-							if (hState.active && hState.pilotId == static_cast<int>(maybeP->GetId())) {
-								Vector3 camFront;
-								camFront.x = cosf(sharedState.pitch) * -cosf(sharedState.yaw);
-								camFront.y = cosf(sharedState.pitch) * -sinf(sharedState.yaw);
-								camFront.z = sinf(sharedState.pitch);
-								maybeP->SetOrientation(camFront);
-							}
-						}
-					}
 					break;
 				}
 				case ClientCameraMode::FirstPersonLocal: {
@@ -1038,7 +1079,50 @@ namespace spades {
 						PlayerDryFiredWeapon(p);
 				} else if (CheckKey(cg_keyAltAttack, name)) {
 					weapInput.secondary = down;
-					if (p.IsToolWeapon() && !cg_holdAimDownSight) {
+					if (cameraMode == ClientCameraMode::ThirdPersonLocal && localPlayerIsAlive) {
+						auto& hState = PlayerCosmetics::GetGlobalHelicopter();
+						auto& cState = PlayerCosmetics::GetGlobalCar();
+						int myPid = static_cast<int>(p.GetId());
+						bool inHeli = (hState.active && hState.pilotId == myPid);
+						bool inCar = (cState.active && (cState.driverId == myPid || cState.occupantIds[0] == myPid));
+
+						if (!inHeli && !inCar) {
+							if (down) {
+								thirdPersonAimDownTime = time;
+								thirdPersonAim = !thirdPersonAim;
+								if (thirdPersonAim) {
+									// Alinear orientación del personaje con la cámara de inmediato
+									auto& sharedState = followAndFreeCameraState;
+									Vector3 camFront;
+									camFront.x = cosf(sharedState.pitch) * -cosf(sharedState.yaw);
+									camFront.y = cosf(sharedState.pitch) * -sinf(sharedState.yaw);
+									camFront.z = sinf(sharedState.pitch);
+									p.SetOrientation(camFront);
+
+									Handle<IAudioChunk> c =
+									  audioDevice->RegisterSound("Sounds/Weapons/AimDownSight.opus");
+									audioDevice->PlayLocal(c.GetPointerOrNull(), AudioParam());
+								} else {
+									Handle<IAudioChunk> c =
+									  audioDevice->RegisterSound("Sounds/Weapons/AimUpSight.opus");
+									audioDevice->PlayLocal(c.GetPointerOrNull(), AudioParam());
+								}
+							} else {
+								// Al soltar: si se mantuvo presionado (hold-to-aim), desactivar apuntado
+								if (time - thirdPersonAimDownTime >= 0.22F || cg_holdAimDownSight) {
+									if (thirdPersonAim) {
+										thirdPersonAim = false;
+										Handle<IAudioChunk> c =
+										  audioDevice->RegisterSound("Sounds/Weapons/AimUpSight.opus");
+										audioDevice->PlayLocal(c.GetPointerOrNull(), AudioParam());
+									}
+								}
+							}
+							if (p.IsToolWeapon()) {
+								weapInput.secondary = thirdPersonAim;
+							}
+						}
+					} else if (p.IsToolWeapon() && !cg_holdAimDownSight) {
 						Weapon& w = p.GetWeapon();
 						if (down && (!w.IsReloading() || w.IsReloadSlow()))
 							aimingDownSight = !aimingDownSight;
@@ -1201,6 +1285,8 @@ namespace spades {
 					scoreboardVisible = down;
 				} else if (CheckKey(cg_keyToggleThirdPerson, name) && down) {
 					cg_thirdperson = (int)cg_thirdperson ? 0 : 1;
+					thirdPersonAim = false;
+					thirdPersonAimTransition = 0.0F;
 					ShowAlert(_Tr("Client", (int)cg_thirdperson ? "Camara: Tercera Persona" : "Camara: Primera Persona"), AlertType::Notice);
 					Handle<IAudioChunk> c =
 					  audioDevice->RegisterSound("Sounds/Misc/SwitchMapZoom.opus");

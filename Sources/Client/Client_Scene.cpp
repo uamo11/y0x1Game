@@ -482,6 +482,18 @@ namespace spades {
 								distance = 10.2F;
 								center = cState.position + MakeVector3(0.0F, 0.0F, -1.1F);
 							}
+						} else if (!inHeli && cameraMode == ClientCameraMode::ThirdPersonLocal && player.IsLocalPlayer() && player.IsAlive() && thirdPersonAimTransition > 0.001F) {
+							// Vista táctica sobre el hombro derecho al apuntar con clic derecho en 3ra persona
+							Vector3 camFront;
+							camFront.x = cosf(sharedState.pitch) * -cosf(sharedState.yaw);
+							camFront.y = cosf(sharedState.pitch) * -sinf(sharedState.yaw);
+							camFront.z = sinf(sharedState.pitch);
+							Vector3 up = {0, 0, -1};
+							Vector3 camSide = Vector3::Cross(camFront, up).Normalize();
+
+							center += camSide * (0.68F * thirdPersonAimTransition);
+							center.z -= 0.10F * thirdPersonAimTransition;
+							distance = Mix(5.0F, 3.4F, thirdPersonAimTransition);
 						}
 						if (player.IsLocalPlayer()
 							&& !player.IsSpectator()
@@ -527,6 +539,18 @@ namespace spades {
 						def.viewAxis[0] = -Vector3::Cross(up, front).Normalize();
 						def.viewAxis[1] = -Vector3::Cross(front, def.viewAxis[0]);
 						def.viewAxis[2] = front;
+
+						if (cameraMode == ClientCameraMode::ThirdPersonLocal && player.IsLocalPlayer() && player.IsAlive() && !inHeli && !inCar && thirdPersonAimTransition > 0.05F) {
+							// Alineación de paralaje de precisión láser: raycast desde la cámara hacia el objetivo
+							World::WeaponRayCastResult rayRes = world->WeaponRayCast(eye, front, player.GetId());
+							Vector3 targetPos = rayRes.hit ? rayRes.hitPos : (eye + front * 100.0F);
+							Vector3 desiredDir = targetPos - player.GetEye();
+							if (desiredDir.GetLength() > 1.5F) {
+								Vector3 aimDir = desiredDir.Normalize();
+								Vector3 currentFront = player.GetFront();
+								player.SetOrientation(Vector3::Normalize(Mix(currentFront, aimDir, thirdPersonAimTransition)));
+							}
+						}
 
 						// Update initial floating camera pos
 						freeState.position = def.viewOrigin;

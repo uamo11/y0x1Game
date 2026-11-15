@@ -521,6 +521,36 @@ namespace spades {
 					spectatorZoomState = 0.0F;
 			}
 
+			// Transición fluida del apuntado con clic derecho en 3ra persona
+			bool shouldAim3rd = thirdPersonAim && GetCameraMode() == ClientCameraMode::ThirdPersonLocal;
+			if (world) {
+				auto maybeLp = world->GetLocalPlayer();
+				if (!maybeLp || !maybeLp->IsAlive()) {
+					shouldAim3rd = false;
+					thirdPersonAim = false;
+				} else {
+					auto& hState = PlayerCosmetics::GetGlobalHelicopter();
+					auto& cState = PlayerCosmetics::GetGlobalCar();
+					int myPid = static_cast<int>(maybeLp->GetId());
+					if (hState.active && hState.pilotId == myPid)
+						shouldAim3rd = false;
+					if (cState.active && (cState.driverId == myPid || cState.occupantIds[0] == myPid))
+						shouldAim3rd = false;
+				}
+			} else {
+				shouldAim3rd = false;
+				thirdPersonAim = false;
+			}
+			if (shouldAim3rd) {
+				thirdPersonAimTransition += dt * 10.0F;
+				if (thirdPersonAimTransition > 1.0F)
+					thirdPersonAimTransition = 1.0F;
+			} else {
+				thirdPersonAimTransition -= dt * 10.0F;
+				if (thirdPersonAimTransition < 0.0F)
+					thirdPersonAimTransition = 0.0F;
+			}
+
 			// update minimap sound indicators
 			for (auto it = soundFeedbackIndicators.begin(); it != soundFeedbackIndicators.end();) {
 				it->fade -= dt * 4.0F;

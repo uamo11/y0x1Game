@@ -423,6 +423,11 @@ namespace spades {
 				float pitch = 0.0F;
 			} followAndFreeCameraState;
 
+			// Third-person right-click aiming and crosshair state
+			bool thirdPersonAim = false;
+			float thirdPersonAimDownTime = 0.0F;
+			float thirdPersonAimTransition = 0.0F;
+
 			/**
 			 * The ID of the player being followed (in a spectator mode, or when the local player is
 			 * dead). Must be valid as long as the follow cam is enabled.
@@ -678,6 +683,9 @@ namespace spades {
 			void DrawLocalPlayerMarkedIndicator();
 			/** Relayed pings, as markers anchored to their world position. */
 			void DrawTeamplayPings();
+
+			/** Tactical third-person over-the-shoulder aiming pointer / reticle. */
+			void DrawThirdPersonCrosshair();
 
 			/** The world position the local player's crosshair points at. Returns false
 			 * when the ray hits nothing usable. */

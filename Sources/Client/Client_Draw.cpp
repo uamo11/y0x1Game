@@ -2196,6 +2196,80 @@ namespace spades {
 				DrawDebugAim(p);
 		}
 
+		void Client::DrawThirdPersonCrosshair() {
+			SPADES_MARK_FUNCTION();
+
+			if (thirdPersonAimTransition <= 0.01F || !world)
+				return;
+
+			auto maybePlayer = world->GetLocalPlayer();
+			if (!maybePlayer || !maybePlayer->IsAlive())
+				return;
+
+			auto& hState = PlayerCosmetics::GetGlobalHelicopter();
+			auto& cState = PlayerCosmetics::GetGlobalCar();
+			int pid = static_cast<int>(maybePlayer->GetId());
+			if (hState.active && hState.pilotId == pid)
+				return;
+			if (cState.active && (cState.driverId == pid || cState.occupantIds[0] == pid))
+				return;
+
+			float sw = renderer->ScreenWidth();
+			float sh = renderer->ScreenHeight();
+			float cx = sw * 0.5F;
+			float cy = sh * 0.5F;
+
+			float alpha = std::clamp(thirdPersonAimTransition, 0.0F, 1.0F);
+
+			// Detección dinámica de objetivo bajo el retículo
+			Vector3 aimOrigin = lastSceneDef.viewOrigin;
+			Vector3 aimDir = lastSceneDef.viewAxis[2];
+			World::WeaponRayCastResult rayRes = world->WeaponRayCast(aimOrigin, aimDir, pid);
+
+			Vector4 mainColor = MakeVector4(1.0F, 1.0F, 1.0F, 0.95F * alpha); // Blanco nítido estándar
+			if (rayRes.hit && rayRes.playerHit && rayRes.playerId >= 0) {
+				auto maybeTarget = world->GetPlayer(rayRes.playerId);
+				if (maybeTarget && maybeTarget->IsAlive()) {
+					if (maybeTarget->GetTeam() == maybePlayer->GetTeam() && !activeNet->GetGameProperties()->isTeamDamageAllowed) {
+						mainColor = MakeVector4(0.2F, 1.0F, 0.3F, 0.95F * alpha); // Verde aliado
+					} else {
+						mainColor = MakeVector4(1.0F, 0.22F, 0.22F, 0.95F * alpha); // Rojo enemigo
+					}
+				}
+			}
+			Vector4 outlineColor = MakeVector4(0.0F, 0.0F, 0.0F, 0.85F * alpha);
+
+			// Punto central con reborde negro
+			renderer->SetColorAlphaPremultiplied(outlineColor);
+			renderer->DrawFilledCircle(MakeVector2(cx, cy), 3.0F);
+			renderer->SetColorAlphaPremultiplied(mainColor);
+			renderer->DrawFilledCircle(MakeVector2(cx, cy), 1.8F);
+
+			// 4 Ticks direccionales tácticos con expansión dinámica
+			float gap = 6.0F;
+			if (maybePlayer->GetVelocity().GetLength() > 0.05F) {
+				gap += 3.5F;
+			}
+			float length = 7.0F;
+			float thickness = 2.0F;
+
+			auto drawTick = [&](float x0, float y0, float x1, float y1) {
+				renderer->SetColorAlphaPremultiplied(outlineColor);
+				renderer->DrawFilledRect(x0 - 1.0F, y0 - 1.0F, x1 + 1.0F, y1 + 1.0F);
+				renderer->SetColorAlphaPremultiplied(mainColor);
+				renderer->DrawFilledRect(x0, y0, x1, y1);
+			};
+
+			// Izquierda
+			drawTick(cx - gap - length, cy - thickness * 0.5F, cx - gap, cy + thickness * 0.5F);
+			// Derecha
+			drawTick(cx + gap, cy - thickness * 0.5F, cx + gap + length, cy + thickness * 0.5F);
+			// Arriba
+			drawTick(cx - thickness * 0.5F, cy - gap - length, cx + thickness * 0.5F, cy - gap);
+			// Abajo
+			drawTick(cx - thickness * 0.5F, cy + gap, cx + thickness * 0.5F, cy + gap + length);
+		}
+
 		void Client::DrawDeadPlayerHUD() {
 			SPADES_MARK_FUNCTION();
 
@@ -3018,9 +3092,11 @@ namespace spades {
 				}
 
 				if (shouldDrawHUD) {
-					// draw firstperson camera player HUD
+					// draw firstperson camera player HUD or thirdperson tactical crosshair
 					if (IsFirstPerson(GetCameraMode()))
 						DrawFirstPersonHUD();
+					else if (GetCameraMode() == ClientCameraMode::ThirdPersonLocal)
+						DrawThirdPersonCrosshair();
 
 					tcView->Draw();
 

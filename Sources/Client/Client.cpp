@@ -158,7 +158,10 @@ namespace spades {
 			  spectatorPlayerNames(true),
 			  teamOverlayHeld(false),
 			  teamOverlayAlpha(0.0F),
-			  pieMenuPingValid(false) {
+			  pieMenuPingValid(false),
+			  thirdPersonAim(false),
+			  thirdPersonAimDownTime(0.0F),
+			  thirdPersonAimTransition(0.0F) {
 			SPADES_MARK_FUNCTION();
 			SPLog("Initializing...");
 
@@ -259,6 +262,8 @@ namespace spades {
 			flashlightOn = false;
 			debugHitTestZoom = false;
 			spectatorZoom = false;
+			thirdPersonAim = false;
+			thirdPersonAimTransition = 0.0F;
 			largeMapView->SetZoom(false);
 
 			clientPlayers.clear();
