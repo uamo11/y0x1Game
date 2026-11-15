@@ -30,11 +30,11 @@ jobs:
         run: |
           if (-not (Test-Path openal-soft/CMakeLists.txt)) {
             if (Test-Path openal-soft) {
-              git clone --depth 1 https://github.com/kcat/openal-soft.git openal-soft_tmp
+              git clone --depth 1 --branch 1.23.1 https://github.com/kcat/openal-soft.git openal-soft_tmp
               Get-ChildItem -Path openal-soft_tmp -Force | Copy-Item -Destination openal-soft -Recurse -Force
               Remove-Item -Path openal-soft_tmp -Recurse -Force
             } else {
-              git clone --depth 1 https://github.com/kcat/openal-soft.git openal-soft
+              git clone --depth 1 --branch 1.23.1 https://github.com/kcat/openal-soft.git openal-soft
             }
           }
           if (-not (Test-Path vcpkg/bootstrap-vcpkg.bat)) {
@@ -62,6 +62,9 @@ jobs:
             -D CMAKE_BUILD_TYPE=Release `
             -D CMAKE_TOOLCHAIN_FILE="${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake" `
             -D VCPKG_TARGET_TRIPLET=x64-windows-static `
+            -D ALSOFT_BACKEND_DSOUND=OFF `
+            -D ALSOFT_UTILS=OFF `
+            -D ALSOFT_EXAMPLES=OFF `
             -D CMAKE_CXX_STANDARD=17
 
       - name: Build application
