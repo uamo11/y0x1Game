@@ -37,7 +37,7 @@ namespace spades {
 	}
 	namespace gui {
 		class MainScreenUI;
-		class CosmeticTabButton;
+		class ModTabButton;
 		class WeaponOptionRow;
 		class WeaponSubCategoryBtn;
 
@@ -88,10 +88,10 @@ namespace spades {
 			std::string loadedSightPath;
 
 			// Sidebar tabs
-			CosmeticTabButton* tabWeapons = nullptr;
-			CosmeticTabButton* tabAccessories = nullptr;
-			CosmeticTabButton* tabAudio = nullptr;
-			CosmeticTabButton* tabPaks = nullptr;
+			ModTabButton* tabWeapons = nullptr;
+			ModTabButton* tabAccessories = nullptr;
+			ModTabButton* tabAudio = nullptr;
+			ModTabButton* tabPaks = nullptr;
 
 			// Weapon Subcategory buttons
 			WeaponSubCategoryBtn* subSmgBtn = nullptr;
