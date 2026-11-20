@@ -27,8 +27,10 @@
 #include <vector>
 
 #include <Client/Fonts.h>
+#include <Client/IAudioChunk.h>
 #include <Client/IAudioDevice.h>
 #include <Client/IFont.h>
+#include <Client/IModel.h>
 #include <Client/IRenderer.h>
 #include <Core/FileManager.h>
 #include <Core/Settings.h>
