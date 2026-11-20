@@ -24,8 +24,6 @@
 #include <vector>
 
 #include <Core/Math.h>
-#include <Core/Matrix.h>
-#include <Core/Vector.h>
 #include <Gui/UI/Framework/UIElement.h>
 #include <Gui/UI/Widgets/Button.h>
 #include <Gui/UI/Widgets/GuiIcons.h>
