@@ -36,11 +36,13 @@ namespace spades {
 
 			LobbyIconButton* playButton = nullptr;
 			LobbyIconButton* skinsButton = nullptr;
+			LobbyIconButton* modsButton = nullptr;
 			LobbyIconButton* settingsButton = nullptr;
 			LobbyIconButton* quitButton = nullptr;
 
 			void OnPlayPressed(ui::UIElement& sender);
 			void OnSkinsPressed(ui::UIElement& sender);
+			void OnModsPressed(ui::UIElement& sender);
 			void OnSettingsPressed(ui::UIElement& sender);
 			void OnQuitPressed(ui::UIElement& sender);
 

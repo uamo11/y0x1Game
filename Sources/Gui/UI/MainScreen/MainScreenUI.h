@@ -40,6 +40,7 @@ namespace spades {
 		class MainScreenMainMenu;
 		class LobbyScreen;
 		class SkinSelectScreen;
+		class ModWeaponSelectScreen;
 		namespace ui {
 			class UIManager;
 		}
@@ -73,6 +74,7 @@ namespace spades {
 			std::string loadedAccessoryType;
 			void RebuildCosmeticModels();
 			SkinSelectScreen* activeSkinScreen = nullptr;
+			ModWeaponSelectScreen* activeWeaponScreen = nullptr;
 
 			float time = -1.0F;
 
@@ -106,6 +108,7 @@ namespace spades {
 			void RebuildFlagModel();
 			void UpdateLobbyCosmetics() { RebuildCosmeticModels(); }
 			void SetActiveSkinScreen(SkinSelectScreen* screen) { activeSkinScreen = screen; }
+			void SetActiveWeaponScreen(ModWeaponSelectScreen* screen) { activeWeaponScreen = screen; }
 			void DropFileEvent(const std::string& filePath);
 			void LoadBackgroundMap(const std::string& mapPath);
 			void OpenDetailedSettings();

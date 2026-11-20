@@ -117,6 +117,7 @@ namespace spades {
 			MenuIconButton* connectButton = nullptr;
 			MenuIconButton* toggleIpButton = nullptr;
 			MenuIconButton* skinsButton = nullptr;
+			MenuIconButton* modsButton = nullptr;
 			ui::Label* goldNoticeLabel = nullptr;
 			bool showDirectConnect = false;
 
@@ -221,6 +222,7 @@ namespace spades {
 			void SetProtocolVersion(int ver);
 
 			void OnSkinsPressed(ui::UIElement& sender);
+			void OnModsPressed(ui::UIElement& sender);
 			void Connect();
 
 		public:

@@ -37,6 +37,7 @@
 #include "MainScreenUI.h"
 #include "SelectCountryScreen.h"
 #include "SkinSelectScreen.h"
+#include "ModWeaponSelectScreen.h"
 #include <Client/Fonts.h>
 #include <Client/PlayerCosmetics.h>
 #include <Client/GameMap.h>
@@ -599,8 +600,11 @@ namespace spades {
 				sceneDef.globalBlur = std::max(sceneDef.globalBlur, 0.5F);
 
 			renderer->StartScene(sceneDef);
-			if (lobbyScreen && lobbyScreen->visible) {
+			if (lobbyScreen && lobbyScreen->visible && !activeWeaponScreen) {
 				RenderLobbyScene(sceneDef, dt);
+			}
+			if (activeWeaponScreen && activeWeaponScreen->visible) {
+				activeWeaponScreen->Render3DWeapon(sceneDef, dt);
 			}
 			renderer->EndScene();
 

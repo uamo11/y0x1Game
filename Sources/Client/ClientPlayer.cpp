@@ -78,6 +78,10 @@ SPADES_SETTING(cg_playerSkin);
 SPADES_SETTING(cg_playerCape);
 SPADES_SETTING(cg_playerAccessory);
 SPADES_SETTING(cg_helicopter);
+SPADES_SETTING(cg_mod_weapon_smg);
+SPADES_SETTING(cg_mod_weapon_rifle);
+SPADES_SETTING(cg_mod_weapon_shotgun);
+SPADES_SETTING(cg_mod_weapon_spade);
 
 namespace spades {
 	namespace client {
@@ -888,15 +892,46 @@ namespace spades {
 							return;
 
 						switch (w.GetWeaponType()) {
-							case RIFLE_WEAPON:
+							case RIFLE_WEAPON: {
+								std::string rMod = cg_mod_weapon_rifle;
 								model = renderer.RegisterModel("Models/Weapons/Rifle/Weapon.kv6");
-								break;
-							case SMG_WEAPON:
-								model = renderer.RegisterModel("Models/Weapons/SMG/Weapon.kv6");
-								break;
-							case SHOTGUN_WEAPON:
-								model = renderer.RegisterModel("Models/Weapons/Shotgun/Weapon.kv6");
-								break;
+								if (rMod == "rifle_ak47")
+									param.customColor = MakeVector3(0.50F, 0.32F, 0.18F);
+								else if (rMod == "rifle_m4a1")
+									param.customColor = MakeVector3(0.20F, 0.22F, 0.25F);
+								else if (rMod == "rifle_awp")
+									param.customColor = MakeVector3(0.25F, 0.38F, 0.22F);
+							} break;
+							case SMG_WEAPON: {
+								std::string smgMod = cg_mod_weapon_smg;
+								if (smgMod == "smg_p90")
+									model = renderer.RegisterModel("Models/Weapons/SMG/WeaponNoMagazine.kv6");
+								else
+									model = renderer.RegisterModel("Models/Weapons/SMG/Weapon.kv6");
+
+								if (smgMod == "smg_gold")
+									param.customColor = MakeVector3(1.0F, 0.84F, 0.20F);
+								else if (smgMod == "smg_mp5")
+									param.customColor = MakeVector3(0.20F, 0.22F, 0.25F);
+								else if (smgMod == "smg_tommy")
+									param.customColor = MakeVector3(0.55F, 0.35F, 0.20F);
+								else if (smgMod == "smg_uzi")
+									param.customColor = MakeVector3(0.35F, 0.38F, 0.42F);
+								else if (smgMod == "smg_p90")
+									param.customColor = MakeVector3(0.30F, 0.35F, 0.40F);
+							} break;
+							case SHOTGUN_WEAPON: {
+								std::string sMod = cg_mod_weapon_shotgun;
+								if (sMod == "shotgun_double")
+									model = renderer.RegisterModel("Models/Weapons/Shotgun/WeaponNoPump.kv6");
+								else
+									model = renderer.RegisterModel("Models/Weapons/Shotgun/Weapon.kv6");
+
+								if (sMod == "shotgun_spas12")
+									param.customColor = MakeVector3(0.18F, 0.20F, 0.22F);
+								else if (sMod == "shotgun_double")
+									param.customColor = MakeVector3(0.48F, 0.28F, 0.16F);
+							} break;
 						}
 
 						const float nextFireTime = w.GetTimeToNextFire();

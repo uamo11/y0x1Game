@@ -24,6 +24,7 @@
 #include "MainMenu.h"
 #include "MainScreenUI.h"
 #include "SkinSelectScreen.h"
+#include "ModWeaponSelectScreen.h"
 #include <Client/Fonts.h>
 #include <Client/IImage.h>
 #include <Client/IRenderer.h>
@@ -759,6 +760,13 @@ namespace spades {
 				// --- Mods panel contents ---
 				{
 					Handle<Button> button = Handle<Button>::New(manager);
+					button->caption = _Tr("MainScreen", "★ Armería & Personalización de Armas en Tiempo Real...");
+					button->SetBounds(AABB2(contentsLeft, 160.0F, 430.0F, 32.0F));
+					button->activated = [this](UIElement& s) { OnModsPressed(s); };
+					modsPanel->AddChild(button.GetPointerOrNull());
+				}
+				{
+					Handle<Button> button = Handle<Button>::New(manager);
 					modsDownloadButton = button.GetPointerOrNull();
 					modsDownloadButton->caption = _Tr("MainScreen", "Download official mods...");
 					modsDownloadButton->SetBounds(AABB2(contentsLeft, 200.0F, 240.0F, 30.0F));
@@ -902,6 +910,15 @@ namespace spades {
 				skinsButton->activated = [this](UIElement& s) { OnSkinsPressed(s); };
 				AddChild(skinsButton);
 			}
+			{
+				Handle<MenuIconButton> button =
+				    Handle<MenuIconButton>::New(manager, GuiIconType::Extension);
+				modsButton = button.GetPointerOrNull();
+				modsButton->caption = _Tr("MainScreen", "Mods / Armas");
+				modsButton->SetBounds(AABB2(contentsLeft + 230.0F, footerPos, 130.0F, 30.0F));
+				modsButton->activated = [this](UIElement& s) { OnModsPressed(s); };
+				AddChild(modsButton);
+			}
 
 			LoadServerList();
 			LoadDemoList();
@@ -937,13 +954,15 @@ namespace spades {
 			currentDemoListModel = model;
 		}
 
-		void MainScreenMainMenu::OnTabChanged(UIElement&) {
+		void MainScreenMainMenu::OnTabChanged(UIElement& s) {
 			if (worldsPanel && worldsPanel->visible)
 				LoadWorldList();
 			if (demoPanel && demoPanel->visible)
 				LoadDemoList();
-			if (modsPanel && modsPanel->visible)
+			if (modsPanel && modsPanel->visible) {
 				LoadModList();
+				OnModsPressed(s);
+			}
 		}
 
 		MainScreenMainMenuState MainScreenMainMenu::GetState() {
@@ -1571,6 +1590,12 @@ namespace spades {
 		void MainScreenMainMenu::OnSkinsPressed(UIElement&) {
 			Handle<SkinSelectScreen> screen =
 			    Handle<SkinSelectScreen>::New(this, &ui->GetFontManager(), ui);
+			screen->Run();
+		}
+
+		void MainScreenMainMenu::OnModsPressed(UIElement&) {
+			Handle<ModWeaponSelectScreen> screen =
+			    Handle<ModWeaponSelectScreen>::New(this, &ui->GetFontManager(), ui);
 			screen->Run();
 		}
 
