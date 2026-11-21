@@ -760,13 +760,6 @@ namespace spades {
 				// --- Mods panel contents ---
 				{
 					Handle<Button> button = Handle<Button>::New(manager);
-					button->caption = _Tr("MainScreen", "★ Armería & Personalización de Armas en Tiempo Real...");
-					button->SetBounds(AABB2(contentsLeft, 160.0F, 430.0F, 32.0F));
-					button->activated = [this](UIElement& s) { OnModsPressed(s); };
-					modsPanel->AddChild(button.GetPointerOrNull());
-				}
-				{
-					Handle<Button> button = Handle<Button>::New(manager);
 					modsDownloadButton = button.GetPointerOrNull();
 					modsDownloadButton->caption = _Tr("MainScreen", "Download official mods...");
 					modsDownloadButton->SetBounds(AABB2(contentsLeft, 200.0F, 240.0F, 30.0F));
@@ -872,12 +865,11 @@ namespace spades {
 					tabStrip->SetBounds(AABB2(contentsLeft, tabStripPos, contentsWidth, 24.0F));
 					AddChild(tabStrip.GetPointerOrNull());
 					tabStrip->AddItem(_Tr("MainScreen", "Servidores"), serverPanel);
-					tabStrip->AddItem(_Tr("MainScreen", "Mundos"), worldsPanel);
-					tabStrip->AddItem(_Tr("MainScreen", "Demos"), demoPanel);
-					// Hide the Mods tab while trying a single mod (--try-mod):
-					// the mod manager is irrelevant and its enabled set is bypassed.
+					// Place Mods directly next to Servidores
 					if (!helper->IsTryingMod())
 						tabStrip->AddItem(_Tr("MainScreen", "Mods"), modsPanel);
+					tabStrip->AddItem(_Tr("MainScreen", "Mundos"), worldsPanel);
+					tabStrip->AddItem(_Tr("MainScreen", "Demos"), demoPanel);
 					tabStrip->changed = [this](UIElement& s) { OnTabChanged(s); };
 				}
 
@@ -914,9 +906,13 @@ namespace spades {
 				Handle<MenuIconButton> button =
 				    Handle<MenuIconButton>::New(manager, GuiIconType::Extension);
 				modsButton = button.GetPointerOrNull();
-				modsButton->caption = _Tr("MainScreen", "Mods / Armas");
-				modsButton->SetBounds(AABB2(contentsLeft + 230.0F, footerPos, 130.0F, 30.0F));
-				modsButton->activated = [this](UIElement& s) { OnModsPressed(s); };
+				modsButton->caption = _Tr("MainScreen", "Mods");
+				modsButton->SetBounds(AABB2(contentsLeft + 230.0F, footerPos, 110.0F, 30.0F));
+				modsButton->activated = [this](UIElement&) {
+					MainScreenMainMenuState st;
+					st.activeTabIndex = 1;
+					SetState(st);
+				};
 				AddChild(modsButton);
 			}
 
@@ -961,17 +957,16 @@ namespace spades {
 				LoadDemoList();
 			if (modsPanel && modsPanel->visible) {
 				LoadModList();
-				OnModsPressed(s);
 			}
 		}
 
 		MainScreenMainMenuState MainScreenMainMenu::GetState() {
 			MainScreenMainMenuState state;
-			if (worldsPanel && worldsPanel->visible)
+			if (modsPanel && modsPanel->visible)
 				state.activeTabIndex = 1;
-			else if (demoPanel && demoPanel->visible)
+			else if (worldsPanel && worldsPanel->visible)
 				state.activeTabIndex = 2;
-			else if (modsPanel && modsPanel->visible)
+			else if (demoPanel && demoPanel->visible)
 				state.activeTabIndex = 3;
 			else
 				state.activeTabIndex = 0;
@@ -980,12 +975,12 @@ namespace spades {
 
 		void MainScreenMainMenu::SetState(const MainScreenMainMenuState& state) {
 			serverPanel->visible = (state.activeTabIndex == 0);
-			if (worldsPanel)
-				worldsPanel->visible = (state.activeTabIndex == 1);
-			if (demoPanel)
-				demoPanel->visible = (state.activeTabIndex == 2);
 			if (modsPanel)
-				modsPanel->visible = (state.activeTabIndex == 3);
+				modsPanel->visible = (state.activeTabIndex == 1);
+			if (worldsPanel)
+				worldsPanel->visible = (state.activeTabIndex == 2);
+			if (demoPanel)
+				demoPanel->visible = (state.activeTabIndex == 3);
 
 			// A restored tab is populated by the same path a clicked one is: the
 			// constructor only fills the server list.
@@ -995,6 +990,30 @@ namespace spades {
 		void MainScreenMainMenu::LoadModList() {
 			std::vector<std::string> names = modsHelper->GetModNames();
 			std::vector<std::string> enabled = modsHelper->GetEnabledMods();
+
+			// Sort mods by Category / Type: weapons first (SEMI, SMG, SHOTGUN, SPADE, GRENADE), then SFX, VFX, FONT, etc.
+			auto getCategoryRank = [this](const std::string& name) -> int {
+				std::string cat = modsHelper->GetModCategory(name);
+				if (cat == "SEMI" || cat == "RIFLE") return 0;
+				if (cat == "SMG") return 1;
+				if (cat == "SHOTGUN") return 2;
+				if (cat == "SPADE") return 3;
+				if (cat == "GRENADE") return 4;
+				if (cat == "SFX") return 5;
+				if (cat == "VFX") return 6;
+				if (cat == "FONT") return 7;
+				return 8;
+			};
+
+			std::sort(names.begin(), names.end(), [&](const std::string& a, const std::string& b) {
+				int rankA = getCategoryRank(a);
+				int rankB = getCategoryRank(b);
+				if (rankA != rankB) return rankA < rankB;
+				std::string catA = modsHelper->GetModCategory(a);
+				std::string catB = modsHelper->GetModCategory(b);
+				if (catA != catB) return catA < catB;
+				return modsHelper->GetModDisplayName(a) < modsHelper->GetModDisplayName(b);
+			});
 
 			// Displayed rows keep a fixed order: every mod on disk in its natural
 			// order, then any enabled mod that no longer exists (orphaned entries,
@@ -1031,7 +1050,10 @@ namespace spades {
 			    std::move(exists), modsCheckColWidth, modsOrderColWidth, modsTagColWidth,
 			    modsNameColWidth, modsAuthorColWidth, modsSizeColWidth);
 			modsList->SetModel(model.GetPointerOrNull());
-			model->itemActivated = [this](const std::string& name) { OnModToggle(name); };
+			model->itemActivated = [this](const std::string& name) {
+				selectedModCategory = modsHelper->GetModCategory(name);
+				OnModToggle(name);
+			};
 			UpdateModsStatus();
 		}
 

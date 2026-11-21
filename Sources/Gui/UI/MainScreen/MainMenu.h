@@ -183,6 +183,7 @@ namespace spades {
 			ModsProgressBar* modsProgressBar;
 			bool modsDownloading = false;
 			bool modsDirty = false; // enabled set changed this session; restart to apply
+			std::string selectedModCategory = "SEMI";
 			float modsCheckColWidth;
 			float modsOrderColWidth;
 			float modsTagColWidth;
@@ -227,6 +228,9 @@ namespace spades {
 
 		public:
 			MainScreenMainMenu(MainScreenUI* ui);
+
+			bool IsModsTabActive() const { return modsPanel && modsPanel->visible; }
+			std::string GetSelectedModCategory() const { return selectedModCategory; }
 
 			void LoadServerList();
 			void LoadDemoList();

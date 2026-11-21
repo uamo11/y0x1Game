@@ -57,8 +57,9 @@ namespace spades {
 			void Update(float dt);
 			void MouseEvent(float x, float y);
 
-			// Real-time 3D weapon rendering
-			void Render3DWeapon(const client::SceneDefinition& sceneDef);
+			// Real-time 3D character and weapon rendering
+			void Render3DScene(const client::SceneDefinition& sceneDef);
+			void Render3DWeapon(const client::SceneDefinition& sceneDef) { Render3DScene(sceneDef); }
 
 		private:
 			Handle<ILimboMenuHost> host;
@@ -75,6 +76,11 @@ namespace spades {
 			Handle<client::IModel> rifleModel;
 			Handle<client::IModel> smgModel;
 			Handle<client::IModel> shotgunModel;
+			Handle<client::IModel> playerTorsoModel;
+			Handle<client::IModel> playerHeadModel;
+			Handle<client::IModel> playerLegLeftModel;
+			Handle<client::IModel> playerLegRightModel;
+			Handle<client::IModel> playerArmsModel;
 
 			std::vector<MenuItem> items;
 

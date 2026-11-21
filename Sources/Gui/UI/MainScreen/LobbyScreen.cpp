@@ -304,9 +304,7 @@ namespace spades {
 		}
 
 		void LobbyScreen::OnModsPressed(UIElement&) {
-			Handle<ModWeaponSelectScreen> screen =
-			    Handle<ModWeaponSelectScreen>::New(this, &ui->GetFontManager(), ui);
-			screen->Run();
+			ui->ShowModsBrowser();
 		}
 
 		void LobbyScreen::OnSettingsPressed(UIElement&) {

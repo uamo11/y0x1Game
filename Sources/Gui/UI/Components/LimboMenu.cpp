@@ -93,26 +93,19 @@ namespace spades {
 			cachedLayout.screenWidth = renderer->ScreenWidth();
 			cachedLayout.screenHeight = renderer->ScreenHeight();
 
-			float maxContentsWidth = 860.0F;
-			cachedLayout.contentsWidth = std::min(maxContentsWidth, cachedLayout.screenWidth - 16.0F);
-
+			// Center selection panel: 460px wide, 168px high
+			cachedLayout.contentsWidth = std::min(460.0F, cachedLayout.screenWidth - 16.0F);
 			cachedLayout.left = (cachedLayout.screenWidth - cachedLayout.contentsWidth) * 0.5F;
-			float panelH = 205.0F;
-			cachedLayout.top = cachedLayout.screenHeight - (panelH + 15.0F);
+			float panelH = 168.0F;
+			cachedLayout.top = cachedLayout.screenHeight - (panelH + 20.0F);
 
-			cachedLayout.menuWidth = 195.0F;
-			cachedLayout.menuHeight = 34.0F;
-			cachedLayout.rowHeight = 40.0F;
+			cachedLayout.menuWidth = (cachedLayout.contentsWidth - 36.0F) * 0.5F;
+			cachedLayout.menuHeight = 28.0F;
+			cachedLayout.rowHeight = 33.0F;
 
-			cachedLayout.teamX = cachedLayout.left + 16.0F;
-			cachedLayout.weapX = cachedLayout.left + 225.0F;
-			cachedLayout.firstY = cachedLayout.top + 62.0F;
-
-			// Right showcase frame for 3D weapon preview
-			float showcaseX = cachedLayout.left + 435.0F;
-			float showcaseW = cachedLayout.contentsWidth - (435.0F + 16.0F);
-			float showcaseH = 185.0F;
-			showcaseRect = AABB2(showcaseX, cachedLayout.top + 10.0F, showcaseW, showcaseH);
+			cachedLayout.teamX = cachedLayout.left + 14.0F;
+			cachedLayout.weapX = cachedLayout.left + 14.0F + cachedLayout.menuWidth + 8.0F;
+			cachedLayout.firstY = cachedLayout.top + 50.0F;
 
 			cachedLayout.isValid = true;
 		}
@@ -168,10 +161,10 @@ namespace spades {
 						item.rect = AABB2(cachedLayout.weapX, cachedLayout.firstY + cachedLayout.rowHeight * 2.0F, cachedLayout.menuWidth, cachedLayout.menuHeight);
 						break;
 					case MenuItemType::Spawn:
-						item.rect = AABB2(showcaseRect.min.x + showcaseRect.GetWidth() - 180.0F, showcaseRect.min.y + showcaseRect.GetHeight() - 36.0F, 172.0F, 30.0F);
+						item.rect = AABB2(cachedLayout.left + 14.0F, cachedLayout.top + 130.0F, cachedLayout.contentsWidth - 28.0F, 28.0F);
 						break;
 					case MenuItemType::Close:
-						item.rect = AABB2(cachedLayout.left + cachedLayout.contentsWidth - 28.0F, cachedLayout.top + 8.0F, 20.0F, 20.0F);
+						item.rect = AABB2(cachedLayout.left + cachedLayout.contentsWidth - 26.0F, cachedLayout.top + 6.0F, 20.0F, 20.0F);
 						break;
 				}
 			}
@@ -241,85 +234,155 @@ namespace spades {
 
 		void LimboMenu::TextInputEvent(const std::string& text) {}
 
-		void LimboMenu::Render3DWeapon(const client::SceneDefinition& sceneDef) {
+		void LimboMenu::Render3DScene(const client::SceneDefinition& sceneDef) {
 			if (!isActive)
 				return;
 
 			if (!rifleModel) rifleModel = renderer->RegisterModel("Models/Weapons/Rifle/Weapon.kv6");
 			if (!smgModel) smgModel = renderer->RegisterModel("Models/Weapons/SMG/Weapon.kv6");
 			if (!shotgunModel) shotgunModel = renderer->RegisterModel("Models/Weapons/Shotgun/Weapon.kv6");
-
-			WeaponType selectedWeapon = host->GetSelectedWeapon();
-			Handle<client::IModel> curModel;
-			Vector3 lightColor;
-			float weaponScale = 0.024F;
-
-			switch (selectedWeapon) {
-				case RIFLE_WEAPON:
-					curModel = rifleModel;
-					lightColor = MakeVector3(0.65F, 0.85F, 1.0F); // Crisp ice blue
-					weaponScale = 0.022F;
-					break;
-				case SMG_WEAPON:
-					curModel = smgModel;
-					lightColor = MakeVector3(0.40F, 0.95F, 0.65F); // Emerald cyan
-					weaponScale = 0.024F;
-					break;
-				case SHOTGUN_WEAPON:
-					curModel = shotgunModel;
-					lightColor = MakeVector3(1.0F, 0.70F, 0.35F); // Amber orange
-					weaponScale = 0.023F;
-					break;
-				default:
-					curModel = rifleModel;
-					lightColor = MakeVector3(0.85F, 0.85F, 0.85F);
-					break;
-			}
-
-			if (!curModel)
-				return;
+			if (!playerTorsoModel) playerTorsoModel = renderer->RegisterModel("Models/Player/Torso.kv6");
+			if (!playerHeadModel) playerHeadModel = renderer->RegisterModel("Models/Player/Head.kv6");
+			if (!playerLegLeftModel) playerLegLeftModel = renderer->RegisterModel("Models/Player/Leg.kv6");
+			if (!playerLegRightModel) playerLegRightModel = renderer->RegisterModel("Models/Player/LegRight.kv6");
+			if (!playerArmsModel) playerArmsModel = renderer->RegisterModel("Models/Player/Arms.kv6");
 
 			float sw = renderer->ScreenWidth();
 			float sh = renderer->ScreenHeight();
 
-			float centerX = showcaseRect.min.x + showcaseRect.GetWidth() * 0.5F;
-			float centerY = showcaseRect.min.y + 60.0F;
-
-			float ndcX = (centerX / sw) * 2.0F - 1.0F;
-			float ndcY = 1.0F - (centerY / sh) * 2.0F;
-
-			float dist = 3.6F;
 			float tanHalfFovX = (sceneDef.fovX > 0.01F) ? tanf(sceneDef.fovX * 0.5F) : (tanf(DEG2RAD(35.0F)) * (sw / sh));
 			float tanHalfFovY = (sceneDef.fovY > 0.01F) ? tanf(sceneDef.fovY * 0.5F) : tanf(DEG2RAD(35.0F));
-
-			float rightOffset = ndcX * tanHalfFovX * dist;
-			float upOffset = ndcY * tanHalfFovY * dist;
 
 			Vector3 orig = sceneDef.viewOrigin;
 			Vector3 dir = sceneDef.viewAxis[2];
 			Vector3 side = sceneDef.viewAxis[0];
 			Vector3 up = sceneDef.viewAxis[1];
 
-			Vector3 weaponPos = orig + dir * dist + side * rightOffset + up * upOffset;
+			int selectedTeam = host->GetSelectedTeam();
+			WeaponType selectedWeapon = host->GetSelectedWeapon();
 
-			float bob = sinf(showcaseTime * 2.2F) * 0.025F;
-			float pitch = sinf(showcaseTime * 1.6F) * 0.05F - 0.03F;
-			Vector3 actualPos = weaponPos + up * bob;
+			// 1. LEFT SIDE: 3D Player Character (Soldier with Team Skin)
+			{
+				float charNdcX = -0.60F;
+				float charNdcY = -0.15F;
+				float charDist = 4.2F;
 
-			client::ModelRenderParam param;
-			param.matrix = Matrix4::Translate(actualPos)
-			             * Matrix4::Rotate(up, weaponYaw)
-			             * Matrix4::Rotate(side, pitch)
-			             * Matrix4::Scale(weaponScale);
+				float charRight = charNdcX * tanHalfFovX * charDist;
+				float charUp = charNdcY * tanHalfFovY * charDist;
+				Vector3 charPos = orig + dir * charDist + side * charRight + up * charUp;
 
-			client::DynamicLightParam light;
-			light.type = client::DynamicLightTypePoint;
-			light.origin = actualPos + up * 0.75F - dir * 0.9F + side * 0.2F;
-			light.radius = 4.8F;
-			light.color = lightColor;
-			renderer->AddLight(light);
+				Vector3 teamColor = MakeVector3(0.18F, 0.50F, 0.95F); // Blue uniform
+				if (selectedTeam == 1) {
+					teamColor = MakeVector3(0.95F, 0.22F, 0.22F); // Red uniform
+				} else if (selectedTeam >= 2) {
+					teamColor = MakeVector3(0.60F, 0.65F, 0.70F); // Spectator / Neutral
+				}
 
-			renderer->RenderModel(*curModel, param);
+				client::DynamicLightParam charLight;
+				charLight.type = client::DynamicLightTypePoint;
+				charLight.origin = charPos + up * 1.5F - dir * 1.0F - side * 0.3F;
+				charLight.radius = 6.0F;
+				charLight.color = teamColor;
+				renderer->AddLight(charLight);
+
+				float breath = sinf(showcaseTime * 2.2F);
+				float pitch = 0.04F + breath * 0.02F;
+				float armPitch = -0.45F + breath * 0.02F;
+
+				Vector3 charFacing = (-dir * 0.88F + side * 0.42F).Normalize();
+				Vector3 charRight = Vector3::Cross(charFacing, up).Normalize();
+
+				Matrix4 lower = Matrix4::FromAxis(-charRight, charFacing, -up, charPos);
+				Matrix4 scaler = Matrix4::Scale(0.080F) * Matrix4::Scale(-1, -1, 1);
+
+				client::ModelRenderParam charParam;
+				charParam.depthHack = true;
+				charParam.customColor = teamColor;
+
+				if (playerLegLeftModel) {
+					charParam.matrix = lower * Matrix4::Translate(-0.25F, 0.0F, -0.1F) * scaler;
+					renderer->RenderModel(*playerLegLeftModel, charParam);
+				}
+				if (playerLegRightModel) {
+					charParam.matrix = lower * Matrix4::Translate(0.25F, 0.0F, -0.1F) * scaler;
+					renderer->RenderModel(*playerLegRightModel, charParam);
+				}
+				Matrix4 torso = lower * Matrix4::Translate(0.0F, 0.0F, -1.0F + breath * 0.015F)
+				              * Matrix4::Rotate(MakeVector3(1, 0, 0), breath * 0.02F);
+				charParam.matrix = torso * scaler;
+				if (playerTorsoModel)
+					renderer->RenderModel(*playerTorsoModel, charParam);
+
+				if (playerHeadModel) {
+					charParam.matrix = torso * Matrix4::Translate(0.0F, 0.0F, 0.0F)
+					                 * Matrix4::Rotate(MakeVector3(1, 0, 0), pitch) * scaler;
+					renderer->RenderModel(*playerHeadModel, charParam);
+				}
+				if (playerArmsModel) {
+					charParam.matrix = torso * Matrix4::Translate(0.0F, 0.0F, 0.1F)
+					                 * Matrix4::Rotate(MakeVector3(1, 0, 0), armPitch) * scaler;
+					renderer->RenderModel(*playerArmsModel, charParam);
+				}
+			}
+
+			// 2. RIGHT SIDE: 3D Weapon Model Physically Rotating at 360 degrees
+			if (selectedTeam < 2) {
+				Handle<client::IModel> curModel;
+				Vector3 lightColor;
+				float weaponScale = 0.025F;
+
+				switch (selectedWeapon) {
+					case RIFLE_WEAPON:
+						curModel = rifleModel;
+						lightColor = MakeVector3(0.65F, 0.85F, 1.0F); // Crisp ice blue
+						weaponScale = 0.023F;
+						break;
+					case SMG_WEAPON:
+						curModel = smgModel;
+						lightColor = MakeVector3(0.40F, 0.95F, 0.65F); // Emerald cyan
+						weaponScale = 0.025F;
+						break;
+					case SHOTGUN_WEAPON:
+						curModel = shotgunModel;
+						lightColor = MakeVector3(1.0F, 0.70F, 0.35F); // Amber orange
+						weaponScale = 0.024F;
+						break;
+					default:
+						curModel = rifleModel;
+						lightColor = MakeVector3(0.85F, 0.85F, 0.85F);
+						break;
+				}
+
+				if (curModel) {
+					float weapNdcX = 0.60F;
+					float weapNdcY = -0.10F;
+					float weapDist = 3.6F;
+
+					float weapRight = weapNdcX * tanHalfFovX * weapDist;
+					float weapUp = weapNdcY * tanHalfFovY * weapDist;
+					Vector3 weapPos = orig + dir * weapDist + side * weapRight + up * weapUp;
+
+					float bob = sinf(showcaseTime * 2.2F) * 0.02F;
+					Vector3 actualPos = weapPos + up * bob;
+
+					client::DynamicLightParam weapLight;
+					weapLight.type = client::DynamicLightTypePoint;
+					weapLight.origin = actualPos + up * 0.75F - dir * 0.9F + side * 0.2F;
+					weapLight.radius = 5.0F;
+					weapLight.color = lightColor;
+					renderer->AddLight(weapLight);
+
+					client::ModelRenderParam weapParam;
+					weapParam.depthHack = true;
+					Matrix4 weapBasis = Matrix4::FromAxis(side, -dir, up, actualPos);
+					weapParam.matrix = weapBasis
+					                 * Matrix4::Rotate(MakeVector3(0, 0, 1), weaponYaw)
+					                 * Matrix4::Rotate(MakeVector3(1, 0, 0), 0.18F)
+					                 * Matrix4::Scale(weaponScale);
+
+					renderer->RenderModel(*curModel, weapParam);
+				}
+			}
 		}
 
 		void LimboMenu::Draw() {
@@ -329,41 +392,39 @@ namespace spades {
 			EnsureLayout();
 
 			client::IFont& font = fontManager->GetGuiFont();
-			client::IFont& headingFont = fontManager->GetHeadingFont();
 			client::IFont& smallFont = fontManager->GetSmallFont();
 
+			const float sw = cachedLayout.screenWidth;
+			const float sh = cachedLayout.screenHeight;
 			const float left = cachedLayout.left;
 			const float top = cachedLayout.top;
 			const float contentsWidth = cachedLayout.contentsWidth;
-			const float height = 205.0F;
+			const float height = 168.0F;
 
 			const int selectedTeam = host->GetSelectedTeam();
 			const WeaponType selectedWeapon = host->GetSelectedWeapon();
 
-			// 1. Sleek glass panel background in HD translucent dark
-			renderer->SetColorAlphaPremultiplied(MakeVector4(0.02F, 0.02F, 0.04F, 0.88F));
+			Vector4 shadowColor = MakeVector4(0, 0, 0, 0.65F);
+			Vector4 hotkeyColor = MakeVector4(0.75F, 0.85F, 0.95F, 0.80F);
+
+			// Center selection card (clean, semi-transparent background)
+			renderer->SetColorAlphaPremultiplied(MakeVector4(0.02F, 0.03F, 0.05F, 0.82F));
 			renderer->DrawFilledRect(left, top, left + contentsWidth, top + height);
 
-			// Border with subtle tactical glow
-			renderer->SetColorAlphaPremultiplied(MakeVector4(0.18F, 0.24F, 0.35F, 0.90F));
+			renderer->SetColorAlphaPremultiplied(MakeVector4(0.20F, 0.30F, 0.45F, 0.85F));
 			renderer->DrawOutlinedRect(left, top, left + contentsWidth, top + height);
 
-			// Accent neon line on top edge
+			// Top neon line
 			renderer->SetColorAlphaPremultiplied(MakeVector4(0.35F, 0.75F, 1.0F, 0.95F));
 			renderer->DrawLine(MakeVector2(left + 2.0F, top + 1.0F), MakeVector2(left + contentsWidth - 2.0F, top + 1.0F), 2.0F);
 
-			Vector4 color = MakeVector4(1, 1, 1, 1);
-			Vector4 shadowColor = MakeVector4(0, 0, 0, 0.55F);
-			Vector4 hotkeyColor = MakeVector4(0.75F, 0.85F, 0.95F, 0.80F);
-
-			// Header Title
-			headingFont.DrawShadow(_Tr("Client", "DESPLIEGUE TÁCTICO & SELECCIÓN DE CLASE"), MakeVector2(left + 16.0F, top + 10.0F), 1.0F, color, shadowColor);
-			smallFont.DrawShadow(_Tr("Client", "Selecciona tu bando y equipamiento táctico • [1, 2, 3] Selección rápida"), MakeVector2(left + 16.0F, top + 31.0F), 0.95F, hotkeyColor, shadowColor);
+			// Center Title (Clean, NO overlap!)
+			font.DrawShadow(_Tr("Client", "SELECCIONAR EQUIPO Y ARMA"), MakeVector2(left + 14.0F, top + 10.0F), 1.0F, MakeVector4(1, 1, 1, 1), shadowColor);
 
 			// Section Column Titles
-			font.DrawShadow(_Tr("Client", "1. EQUIPO"), MakeVector2(cachedLayout.teamX, top + 44.0F), 0.95F, MakeVector4(0.55F, 0.85F, 1.0F, 0.95F), shadowColor);
+			smallFont.DrawShadow(_Tr("Client", "1. EQUIPO"), MakeVector2(cachedLayout.teamX, top + 32.0F), 0.95F, MakeVector4(0.55F, 0.85F, 1.0F, 0.95F), shadowColor);
 			if (selectedTeam < 2) {
-				font.DrawShadow(_Tr("Client", "2. ARMA PRINCIPAL"), MakeVector2(cachedLayout.weapX, top + 44.0F), 0.95F, MakeVector4(0.55F, 0.85F, 1.0F, 0.95F), shadowColor);
+				smallFont.DrawShadow(_Tr("Client", "2. ARMA PRINCIPAL"), MakeVector2(cachedLayout.weapX, top + 32.0F), 0.95F, MakeVector4(0.55F, 0.85F, 1.0F, 0.95F), shadowColor);
 			}
 
 			// Render Team & Weapon Buttons
@@ -382,8 +443,8 @@ namespace spades {
 						int teamId = TeamIdOf(item.type);
 						selected = (selectedTeam == teamId);
 						index = (selectedTeam >= 2) ? (1 + teamId) : 0;
-						if (teamId == 0) accentCol = MakeVector4(0.25F, 0.75F, 0.45F, 1.0F);      // Green Team
-						else if (teamId == 1) accentCol = MakeVector4(0.25F, 0.55F, 0.95F, 1.0F); // Blue Team
+						if (teamId == 0) accentCol = MakeVector4(0.25F, 0.55F, 0.95F, 1.0F);      // Blue Team
+						else if (teamId == 1) accentCol = MakeVector4(0.95F, 0.30F, 0.30F, 1.0F); // Red Team
 						else accentCol = MakeVector4(0.65F, 0.70F, 0.80F, 1.0F);                  // Spectator
 						break;
 					}
@@ -402,14 +463,13 @@ namespace spades {
 				}
 
 				if (item.type == MenuItemType::Spawn) {
-					// Tactical big Spawn button
-					Vector4 bgCol = item.hover ? MakeVector4(0.20F, 0.55F, 0.35F, 0.95F)
-					                           : MakeVector4(0.12F, 0.38F, 0.22F, 0.85F);
+					Vector4 bgCol = item.hover ? MakeVector4(0.18F, 0.50F, 0.32F, 0.95F)
+					                           : MakeVector4(0.10F, 0.32F, 0.20F, 0.85F);
 					renderer->SetColorAlphaPremultiplied(bgCol);
 					renderer->DrawFilledRect(item.rect.min.x, item.rect.min.y, item.rect.max.x, item.rect.max.y);
 
-					Vector4 borderCol = item.hover ? MakeVector4(0.50F, 1.0F, 0.65F, 1.0F)
-					                               : MakeVector4(0.30F, 0.85F, 0.45F, 0.90F);
+					Vector4 borderCol = item.hover ? MakeVector4(0.45F, 0.95F, 0.60F, 1.0F)
+					                               : MakeVector4(0.25F, 0.75F, 0.40F, 0.90F);
 					renderer->SetColorAlphaPremultiplied(borderCol);
 					renderer->DrawOutlinedRect(item.rect.min.x, item.rect.min.y, item.rect.max.x, item.rect.max.y);
 
@@ -419,16 +479,16 @@ namespace spades {
 					font.DrawShadow(spawnTxt, txtPos, 1.0F, MakeVector4(1, 1, 1, 1), shadowColor);
 					continue;
 				} else if (item.type == MenuItemType::Close) {
-					Vector4 bgCol = item.hover ? MakeVector4(0.6F, 0.15F, 0.15F, 0.90F)
-					                           : MakeVector4(0.25F, 0.08F, 0.08F, 0.65F);
+					Vector4 bgCol = item.hover ? MakeVector4(0.5F, 0.15F, 0.15F, 0.90F)
+					                           : MakeVector4(0.20F, 0.08F, 0.08F, 0.65F);
 					renderer->SetColorAlphaPremultiplied(bgCol);
 					renderer->DrawFilledRect(item.rect.min.x, item.rect.min.y, item.rect.max.x, item.rect.max.y);
 					renderer->SetColorAlphaPremultiplied(MakeVector4(0.8F, 0.3F, 0.3F, 0.85F));
 					renderer->DrawOutlinedRect(item.rect.min.x, item.rect.min.y, item.rect.max.x, item.rect.max.y);
 
-					Vector2 sz = font.Measure("X");
+					Vector2 sz = smallFont.Measure("X");
 					Vector2 pos = item.rect.min + MakeVector2((item.rect.GetWidth() - sz.x) * 0.5F, (item.rect.GetHeight() - sz.y) * 0.5F);
-					font.DrawShadow("X", pos, 1.0F, MakeVector4(1, 1, 1, 1), shadowColor);
+					smallFont.DrawShadow("X", pos, 1.0F, MakeVector4(1, 1, 1, 1), shadowColor);
 					continue;
 				}
 
@@ -452,67 +512,46 @@ namespace spades {
 
 				// Left colored indicator bar
 				renderer->SetColorAlphaPremultiplied(accentCol);
-				renderer->DrawFilledRect(item.rect.min.x, item.rect.min.y, item.rect.min.x + (selected ? 4.0F : 2.5F), item.rect.max.y);
+				renderer->DrawFilledRect(item.rect.min.x, item.rect.min.y, item.rect.min.x + (selected ? 3.5F : 2.0F), item.rect.max.y);
 
 				// Button Label
 				std::string str = item.text;
 				if (item.type == MenuItemType::Team1) str = host->GetTeamName(0);
 				else if (item.type == MenuItemType::Team2) str = host->GetTeamName(1);
 
-				Vector2 size = font.Measure(str);
-				Vector2 pos = MakeVector2(item.rect.min.x + 10.0F, item.rect.min.y + (item.rect.GetHeight() - size.y) * 0.5F);
-				font.DrawShadow(str, pos, 1.0F, selected ? MakeVector4(1, 1, 1, 1) : MakeVector4(0.9F, 0.92F, 0.95F, 0.95F), shadowColor);
+				Vector2 size = smallFont.Measure(str);
+				Vector2 pos = MakeVector2(item.rect.min.x + 8.0F, item.rect.min.y + (item.rect.GetHeight() - size.y) * 0.5F);
+				smallFont.DrawShadow(str, pos, 1.0F, selected ? MakeVector4(1, 1, 1, 1) : MakeVector4(0.9F, 0.92F, 0.95F, 0.95F), shadowColor);
 
 				// Hotkey hint [1], [2], [3]
 				if (index > 0) {
 					std::string hk = Format("[{0}]", index);
-					Vector2 hkPos = MakeVector2(item.rect.max.x - font.Measure(hk).x - 8.0F, pos.y);
-					font.DrawShadow(hk, hkPos, 1.0F, selected ? MakeVector4(1, 1, 1, 1) : hotkeyColor, shadowColor);
+					Vector2 hkPos = MakeVector2(item.rect.max.x - smallFont.Measure(hk).x - 6.0F, pos.y);
+					smallFont.DrawShadow(hk, hkPos, 1.0F, selected ? MakeVector4(1, 1, 1, 1) : hotkeyColor, shadowColor);
 				}
 			}
 
-			// 2. 3D Showcase Viewport Box & Real-Time Stats (Right Column)
+			// Under the 3D character (Left side): clean glowing label
+			float charLabelX = sw * 0.14F;
+			float labelY = top + height - 20.0F;
+			if (selectedTeam == 0) {
+				font.DrawShadow("SOLDADO AZUL", MakeVector2(charLabelX, labelY), 1.0F, MakeVector4(0.35F, 0.75F, 1.0F, 1.0F), shadowColor);
+			} else if (selectedTeam == 1) {
+				font.DrawShadow("SOLDADO ROJO", MakeVector2(charLabelX, labelY), 1.0F, MakeVector4(1.0F, 0.35F, 0.35F, 1.0F), shadowColor);
+			} else {
+				font.DrawShadow("MODO ESPECTADOR", MakeVector2(charLabelX, labelY), 1.0F, MakeVector4(0.7F, 0.75F, 0.8F, 1.0F), shadowColor);
+			}
+
+			// Under the 3D weapon (Right side): clean glowing label
 			if (selectedTeam < 2) {
-				// Glass container for rotating 3D weapon
-				renderer->SetColorAlphaPremultiplied(MakeVector4(0.01F, 0.015F, 0.03F, 0.75F));
-				renderer->DrawFilledRect(showcaseRect.min.x, showcaseRect.min.y, showcaseRect.max.x, showcaseRect.max.y);
-
-				renderer->SetColorAlphaPremultiplied(MakeVector4(0.20F, 0.35F, 0.50F, 0.85F));
-				renderer->DrawOutlinedRect(showcaseRect.min.x, showcaseRect.min.y, showcaseRect.max.x, showcaseRect.max.y);
-
-				// Reticle corners in cyan
-				float rSz = 8.0F;
-				renderer->SetColorAlphaPremultiplied(MakeVector4(0.35F, 0.85F, 1.0F, 0.90F));
-				// Top-left
-				renderer->DrawLine(MakeVector2(showcaseRect.min.x + 3.0F, showcaseRect.min.y + 3.0F), MakeVector2(showcaseRect.min.x + 3.0F + rSz, showcaseRect.min.y + 3.0F), 1.5F);
-				renderer->DrawLine(MakeVector2(showcaseRect.min.x + 3.0F, showcaseRect.min.y + 3.0F), MakeVector2(showcaseRect.min.x + 3.0F, showcaseRect.min.y + 3.0F + rSz), 1.5F);
-				// Top-right
-				renderer->DrawLine(MakeVector2(showcaseRect.max.x - 3.0F, showcaseRect.min.y + 3.0F), MakeVector2(showcaseRect.max.x - 3.0F - rSz, showcaseRect.min.y + 3.0F), 1.5F);
-				renderer->DrawLine(MakeVector2(showcaseRect.max.x - 3.0F, showcaseRect.min.y + 3.0F), MakeVector2(showcaseRect.max.x - 3.0F, showcaseRect.min.y + 3.0F + rSz), 1.5F);
-				// Bottom-left
-				renderer->DrawLine(MakeVector2(showcaseRect.min.x + 3.0F, showcaseRect.max.y - 3.0F), MakeVector2(showcaseRect.min.x + 3.0F + rSz, showcaseRect.max.y - 3.0F), 1.5F);
-				renderer->DrawLine(MakeVector2(showcaseRect.min.x + 3.0F, showcaseRect.max.y - 3.0F), MakeVector2(showcaseRect.min.x + 3.0F, showcaseRect.max.y - 3.0F - rSz), 1.5F);
-				// Bottom-right
-				renderer->DrawLine(MakeVector2(showcaseRect.max.x - 3.0F, showcaseRect.max.y - 3.0F), MakeVector2(showcaseRect.max.x - 3.0F - rSz, showcaseRect.max.y - 3.0F), 1.5F);
-				renderer->DrawLine(MakeVector2(showcaseRect.max.x - 3.0F, showcaseRect.max.y - 3.0F), MakeVector2(showcaseRect.max.x - 3.0F, showcaseRect.max.y - 3.0F - rSz), 1.5F);
-
-				// Real-time blinking status indicator
-				float blink = 0.55F + sinf(showcaseTime * 4.0F) * 0.40F;
-				smallFont.DrawShadow("● VISTA PREVIA 3D EN TIEMPO REAL (FÍSICO)", MakeVector2(showcaseRect.min.x + 12.0F, showcaseRect.min.y + 6.0F), 0.88F, MakeVector4(0.35F, 1.0F, 0.55F, blink), shadowColor);
-
-				// Weapon specifications and description below the 3D rotating model
-				std::string wName = "RIFLE DE PRECISIÓN SEMI-AUTOMÁTICO";
-				std::string wStats = "Daño: 85 • RPM: 30 • Precisión: 95% • Alcance: 98m • Movilidad: 65%";
-				if (selectedWeapon == SMG_WEAPON) {
-					wName = "SUBFUSIL SMG AUTOMÁTICO";
-					wStats = "Daño: 42 • RPM: 92 • Precisión: 70% • Alcance: 60m • Movilidad: 90%";
+				float weapLabelX = sw * 0.74F;
+				if (selectedWeapon == RIFLE_WEAPON) {
+					font.DrawShadow("FUSIL DE PRECISIÓN", MakeVector2(weapLabelX, labelY), 1.0F, MakeVector4(0.65F, 0.85F, 1.0F, 1.0F), shadowColor);
+				} else if (selectedWeapon == SMG_WEAPON) {
+					font.DrawShadow("SUBFUSIL SMG", MakeVector2(weapLabelX, labelY), 1.0F, MakeVector4(0.40F, 0.95F, 0.65F, 1.0F), shadowColor);
 				} else if (selectedWeapon == SHOTGUN_WEAPON) {
-					wName = "ESCOPETA DE COMBATE TÁCTICA";
-					wStats = "Daño: 96 • RPM: 40 • Precisión: 45% • Alcance: 40m • Movilidad: 75%";
+					font.DrawShadow("ESCOPETA DE COMBATE", MakeVector2(weapLabelX, labelY), 1.0F, MakeVector4(1.0F, 0.70F, 0.35F, 1.0F), shadowColor);
 				}
-
-				font.DrawShadow(wName, MakeVector2(showcaseRect.min.x + 12.0F, showcaseRect.min.y + 110.0F), 1.0F, MakeVector4(1.0F, 0.95F, 0.75F, 1.0F), shadowColor);
-				smallFont.DrawShadow(wStats, MakeVector2(showcaseRect.min.x + 12.0F, showcaseRect.min.y + 130.0F), 0.88F, MakeVector4(0.85F, 0.90F, 0.95F, 0.90F), shadowColor);
 			}
 
 			// draw cursor

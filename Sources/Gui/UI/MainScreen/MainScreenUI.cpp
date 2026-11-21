@@ -176,6 +176,18 @@ namespace spades {
 			}
 		}
 
+		void MainScreenUI::ShowModsBrowser() {
+			if (lobbyScreen)
+				lobbyScreen->visible = false;
+			if (mainMenu) {
+				mainMenu->visible = true;
+				MainScreenMainMenuState state;
+				state.activeTabIndex = 1; // Mods tab right next to Servidores!
+				mainMenu->SetState(state);
+				mainMenu->LoadModList();
+			}
+		}
+
 		void MainScreenUI::SetCountry(const std::string& code) {
 			cg_country = code;
 			cg_countryIsSet = 1;
@@ -567,6 +579,77 @@ namespace spades {
 			return sceneDef;
 		}
 
+		void MainScreenUI::RenderMods3DWeapon(const client::SceneDefinition& sceneDef, float dt) {
+			if (!rifleModel) rifleModel = renderer->RegisterModel("Models/Weapons/Rifle/Weapon.kv6");
+			if (!smgModel) smgModel = renderer->RegisterModel("Models/Weapons/SMG/Weapon.kv6");
+			if (!shotgunModel) shotgunModel = renderer->RegisterModel("Models/Weapons/Shotgun/Weapon.kv6");
+			if (!spadeModel) spadeModel = renderer->RegisterModel("Models/Weapons/Spade/Spade.kv6");
+
+			modsWeaponYaw += dt * 1.5F;
+			modsShowcaseTime += dt;
+
+			std::string cat = mainMenu ? mainMenu->GetSelectedModCategory() : "SEMI";
+			Handle<client::IModel> curModel = rifleModel;
+			Vector3 lightCol = MakeVector3(0.65F, 0.85F, 1.0F);
+			float scale = 0.024F;
+
+			if (cat == "SMG") {
+				curModel = smgModel;
+				lightCol = MakeVector3(0.40F, 0.95F, 0.65F);
+				scale = 0.026F;
+			} else if (cat == "SHOTGUN") {
+				curModel = shotgunModel;
+				lightCol = MakeVector3(1.0F, 0.70F, 0.35F);
+				scale = 0.025F;
+			} else if (cat == "SPADE") {
+				curModel = spadeModel;
+				lightCol = MakeVector3(0.95F, 0.85F, 0.45F);
+				scale = 0.025F;
+			}
+
+			if (!curModel)
+				return;
+
+			float sw = renderer->ScreenWidth();
+			float sh = renderer->ScreenHeight();
+
+			float tanHalfFovX = (sceneDef.fovX > 0.01F) ? tanf(sceneDef.fovX * 0.5F) : (tanf(DEG2RAD(35.0F)) * (sw / sh));
+			float tanHalfFovY = (sceneDef.fovY > 0.01F) ? tanf(sceneDef.fovY * 0.5F) : tanf(DEG2RAD(35.0F));
+
+			Vector3 orig = sceneDef.viewOrigin;
+			Vector3 dir = sceneDef.viewAxis[2];
+			Vector3 side = sceneDef.viewAxis[0];
+			Vector3 up = sceneDef.viewAxis[1];
+
+			// Position rotating weapon in view
+			float ndcX = (sw >= 1100.0F) ? 0.72F : 0.62F;
+			float ndcY = (sw >= 1100.0F) ? 0.05F : 0.35F;
+			float dist = 3.8F;
+
+			float rightOffset = ndcX * tanHalfFovX * dist;
+			float upOffset = ndcY * tanHalfFovY * dist;
+			Vector3 weaponPos = orig + dir * dist + side * rightOffset + up * upOffset;
+
+			float bob = sinf(modsShowcaseTime * 2.2F) * 0.02F;
+			Vector3 actualPos = weaponPos + up * bob;
+
+			client::DynamicLightParam light;
+			light.type = client::DynamicLightTypePoint;
+			light.origin = actualPos + up * 0.8F - dir * 0.9F + side * 0.2F;
+			light.radius = 5.5F;
+			light.color = lightCol;
+			renderer->AddLight(light);
+
+			client::ModelRenderParam param;
+			param.depthHack = true;
+			param.matrix = Matrix4::Translate(actualPos)
+			             * Matrix4::Rotate(up, modsWeaponYaw)
+			             * Matrix4::Rotate(side, 0.08F)
+			             * Matrix4::Scale(scale);
+
+			renderer->RenderModel(*curModel, param);
+		}
+
 		void MainScreenUI::RunFrame(float dt) {
 			if (time < 0.0F)
 				time = 0.0F;
@@ -602,6 +685,9 @@ namespace spades {
 			renderer->StartScene(sceneDef);
 			if (lobbyScreen && lobbyScreen->visible && !activeWeaponScreen) {
 				RenderLobbyScene(sceneDef, dt);
+			}
+			if (mainMenu && mainMenu->visible && mainMenu->IsModsTabActive()) {
+				RenderMods3DWeapon(sceneDef, dt);
 			}
 			if (activeWeaponScreen && activeWeaponScreen->visible) {
 				activeWeaponScreen->Render3DWeapon(sceneDef, dt);

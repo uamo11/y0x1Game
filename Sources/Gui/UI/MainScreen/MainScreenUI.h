@@ -87,7 +87,16 @@ namespace spades {
 			void Reload();
 
 			void InitLobby3D();
+			// 3D weapon models for Mods preview
+			Handle<client::IModel> rifleModel;
+			Handle<client::IModel> smgModel;
+			Handle<client::IModel> shotgunModel;
+			Handle<client::IModel> spadeModel;
+			float modsWeaponYaw = 0.0F;
+			float modsShowcaseTime = 0.0F;
+
 			void RenderLobbyScene(const client::SceneDefinition& sceneDef, float dt);
+			void RenderMods3DWeapon(const client::SceneDefinition& sceneDef, float dt);
 
 		protected:
 			~MainScreenUI();
@@ -104,6 +113,7 @@ namespace spades {
 
 			void ShowLobby();
 			void ShowServerBrowser();
+			void ShowModsBrowser();
 			void SetCountry(const std::string& code);
 			void RebuildFlagModel();
 			void UpdateLobbyCosmetics() { RebuildCosmeticModels(); }
