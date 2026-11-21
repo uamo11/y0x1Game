@@ -290,9 +290,9 @@ namespace spades {
 				float armPitch = -0.45F + breath * 0.02F;
 
 				Vector3 charFacing = (-dir * 0.88F + side * 0.42F).Normalize();
-				Vector3 charRight = Vector3::Cross(charFacing, up).Normalize();
+				Vector3 charRightVec = Vector3::Cross(charFacing, up).Normalize();
 
-				Matrix4 lower = Matrix4::FromAxis(-charRight, charFacing, -up, charPos);
+				Matrix4 lower = Matrix4::FromAxis(-charRightVec, charFacing, -up, charPos);
 				Matrix4 scaler = Matrix4::Scale(0.080F) * Matrix4::Scale(-1, -1, 1);
 
 				client::ModelRenderParam charParam;
