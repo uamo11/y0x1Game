@@ -33,7 +33,7 @@ namespace spades {
 		class IRenderer;
 		class FontManager;
 		class IModel;
-		class SceneDefinition;
+		struct SceneDefinition;
 	} // namespace client
 	namespace gui {
 		class SoftwareCursor;
