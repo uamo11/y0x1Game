@@ -262,10 +262,11 @@ namespace spades {
 			WeaponType selectedWeapon = host->GetSelectedWeapon();
 
 			// 1. LEFT SIDE: 3D Player Character (Soldier with Team Skin)
+			// Perfectly upright, facing the player with slight 3/4 turn towards center
 			{
 				float charNdcX = -0.60F;
-				float charNdcY = -0.15F;
-				float charDist = 4.2F;
+				float charNdcY = -0.52F;
+				float charDist = 3.6F;
 
 				float charRight = charNdcX * tanHalfFovX * charDist;
 				float charUp = charNdcY * tanHalfFovY * charDist;
@@ -289,10 +290,14 @@ namespace spades {
 				float pitch = 0.04F + breath * 0.02F;
 				float armPitch = -0.45F + breath * 0.02F;
 
-				Vector3 charFacing = (-dir * 0.88F + side * 0.42F).Normalize();
-				Vector3 charRightVec = Vector3::Cross(charFacing, up).Normalize();
+				// Facing towards camera (-dir) and turned slightly right towards center (+side)
+				Vector3 facing = (-dir * 0.88F + side * 0.45F).Normalize();
+				Vector3 rgt = Vector3::Cross(facing, up).Normalize();
 
-				Matrix4 lower = Matrix4::FromAxis(-charRightVec, charFacing, -up, charPos);
+				// Basis: -rgt * (-1 from scaler) = +rgt (Right)
+				//        -facing * (-1 from scaler) = +facing (Front, towards player)
+				//        -up * (+1 from scaler) = -up (Down, so head at -1.0 is UP!)
+				Matrix4 lower = Matrix4::FromAxis(-rgt, -facing, -up, charPos);
 				Matrix4 scaler = Matrix4::Scale(0.080F) * Matrix4::Scale(-1, -1, 1);
 
 				client::ModelRenderParam charParam;
@@ -325,7 +330,8 @@ namespace spades {
 				}
 			}
 
-			// 2. RIGHT SIDE: 3D Weapon Model Physically Rotating at 360 degrees
+			// 2. RIGHT SIDE: 3D Weapon Model Physically Rotating 360°
+			// Completely upright: scope/sights on TOP, grip/magazine on BOTTOM
 			if (selectedTeam < 2) {
 				Handle<client::IModel> curModel;
 				Vector3 lightColor;
@@ -355,7 +361,7 @@ namespace spades {
 
 				if (curModel) {
 					float weapNdcX = 0.60F;
-					float weapNdcY = -0.10F;
+					float weapNdcY = -0.52F;
 					float weapDist = 3.6F;
 
 					float weapRight = weapNdcX * tanHalfFovX * weapDist;
@@ -372,13 +378,24 @@ namespace spades {
 					weapLight.color = lightColor;
 					renderer->AddLight(weapLight);
 
+					// Smooth 360 physical rotation around Screen UP
+					Vector3 rotFwd = (side * cosf(weaponYaw) - dir * sinf(weaponYaw)).Normalize();
+					Vector3 rotRight = (side * sinf(weaponYaw) + dir * cosf(weaponYaw)).Normalize();
+
+					// In KV6 weapon:
+					// +Y = Barrel (forward)
+					// +Z = Grip / Magazine (downward)
+					// -Z = Sight / Scope / Rail (upward)
+					// +X = Weapon Right Side
+					Vector3 weapBarrel = (rotFwd + up * 0.14F).Normalize();
+					Vector3 weapDown = (-up + rotFwd * 0.14F).Normalize();
+					Vector3 weapRight = rotRight;
+
+					Matrix4 weapMatrix = Matrix4::FromAxis(weapRight, weapBarrel, weapDown, actualPos);
+
 					client::ModelRenderParam weapParam;
 					weapParam.depthHack = true;
-					Matrix4 weapBasis = Matrix4::FromAxis(side, -dir, up, actualPos);
-					weapParam.matrix = weapBasis
-					                 * Matrix4::Rotate(MakeVector3(0, 0, 1), weaponYaw)
-					                 * Matrix4::Rotate(MakeVector3(1, 0, 0), 0.18F)
-					                 * Matrix4::Scale(weaponScale);
+					weapParam.matrix = weapMatrix * Matrix4::Scale(weaponScale);
 
 					renderer->RenderModel(*curModel, weapParam);
 				}
@@ -531,27 +548,35 @@ namespace spades {
 				}
 			}
 
-			// Under the 3D character (Left side): clean glowing label
-			float charLabelX = sw * 0.14F;
+			// Under the 3D character (Left side): clean glowing centered label
+			float charColX = sw * 0.20F;
 			float labelY = top + height - 20.0F;
+			std::string charText = "MODO ESPECTADOR";
+			Vector4 charColor = MakeVector4(0.7F, 0.75F, 0.8F, 1.0F);
 			if (selectedTeam == 0) {
-				font.DrawShadow("SOLDADO AZUL", MakeVector2(charLabelX, labelY), 1.0F, MakeVector4(0.35F, 0.75F, 1.0F, 1.0F), shadowColor);
+				charText = "SOLDADO AZUL";
+				charColor = MakeVector4(0.35F, 0.75F, 1.0F, 1.0F);
 			} else if (selectedTeam == 1) {
-				font.DrawShadow("SOLDADO ROJO", MakeVector2(charLabelX, labelY), 1.0F, MakeVector4(1.0F, 0.35F, 0.35F, 1.0F), shadowColor);
-			} else {
-				font.DrawShadow("MODO ESPECTADOR", MakeVector2(charLabelX, labelY), 1.0F, MakeVector4(0.7F, 0.75F, 0.8F, 1.0F), shadowColor);
+				charText = "SOLDADO ROJO";
+				charColor = MakeVector4(1.0F, 0.35F, 0.35F, 1.0F);
 			}
+			Vector2 charTextSz = font.Measure(charText);
+			font.DrawShadow(charText, MakeVector2(charColX - charTextSz.x * 0.5F, labelY), 1.0F, charColor, shadowColor);
 
-			// Under the 3D weapon (Right side): clean glowing label
+			// Under the 3D weapon (Right side): clean glowing centered label
 			if (selectedTeam < 2) {
-				float weapLabelX = sw * 0.74F;
-				if (selectedWeapon == RIFLE_WEAPON) {
-					font.DrawShadow("FUSIL DE PRECISIÓN", MakeVector2(weapLabelX, labelY), 1.0F, MakeVector4(0.65F, 0.85F, 1.0F, 1.0F), shadowColor);
-				} else if (selectedWeapon == SMG_WEAPON) {
-					font.DrawShadow("SUBFUSIL SMG", MakeVector2(weapLabelX, labelY), 1.0F, MakeVector4(0.40F, 0.95F, 0.65F, 1.0F), shadowColor);
+				float weapColX = sw * 0.80F;
+				std::string weapText = "FUSIL DE PRECISIÓN";
+				Vector4 weapColor = MakeVector4(0.65F, 0.85F, 1.0F, 1.0F);
+				if (selectedWeapon == SMG_WEAPON) {
+					weapText = "SUBFUSIL SMG";
+					weapColor = MakeVector4(0.40F, 0.95F, 0.65F, 1.0F);
 				} else if (selectedWeapon == SHOTGUN_WEAPON) {
-					font.DrawShadow("ESCOPETA DE COMBATE", MakeVector2(weapLabelX, labelY), 1.0F, MakeVector4(1.0F, 0.70F, 0.35F, 1.0F), shadowColor);
+					weapText = "ESCOPETA DE COMBATE";
+					weapColor = MakeVector4(1.0F, 0.70F, 0.35F, 1.0F);
 				}
+				Vector2 weapTextSz = font.Measure(weapText);
+				font.DrawShadow(weapText, MakeVector2(weapColX - weapTextSz.x * 0.5F, labelY), 1.0F, weapColor, shadowColor);
 			}
 
 			// draw cursor

@@ -642,10 +642,16 @@ namespace spades {
 
 			client::ModelRenderParam param;
 			param.depthHack = true;
-			param.matrix = Matrix4::Translate(actualPos)
-			             * Matrix4::Rotate(up, modsWeaponYaw)
-			             * Matrix4::Rotate(side, 0.08F)
-			             * Matrix4::Scale(scale);
+
+			Vector3 rotFwd = (side * cosf(modsWeaponYaw) - dir * sinf(modsWeaponYaw)).Normalize();
+			Vector3 rotRight = (side * sinf(modsWeaponYaw) + dir * cosf(modsWeaponYaw)).Normalize();
+
+			Vector3 weapBarrel = (rotFwd + up * 0.14F).Normalize();
+			Vector3 weapDown = (-up + rotFwd * 0.14F).Normalize();
+			Vector3 weapRight = rotRight;
+
+			Matrix4 weapMatrix = Matrix4::FromAxis(weapRight, weapBarrel, weapDown, actualPos);
+			param.matrix = weapMatrix * Matrix4::Scale(scale);
 
 			renderer->RenderModel(*curModel, param);
 		}
