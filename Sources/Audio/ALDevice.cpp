@@ -807,20 +807,33 @@ namespace spades {
 
 			std::map<std::string, ALAudioChunk*>::iterator it = chunks.find(name);
 			if (it == chunks.end()) {
-				ALAudioChunk* c = CreateChunk(name);
-				chunks[name] = c;
-				// release audiochunk later (to eliminate memory leak)
-				return c;
+				try {
+					ALAudioChunk* c = CreateChunk(name);
+					chunks[name] = c;
+					// release audiochunk later (to eliminate memory leak)
+					return c;
+				} catch (const std::exception& ex) {
+					SPLog("ALDevice: Failed to load sound '%s': %s", name, ex.what());
+					chunks[name] = nullptr;
+					return nullptr;
+				} catch (...) {
+					SPLog("ALDevice: Unknown error loading sound '%s'", name);
+					chunks[name] = nullptr;
+					return nullptr;
+				}
 			}
-			it->second->AddRef();
+			if (it->second)
+				it->second->AddRef();
 			return it->second;
 		}
 
 		void ALDevice::ClearCache() {
 			SPADES_MARK_FUNCTION();
 
-			for (const auto& chunk : chunks)
-				chunk.second->Release();
+			for (const auto& chunk : chunks) {
+				if (chunk.second)
+					chunk.second->Release();
+			}
 
 			chunks.clear();
 		}
