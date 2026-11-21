@@ -389,9 +389,9 @@ namespace spades {
 					// +X = Weapon Right Side
 					Vector3 weapBarrel = (rotFwd + up * 0.14F).Normalize();
 					Vector3 weapDown = (-up + rotFwd * 0.14F).Normalize();
-					Vector3 weapRight = rotRight;
+					Vector3 weapRightVec = rotRight;
 
-					Matrix4 weapMatrix = Matrix4::FromAxis(weapRight, weapBarrel, weapDown, actualPos);
+					Matrix4 weapMatrix = Matrix4::FromAxis(weapRightVec, weapBarrel, weapDown, actualPos);
 
 					client::ModelRenderParam weapParam;
 					weapParam.depthHack = true;
