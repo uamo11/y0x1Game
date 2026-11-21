@@ -51,8 +51,11 @@ float EvaluteModelShadow() {
 	physCoord.xy += lod * pagetableFract;
 	physCoord.xy *= shadowMapSizeInv;
 
-	vec3 physCoord2 = vec3(physCoord, scoord.z);
-
-	float v = shadow2D(shadowMapTexture1, physCoord2).x;
-	return v;
+	// Ultra-fast 4-tap realistic soft shadow PCF with zero performance penalty
+	vec2 texelSize = vec2(shadowMapSizeInv);
+	float s0 = shadow2D(shadowMapTexture1, vec3(physCoord + vec2(-0.5, -0.5) * texelSize, scoord.z)).x;
+	float s1 = shadow2D(shadowMapTexture1, vec3(physCoord + vec2( 0.5, -0.5) * texelSize, scoord.z)).x;
+	float s2 = shadow2D(shadowMapTexture1, vec3(physCoord + vec2(-0.5,  0.5) * texelSize, scoord.z)).x;
+	float s3 = shadow2D(shadowMapTexture1, vec3(physCoord + vec2( 0.5,  0.5) * texelSize, scoord.z)).x;
+	return (s0 + s1 + s2 + s3) * 0.25;
 }

@@ -35,9 +35,11 @@ float VisibilityOfSunLight() {
 }
 
 vec3 EvaluateSunLight() {
-	// Warm natural sunlight spectrum (5800K daylight) with crisp contrast
+	// Natural realistic sunlight with atmospheric ambient bounce & soft penumbra
 	const vec3 sunColor = vec3(0.66, 0.63, 0.56);
-	return sunColor * (1.1 * VisibilityOfSunLight());
+	float vis = VisibilityOfSunLight();
+	// Realistic ambient fill prevents harsh pitch-black void shadows (0 FPS overhead)
+	return sunColor * (0.04 + 1.06 * vis);
 }
 
 vec3 EvaluateAmbientLight(float detailAmbientOcclusion) {

@@ -1310,6 +1310,11 @@ namespace spades {
 			flashDlightsOld.clear();
 			flashDlightsOld.swap(flashDlights);
 
+			// Render 3D weapon physically rotating in real-time in Limbo Menu (L key / server join)
+			if (IsLimboViewActive() && limboMenu && limboMenu->IsActive()) {
+				limboMenu->Render3DWeapon(lastSceneDef);
+			}
+
 			renderer->EndScene();
 		}
 

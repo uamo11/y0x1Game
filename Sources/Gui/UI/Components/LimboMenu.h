@@ -32,6 +32,8 @@ namespace spades {
 	namespace client {
 		class IRenderer;
 		class FontManager;
+		class IModel;
+		class SceneDefinition;
 	} // namespace client
 	namespace gui {
 		class SoftwareCursor;
@@ -55,6 +57,9 @@ namespace spades {
 			void Update(float dt);
 			void MouseEvent(float x, float y);
 
+			// Real-time 3D weapon rendering
+			void Render3DWeapon(const client::SceneDefinition& sceneDef);
+
 		private:
 			Handle<ILimboMenuHost> host;
 			Handle<client::IRenderer> renderer;
@@ -63,6 +68,13 @@ namespace spades {
 
 			bool isActive = false;
 			int prevSelectedItem = -1;
+
+			float showcaseTime = 0.0F;
+			float weaponYaw = 0.0F;
+			AABB2 showcaseRect;
+			Handle<client::IModel> rifleModel;
+			Handle<client::IModel> smgModel;
+			Handle<client::IModel> shotgunModel;
 
 			std::vector<MenuItem> items;
 

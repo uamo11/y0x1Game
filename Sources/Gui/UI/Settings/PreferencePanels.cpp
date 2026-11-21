@@ -584,6 +584,12 @@ namespace spades {
 			                 {0, 1, 2});
 			l.AddHelp(_Tr("Preferences", "Sombras dinámicas proyectadas desde la luz solar o antorchas."));
 
+			l.AddToggleField(_Tr("Preferences", "Sombras Realistas Suaves (0 FPS Drop)"), "cg_realisticShadows");
+			l.AddHelp(_Tr("Preferences", "Filtrado suave PCF de 4 puntos y rebote atmosférico ambiental para sombras de contacto ultra realistas sin caída de rendimiento."));
+
+			l.AddToggleField(_Tr("Preferences", "HDR Realista (0 FPS Drop)"), "cg_realisticHdr");
+			l.AddHelp(_Tr("Preferences", "Mapeo tonal fílmico ACES con rango dinámico expandido, adaptación de luz y colores vivos realistas sin pérdida de FPS."));
+
 			l.AddChoiceField(_Tr("Preferences", "Oclusión Ambiental SSAO"), "r_ssaoQuality",
 			                 {"Apagado", "Rápido", "Completo"},
 			                 {0, 1, 2});

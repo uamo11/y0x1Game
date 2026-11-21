@@ -118,17 +118,19 @@ namespace spades {
 
 			bool isSpectator = ui->IsLocalPlayerSpectator();
 
-			float winW = isSpectator ? 170.0F : 240.0F;
-			float btnH = isSpectator ? 25.0F : 34.0F;
-			float spacing = isSpectator ? 4.0F : 6.0F;
-			float headerH = isSpectator ? 24.0F : 34.0F;
-			float cardPadX = isSpectator ? 8.0F : 14.0F;
-			float cardPadY = isSpectator ? 8.0F : 12.0F;
+			float winW = isSpectator ? 200.0F : 240.0F;
+			float btnH = isSpectator ? 28.0F : 34.0F;
+			float spacing = isSpectator ? 5.0F : 6.0F;
+			float headerH = isSpectator ? 26.0F : 34.0F;
+			float cardPadX = isSpectator ? 10.0F : 14.0F;
+			float cardPadY = isSpectator ? 10.0F : 12.0F;
 
 			// winH encompasses title header + 4 buttons + spacing
 			float winH = headerH + 2.0F + (btnH + spacing) * 3.0F + btnH;
-			float winX = isSpectator ? 16.0F : (sw - winW) * 0.5F;
-			float winY = isSpectator ? 16.0F : (sh - winH) * 0.5F;
+			float winX = isSpectator ? 14.0F : (sw - winW) * 0.5F;
+			// En modo espectador, posicionar justo debajo de la tarjeta de sesión (que mide ~68px de alto)
+			// para eliminar totalmente el solapamiento visual que tapaba el menú
+			float winY = isSpectator ? 96.0F : (sh - winH) * 0.5F;
 
 			// draw full background overlay (dim 3D gameplay) ONLY when NOT in spectator mode
 			if (!isSpectator) {

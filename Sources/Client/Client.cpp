@@ -82,6 +82,8 @@ DEFINE_SPADES_SETTING(cg_weatherRain, "1");
 DEFINE_SPADES_SETTING(cg_weatherLightning, "1");
 DEFINE_SPADES_SETTING(cg_weatherAudio, "1");
 DEFINE_SPADES_SETTING(cg_weatherFogDistance, "1");
+DEFINE_SPADES_SETTING(cg_realisticHdr, "1");
+DEFINE_SPADES_SETTING(cg_realisticShadows, "1");
 
 SPADES_SETTING(cg_playerName);
 SPADES_SETTING(cg_centerMessageSmallFont);
