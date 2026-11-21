@@ -289,11 +289,11 @@ namespace spades {
 			float ndcY = 1.0F - (centerY / sh) * 2.0F;
 
 			float dist = 3.6F;
-			float tanHalfFov = tanf(DEG2RAD(15.0F));
-			float aspect = sw / sh;
+			float tanHalfFovX = (sceneDef.fovX > 0.01F) ? tanf(sceneDef.fovX * 0.5F) : (tanf(DEG2RAD(35.0F)) * (sw / sh));
+			float tanHalfFovY = (sceneDef.fovY > 0.01F) ? tanf(sceneDef.fovY * 0.5F) : tanf(DEG2RAD(35.0F));
 
-			float rightOffset = ndcX * tanHalfFov * aspect * dist;
-			float upOffset = ndcY * tanHalfFov * dist;
+			float rightOffset = ndcX * tanHalfFovX * dist;
+			float upOffset = ndcY * tanHalfFovY * dist;
 
 			Vector3 orig = sceneDef.viewOrigin;
 			Vector3 dir = sceneDef.viewAxis[2];
