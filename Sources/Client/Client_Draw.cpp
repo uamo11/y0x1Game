@@ -80,6 +80,7 @@ SPADES_SETTING(cg_keyDemoRecord);
 SPADES_SETTING(cg_keyDemoSpeedUp);
 SPADES_SETTING(cg_keyDemoSlowDown);
 SPADES_SETTING(cg_keyDemoToggleHud);
+SPADES_SETTING(cg_keyToggleThirdPerson);
 DEFINE_SPADES_SETTING(cg_stats, "0");
 DEFINE_SPADES_SETTING(cg_statsSmallFont, "0");
 DEFINE_SPADES_SETTING(cg_playerStats, "0");

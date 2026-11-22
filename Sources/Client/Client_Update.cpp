@@ -88,6 +88,7 @@ SPADES_SETTING(cg_killfeedFadeTime);
 SPADES_SETTING(cg_maintainBlockSelection);
 SPADES_SETTING(cg_infiniteBlocks);
 SPADES_SETTING(cg_airBattle);
+SPADES_SETTING(cg_thirdperson);
 
 namespace spades {
 	namespace client {

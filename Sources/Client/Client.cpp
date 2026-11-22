@@ -78,6 +78,7 @@ DEFINE_SPADES_SETTING(cg_volumetricSky, "1");
 DEFINE_SPADES_SETTING(cg_helicopter, "1");
 DEFINE_SPADES_SETTING(cg_airBattle, "0");
 DEFINE_SPADES_SETTING(cg_weather, "auto");
+SPADES_SETTING(cg_thirdperson);
 DEFINE_SPADES_SETTING(cg_weatherRain, "1");
 DEFINE_SPADES_SETTING(cg_weatherLightning, "1");
 DEFINE_SPADES_SETTING(cg_weatherAudio, "1");
