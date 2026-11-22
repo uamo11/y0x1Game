@@ -423,6 +423,8 @@ namespace spades {
 				float pitch = 0.0F;
 			} followAndFreeCameraState;
 
+			float lastSpectatorMouseMoveTime = 0.0F;
+
 			// Third-person right-click aiming and crosshair state
 			bool thirdPersonAim = false;
 			float thirdPersonAimDownTime = 0.0F;
@@ -686,6 +688,9 @@ namespace spades {
 
 			/** Tactical third-person over-the-shoulder aiming pointer / reticle. */
 			void DrawThirdPersonCrosshair();
+
+			/** Tactical third-person reticle when spectating other players. */
+			void DrawSpectatorThirdPersonCrosshair();
 
 			/** The world position the local player's crosshair points at. Returns false
 			 * when the ray hits nothing usable. */

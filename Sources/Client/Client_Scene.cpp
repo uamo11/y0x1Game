@@ -494,6 +494,24 @@ namespace spades {
 							center += camSide * (0.68F * thirdPersonAimTransition);
 							center.z -= 0.10F * thirdPersonAimTransition;
 							distance = Mix(5.0F, 3.4F, thirdPersonAimTransition);
+						} else if (!inHeli && !inCar && cameraMode == ClientCameraMode::ThirdPersonFollow && player.IsAlive()) {
+							// Vista táctica sobre el hombro para espectador en 3ra persona de otros jugadores
+							Vector3 camFront;
+							camFront.x = cosf(sharedState.pitch) * -cosf(sharedState.yaw);
+							camFront.y = cosf(sharedState.pitch) * -sinf(sharedState.yaw);
+							camFront.z = sinf(sharedState.pitch);
+							Vector3 up = {0, 0, -1};
+							Vector3 camSide = Vector3::Cross(camFront, up).Normalize();
+
+							float ads = 0.0F;
+							if (clientPlayers[pid]) {
+								ads = clientPlayers[pid]->GetAimDownState();
+							}
+
+							// Posición ergonómica sobre el hombro derecho con encuadre dinámico
+							center += camSide * Mix(0.36F, 0.52F, ads);
+							center.z -= Mix(0.18F, 0.08F, ads);
+							distance = Mix(3.9F, 2.9F, ads);
 						}
 						if (player.IsLocalPlayer()
 							&& !player.IsSpectator()

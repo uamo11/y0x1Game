@@ -551,6 +551,28 @@ namespace spades {
 					thirdPersonAimTransition = 0.0F;
 			}
 
+			// Seguimiento suave de la cámara de 3ra persona en modo espectador
+			if (GetCameraMode() == ClientCameraMode::ThirdPersonFollow && world) {
+				auto maybeTarget = world->GetPlayer(followedPlayerId);
+				if (maybeTarget && maybeTarget->IsAlive()) {
+					Player& targetP = maybeTarget.value();
+					Vector3 pFront = targetP.GetFront();
+					if (pFront.GetLength2D() > 0.05F && (time - lastSpectatorMouseMoveTime > 0.65F)) {
+						float targetYaw = atan2f(-pFront.y, -pFront.x);
+						float diffYaw = targetYaw - followAndFreeCameraState.yaw;
+						while (diffYaw > static_cast<float>(M_PI)) diffYaw -= 2.0F * static_cast<float>(M_PI);
+						while (diffYaw < -static_cast<float>(M_PI)) diffYaw += 2.0F * static_cast<float>(M_PI);
+
+						float trackSpeed = std::min(1.0F, 5.0F * dt);
+						followAndFreeCameraState.yaw += diffYaw * trackSpeed;
+
+						float playerPitch = asinf(std::clamp(-pFront.z, -0.65F, 0.65F));
+						float targetPitch = std::clamp(DEG2RAD(15.0F) + playerPitch * 0.35F, DEG2RAD(5.0F), DEG2RAD(45.0F));
+						followAndFreeCameraState.pitch += (targetPitch - followAndFreeCameraState.pitch) * trackSpeed;
+					}
+				}
+			}
+
 			// update minimap sound indicators
 			for (auto it = soundFeedbackIndicators.begin(); it != soundFeedbackIndicators.end();) {
 				it->fade -= dt * 4.0F;
@@ -2291,7 +2313,7 @@ namespace spades {
 					}
 
 					// reset follow camera state
-					followCameraState.firstPerson = true;
+					followCameraState.firstPerson = (int)cg_thirdperson ? false : true;
 					followCameraState.enabled = false;
 				}
 

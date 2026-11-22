@@ -2270,6 +2270,71 @@ namespace spades {
 			drawTick(cx - thickness * 0.5F, cy + gap, cx + thickness * 0.5F, cy + gap + length);
 		}
 
+		void Client::DrawSpectatorThirdPersonCrosshair() {
+			SPADES_MARK_FUNCTION();
+			if (GetCameraMode() != ClientCameraMode::ThirdPersonFollow || !world)
+				return;
+			int targetId = GetCameraTargetPlayerId();
+			auto maybeP = world->GetPlayer(targetId);
+			if (!maybeP || !maybeP->IsAlive())
+				return;
+			Player& p = maybeP.value();
+
+			auto& hState = PlayerCosmetics::GetGlobalHelicopter();
+			auto& cState = PlayerCosmetics::GetGlobalCar();
+			int pid = static_cast<int>(p.GetId());
+			if (hState.active && hState.pilotId == pid)
+				return;
+			if (cState.active && (cState.driverId == pid || cState.occupantIds[0] == pid))
+				return;
+
+			// Proyección precisa del punto de mira del jugador espectado
+			Vector3 eye = p.GetEye();
+			Vector3 front = p.GetFront();
+			World::WeaponRayCastResult rayRes = world->WeaponRayCast(eye, front, targetId);
+			Vector3 targetPos = rayRes.hit ? rayRes.hitPos : (eye + front * 60.0F);
+
+			Vector2 scrPos;
+			if (Project(targetPos, scrPos)) {
+				float sw = renderer->ScreenWidth();
+				float sh = renderer->ScreenHeight();
+				if (scrPos.x >= 0.0F && scrPos.x <= sw && scrPos.y >= 0.0F && scrPos.y <= sh) {
+					Vector4 mainColor = MakeVector4(1.0F, 1.0F, 1.0F, 0.90F);
+					if (rayRes.hit && rayRes.playerId) {
+						auto maybeHit = world->GetPlayer(rayRes.playerId.value());
+						if (maybeHit && maybeHit->IsAlive()) {
+							if (p.IsTeammate(maybeHit.value()))
+								mainColor = MakeVector4(0.25F, 1.0F, 0.35F, 0.95F);
+							else
+								mainColor = MakeVector4(1.0F, 0.25F, 0.25F, 0.95F);
+						}
+					}
+					Vector4 outlineColor = MakeVector4(0.0F, 0.0F, 0.0F, 0.80F);
+
+					renderer->SetColorAlphaPremultiplied(outlineColor);
+					renderer->DrawFilledCircle(scrPos, 3.0F);
+					renderer->SetColorAlphaPremultiplied(mainColor);
+					renderer->DrawFilledCircle(scrPos, 1.8F);
+
+					float gap = 5.0F;
+					float length = 6.0F;
+					float thickness = 1.5F;
+
+					auto drawTick = [&](float x0, float y0, float x1, float y1) {
+						renderer->SetColorAlphaPremultiplied(outlineColor);
+						renderer->DrawFilledRect(x0 - 0.8F, y0 - 0.8F, x1 + 0.8F, y1 + 0.8F);
+						renderer->SetColorAlphaPremultiplied(mainColor);
+						renderer->DrawFilledRect(x0, y0, x1, y1);
+					};
+
+					drawTick(scrPos.x - gap - length, scrPos.y - thickness * 0.5F, scrPos.x - gap, scrPos.y + thickness * 0.5F);
+					drawTick(scrPos.x + gap, scrPos.y - thickness * 0.5F, scrPos.x + gap + length, scrPos.y + thickness * 0.5F);
+					drawTick(scrPos.x - thickness * 0.5F, scrPos.y - gap - length, scrPos.x + thickness * 0.5F, scrPos.y - gap);
+					drawTick(scrPos.x - thickness * 0.5F, scrPos.y + gap, scrPos.x + thickness * 0.5F, scrPos.y + gap + length);
+				}
+			}
+		}
+
 		void Client::DrawDeadPlayerHUD() {
 			SPADES_MARK_FUNCTION();
 
@@ -2364,8 +2429,12 @@ namespace spades {
 
 					y += lh * 0.5F;
 
-					if (camTarget.IsAlive())
-						addLine(_Tr("Client", "[{0}] Cycle camera mode", TrKey(cg_keyJump)));
+					if (camTarget.IsAlive()) {
+						addLine(_Tr("Client", "Vista: {0}", cameraMode == ClientCameraMode::ThirdPersonFollow
+							? _Tr("Client", "Tercera Persona") : _Tr("Client", "Primera Persona")));
+						addLine(_Tr("Client", "[{0}/{1}] Alternar 1ª/3ª Persona",
+							TrKey(cg_keyToggleThirdPerson), TrKey(cg_keyJump)));
+					}
 					addLine(_Tr("Client", "[{0}/{1}] Next/Prev player",
 						TrKey(cg_keyAttack), TrKey(cg_keyAltAttack)));
 					if (isSpectating)
@@ -3097,6 +3166,8 @@ namespace spades {
 						DrawFirstPersonHUD();
 					else if (GetCameraMode() == ClientCameraMode::ThirdPersonLocal)
 						DrawThirdPersonCrosshair();
+					else if (GetCameraMode() == ClientCameraMode::ThirdPersonFollow)
+						DrawSpectatorThirdPersonCrosshair();
 
 					tcView->Draw();
 

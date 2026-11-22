@@ -1635,6 +1635,19 @@ namespace spades {
 			if (found) {
 				followedPlayerId = nextId;
 				followCameraState.enabled = IsDemoMode() || staffSpectating || (followedPlayerId != localPlayerId);
+				if (cg_thirdperson) {
+					followCameraState.firstPerson = false;
+				}
+				if (!followCameraState.firstPerson) {
+					auto maybeTarget = world->GetPlayer(followedPlayerId);
+					if (maybeTarget && maybeTarget->IsAlive()) {
+						Vector3 o = -maybeTarget->GetFront();
+						if (o.GetLength2D() > 0.05F) {
+							followAndFreeCameraState.yaw = atan2f(o.y, o.x);
+							followAndFreeCameraState.pitch = DEG2RAD(15.0F);
+						}
+					}
+				}
 			} else {
 				followCameraState.enabled = false;
 			}
