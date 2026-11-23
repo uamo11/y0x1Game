@@ -735,13 +735,19 @@ namespace spades {
 			return out;
 		}
 
-		Handle<VoxelModel> ModsScreenHelper::LoadModPreviewVoxelModel(const std::string& modName) {
+		std::vector<Handle<VoxelModel>> ModsScreenHelper::LoadModPreviewVoxelModels(const std::string& modName) {
+			std::vector<Handle<VoxelModel>> result;
 			if (!modsCached)
 				RebuildModsCache();
 			const ModEntry* m = FindMod(modName);
 			if (!m)
-				return {};
+				return result;
 
+			auto toLower = [](std::string s) {
+				for (char& c : s)
+					c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+				return s;
+			};
 			auto endsWith = [](const std::string& str, const std::string& suffix) {
 				return str.size() >= suffix.size() &&
 				       str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
@@ -749,9 +755,87 @@ namespace spades {
 			auto contains = [](const std::string& str, const char* sub) {
 				return str.find(sub) != std::string::npos;
 			};
+			auto isAccessoryKv6 = [&](const std::string& f) {
+				return contains(f, "sight") || contains(f, "scopedot") ||
+				       contains(f, "scopefront") || contains(f, "scoperear") ||
+				       contains(f, "magazine") || contains(f, "/mag") ||
+				       endsWith(f, "mag.kv6") || contains(f, "casing") ||
+				       contains(f, "shell") || contains(f, "bullet") ||
+				       contains(f, "tracer") || contains(f, "singlevoxel") ||
+				       contains(f, "hand") || contains(f, "/arm") ||
+				       contains(f, "arms.kv6") || contains(f, "torso") ||
+				       contains(f, "head") || contains(f, "/leg") ||
+				       endsWith(f, "leg.kv6");
+			};
 
+			// Pass 1: Look for ThirdPerson.as in the mod paks and extract exact model parts (e.g. 1.kv6 + 2.kv6)
+			for (auto it = m->paks.rbegin(); it != m->paks.rend(); ++it) {
+				std::string overlayPath = m->isFolder
+					? ("Mods/" + m->name + "/" + *it)
+					: ("Mods/" + *it);
+				try {
+					auto stream = FileManager::OpenForReading(overlayPath.c_str());
+					if (!stream)
+						continue;
+					ZipFileSystem zfs(stream.release());
+					std::vector<std::string> allFiles = zfs.GetAllFiles();
+					std::string tpEntry;
+					for (const std::string& raw : allFiles) {
+						std::string f = toLower(raw);
+						if (endsWith(f, "thirdperson.as")) {
+							tpEntry = raw;
+							break;
+						}
+					}
+					if (tpEntry.empty())
+						continue;
+
+					auto scriptStream = zfs.OpenForReading(tpEntry.c_str());
+					if (!scriptStream)
+						continue;
+					std::string scriptText;
+					char buf[4096];
+					std::size_t rd = 0;
+					while ((rd = scriptStream->Read(buf, sizeof(buf))) > 0)
+						scriptText.append(buf, rd);
+
+					std::vector<std::string> requestedLower;
+					std::size_t pos = 0;
+					while (pos < scriptText.size()) {
+						std::size_t q1 = scriptText.find('"', pos);
+						if (q1 == std::string::npos) break;
+						std::size_t q2 = scriptText.find('"', q1 + 1);
+						if (q2 == std::string::npos) break;
+						std::string lit = toLower(scriptText.substr(q1 + 1, q2 - q1 - 1));
+						if (contains(lit, "models/weapons/") && endsWith(lit, ".kv6") && !isAccessoryKv6(lit)) {
+							if (std::find(requestedLower.begin(), requestedLower.end(), lit) == requestedLower.end())
+								requestedLower.push_back(lit);
+						}
+						pos = q2 + 1;
+					}
+
+					for (const std::string& req : requestedLower) {
+						for (const std::string& raw : allFiles) {
+							if (toLower(raw) == req) {
+								auto kvStream = zfs.OpenForReading(raw.c_str());
+								if (kvStream) {
+									Handle<VoxelModel> vm = VoxelModel::LoadKV6(*kvStream);
+									if (vm)
+										result.push_back(vm);
+								}
+								break;
+							}
+						}
+					}
+					if (!result.empty())
+						return result;
+				} catch (...) {
+				}
+			}
+
+			// Pass 2: Fallback heuristic across pak .kv6 files (prioritizing Weapon.kv6 > WeaponNoMagazine/Pump > Spade/Saber/Grenade > 1.kv6+2.kv6)
 			std::string bestPakPath;
-			std::string bestEntry;
+			std::vector<std::string> bestEntries;
 			int bestScore = 0;
 
 			for (const std::string& pak : m->paks) {
@@ -763,26 +847,31 @@ namespace spades {
 					if (!stream)
 						continue;
 					ZipFileSystem zfs(stream.release());
-					for (const std::string& raw : zfs.GetAllFiles()) {
-						std::string f = raw;
-						for (char& c : f)
-							c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+					std::vector<std::string> allFiles = zfs.GetAllFiles();
 
-						if (!endsWith(f, ".kv6"))
-							continue;
-						if (contains(f, "sight") || contains(f, "magazine") || contains(f, "/mag") ||
-						    endsWith(f, "mag.kv6") || contains(f, "casing") || contains(f, "shell") ||
-						    contains(f, "bullet") || contains(f, "hand") || contains(f, "/arm") ||
-						    contains(f, "arms.kv6") || contains(f, "torso") || contains(f, "head") ||
-						    contains(f, "/leg") || contains(f, "leg.kv6"))
+					std::string oneEntry, twoEntry;
+					for (const std::string& raw : allFiles) {
+						std::string f = toLower(raw);
+						if (endsWith(f, "/1.kv6") || f == "1.kv6") oneEntry = raw;
+						if (endsWith(f, "/2.kv6") || f == "2.kv6") twoEntry = raw;
+					}
+
+					for (const std::string& raw : allFiles) {
+						std::string f = toLower(raw);
+						if (!endsWith(f, ".kv6") || isAccessoryKv6(f))
 							continue;
 
 						int score = 0;
 						if (endsWith(f, "/weapon.kv6") || f == "weapon.kv6") {
 							score = 100;
+						} else if (endsWith(f, "/weaponnomagazine.kv6") || endsWith(f, "/weaponnopump.kv6")) {
+							score = 90;
 						} else if (endsWith(f, "/spade.kv6") || f == "spade.kv6" ||
+						           endsWith(f, "/saber.kv6") || f == "saber.kv6" ||
 						           endsWith(f, "/grenade.kv6") || f == "grenade.kv6") {
 							score = 80;
+						} else if (!oneEntry.empty() && (raw == oneEntry || raw == twoEntry)) {
+							score = 70;
 						} else if (contains(f, "models/weapons/")) {
 							score = 50;
 						} else if (contains(f, "models/")) {
@@ -792,28 +881,38 @@ namespace spades {
 						if (score > bestScore) {
 							bestScore = score;
 							bestPakPath = overlayPath;
-							bestEntry = raw;
+							bestEntries.clear();
+							if (score == 70 && !oneEntry.empty() && !twoEntry.empty()) {
+								bestEntries.push_back(oneEntry);
+								bestEntries.push_back(twoEntry);
+							} else {
+								bestEntries.push_back(raw);
+							}
 						}
 					}
 				} catch (...) {
 				}
 			}
 
-			if (bestScore <= 0 || bestPakPath.empty() || bestEntry.empty())
-				return {};
+			if (bestScore <= 0 || bestPakPath.empty() || bestEntries.empty())
+				return result;
 
 			try {
 				auto stream = FileManager::OpenForReading(bestPakPath.c_str());
 				if (!stream)
-					return {};
+					return result;
 				ZipFileSystem zfs(stream.release());
-				auto entryStream = zfs.OpenForReading(bestEntry.c_str());
-				if (!entryStream)
-					return {};
-				return VoxelModel::LoadKV6(*entryStream);
+				for (const std::string& entry : bestEntries) {
+					auto entryStream = zfs.OpenForReading(entry.c_str());
+					if (entryStream) {
+						Handle<VoxelModel> vm = VoxelModel::LoadKV6(*entryStream);
+						if (vm)
+							result.push_back(vm);
+					}
+				}
 			} catch (...) {
-				return {};
 			}
+			return result;
 		}
 
 		std::vector<std::string> ModsScreenHelper::GetEnabledMods() { return ReadEnabled(); }

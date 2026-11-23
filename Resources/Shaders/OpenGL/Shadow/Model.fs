@@ -28,32 +28,46 @@ varying vec4 shadowMapCoord3;
 
 uniform float cascadeSplit1;
 uniform float cascadeSplit2;
+uniform float realisticShadows;
 
 #define shadowMapViewPosZ shadowMapCoord1.w
 
 float EvaluteModelShadow() {
 	vec4 scoord;
-	const vec2 texel = vec2(1.0 / 2048.0);
+	if (realisticShadows > 0.5) {
+		const vec2 texel = vec2(1.0 / 2048.0);
+		if (shadowMapViewPosZ > cascadeSplit1) {
+			scoord = shadowMapCoord1;
+			float s0 = shadow2D(shadowMapTexture1, vec3(scoord.xy + vec2(-0.5, -0.5) * texel, scoord.z)).x;
+			float s1 = shadow2D(shadowMapTexture1, vec3(scoord.xy + vec2( 0.5, -0.5) * texel, scoord.z)).x;
+			float s2 = shadow2D(shadowMapTexture1, vec3(scoord.xy + vec2(-0.5,  0.5) * texel, scoord.z)).x;
+			float s3 = shadow2D(shadowMapTexture1, vec3(scoord.xy + vec2( 0.5,  0.5) * texel, scoord.z)).x;
+			return (s0 + s1 + s2 + s3) * 0.25;
+		} else if (shadowMapViewPosZ > cascadeSplit2) {
+			scoord = shadowMapCoord2;
+			float s0 = shadow2D(shadowMapTexture2, vec3(scoord.xy + vec2(-0.5, -0.5) * texel, scoord.z)).x;
+			float s1 = shadow2D(shadowMapTexture2, vec3(scoord.xy + vec2( 0.5, -0.5) * texel, scoord.z)).x;
+			float s2 = shadow2D(shadowMapTexture2, vec3(scoord.xy + vec2(-0.5,  0.5) * texel, scoord.z)).x;
+			float s3 = shadow2D(shadowMapTexture2, vec3(scoord.xy + vec2( 0.5,  0.5) * texel, scoord.z)).x;
+			return (s0 + s1 + s2 + s3) * 0.25;
+		} else {
+			scoord = shadowMapCoord3;
+			float s0 = shadow2D(shadowMapTexture3, vec3(scoord.xy + vec2(-0.5, -0.5) * texel, scoord.z)).x;
+			float s1 = shadow2D(shadowMapTexture3, vec3(scoord.xy + vec2( 0.5, -0.5) * texel, scoord.z)).x;
+			float s2 = shadow2D(shadowMapTexture3, vec3(scoord.xy + vec2(-0.5,  0.5) * texel, scoord.z)).x;
+			float s3 = shadow2D(shadowMapTexture3, vec3(scoord.xy + vec2( 0.5,  0.5) * texel, scoord.z)).x;
+			return (s0 + s1 + s2 + s3) * 0.25;
+		}
+	}
+
 	if (shadowMapViewPosZ > cascadeSplit1) {
-		scoord = shadowMapCoord1;
-		float s0 = shadow2D(shadowMapTexture1, vec3(scoord.xy + vec2(-0.5, -0.5) * texel, scoord.z)).x;
-		float s1 = shadow2D(shadowMapTexture1, vec3(scoord.xy + vec2( 0.5, -0.5) * texel, scoord.z)).x;
-		float s2 = shadow2D(shadowMapTexture1, vec3(scoord.xy + vec2(-0.5,  0.5) * texel, scoord.z)).x;
-		float s3 = shadow2D(shadowMapTexture1, vec3(scoord.xy + vec2( 0.5,  0.5) * texel, scoord.z)).x;
-		return (s0 + s1 + s2 + s3) * 0.25;
+		scoord = shadowMapCoord1.xyzw;
+		return shadow2D(shadowMapTexture1, scoord.xyz).x;
 	} else if (shadowMapViewPosZ > cascadeSplit2) {
-		scoord = shadowMapCoord2;
-		float s0 = shadow2D(shadowMapTexture2, vec3(scoord.xy + vec2(-0.5, -0.5) * texel, scoord.z)).x;
-		float s1 = shadow2D(shadowMapTexture2, vec3(scoord.xy + vec2( 0.5, -0.5) * texel, scoord.z)).x;
-		float s2 = shadow2D(shadowMapTexture2, vec3(scoord.xy + vec2(-0.5,  0.5) * texel, scoord.z)).x;
-		float s3 = shadow2D(shadowMapTexture2, vec3(scoord.xy + vec2( 0.5,  0.5) * texel, scoord.z)).x;
-		return (s0 + s1 + s2 + s3) * 0.25;
+		scoord = shadowMapCoord2.xyzw;
+		return shadow2D(shadowMapTexture2, scoord.xyz).x;
 	} else {
-		scoord = shadowMapCoord3;
-		float s0 = shadow2D(shadowMapTexture3, vec3(scoord.xy + vec2(-0.5, -0.5) * texel, scoord.z)).x;
-		float s1 = shadow2D(shadowMapTexture3, vec3(scoord.xy + vec2( 0.5, -0.5) * texel, scoord.z)).x;
-		float s2 = shadow2D(shadowMapTexture3, vec3(scoord.xy + vec2(-0.5,  0.5) * texel, scoord.z)).x;
-		float s3 = shadow2D(shadowMapTexture3, vec3(scoord.xy + vec2( 0.5,  0.5) * texel, scoord.z)).x;
-		return (s0 + s1 + s2 + s3) * 0.25;
+		scoord = shadowMapCoord3.xyzw;
+		return shadow2D(shadowMapTexture3, scoord.xyz).x;
 	}
 }

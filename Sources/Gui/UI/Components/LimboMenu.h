@@ -73,9 +73,10 @@ namespace spades {
 			float showcaseTime = 0.0F;
 			float weaponYaw = 0.0F;
 			AABB2 showcaseRect;
-			Handle<client::IModel> rifleModel;
-			Handle<client::IModel> smgModel;
-			Handle<client::IModel> shotgunModel;
+			bool weaponModelsLoaded = false;
+			std::vector<Handle<client::IModel>> rifleModels;
+			std::vector<Handle<client::IModel>> smgModels;
+			std::vector<Handle<client::IModel>> shotgunModels;
 			Handle<client::IModel> playerTorsoModel;
 			Handle<client::IModel> playerHeadModel;
 			Handle<client::IModel> playerLegLeftModel;

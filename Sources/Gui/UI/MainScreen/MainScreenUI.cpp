@@ -598,45 +598,52 @@ namespace spades {
 			if (!previewMod.empty() && modPreviewAttempted.find(previewMod) == modPreviewAttempted.end()) {
 				modPreviewAttempted.insert(previewMod);
 				if (ModsScreenHelper* mh = mainMenu->GetModsHelper()) {
-					Handle<VoxelModel> vm = mh->LoadModPreviewVoxelModel(previewMod);
-					if (vm) {
+					std::vector<Handle<VoxelModel>> vms = mh->LoadModPreviewVoxelModels(previewMod);
+					std::vector<Handle<client::IModel>> gpuModels;
+					for (const auto& vm : vms) {
+						if (!vm) continue;
 						try {
-							modPreviewCache[previewMod] = renderer->CreateModel(*vm);
+							Handle<client::IModel> gm = renderer->CreateModel(*vm);
+							if (gm)
+								gpuModels.push_back(gm);
 						} catch (...) {
 						}
 					}
+					if (!gpuModels.empty())
+						modPreviewCache[previewMod] = std::move(gpuModels);
 				}
 			}
 
-			Handle<client::IModel> curModel;
+			std::vector<Handle<client::IModel>> curModels;
 			auto cachedIt = !previewMod.empty() ? modPreviewCache.find(previewMod) : modPreviewCache.end();
-			if (cachedIt != modPreviewCache.end() && cachedIt->second) {
-				curModel = cachedIt->second;
+			if (cachedIt != modPreviewCache.end() && !cachedIt->second.empty()) {
+				curModels = cachedIt->second;
+			} else if (cat == "SMG" && smgModel) {
+				curModels.push_back(smgModel);
+			} else if (cat == "SHOTGUN" && shotgunModel) {
+				curModels.push_back(shotgunModel);
+			} else if (cat == "SPADE" && spadeModel) {
+				curModels.push_back(spadeModel);
+			} else if ((cat == "SEMI" || cat == "RIFLE") && rifleModel) {
+				curModels.push_back(rifleModel);
 			}
 
-			Vector3 lightCol = MakeVector3(0.65F, 0.85F, 1.0F);
-			float scale = 0.042F;
-
-			if (cat == "SMG") {
-				if (!curModel) curModel = smgModel;
-				lightCol = MakeVector3(0.40F, 0.95F, 0.65F);
-				scale = 0.048F;
-			} else if (cat == "SHOTGUN") {
-				if (!curModel) curModel = shotgunModel;
-				lightCol = MakeVector3(1.0F, 0.70F, 0.35F);
-				scale = 0.044F;
-			} else if (cat == "SPADE") {
-				if (!curModel) curModel = spadeModel;
-				lightCol = MakeVector3(0.95F, 0.85F, 0.45F);
-				scale = 0.044F;
-			} else if (cat == "SEMI" || cat == "RIFLE") {
-				if (!curModel) curModel = rifleModel;
-				lightCol = MakeVector3(0.65F, 0.85F, 1.0F);
-				scale = 0.040F;
-			}
-
-			if (!curModel)
+			if (curModels.empty() || !curModels[0])
 				return;
+
+			AABB3 bb = curModels[0]->GetBoundingBox();
+			for (size_t i = 1; i < curModels.size(); ++i) {
+				if (!curModels[i]) continue;
+				AABB3 partBB = curModels[i]->GetBoundingBox();
+				bb.min.x = std::min(bb.min.x, partBB.min.x);
+				bb.min.y = std::min(bb.min.y, partBB.min.y);
+				bb.min.z = std::min(bb.min.z, partBB.min.z);
+				bb.max.x = std::max(bb.max.x, partBB.max.x);
+				bb.max.y = std::max(bb.max.y, partBB.max.y);
+				bb.max.z = std::max(bb.max.z, partBB.max.z);
+			}
+			Vector3 bbCenter = (bb.min + bb.max) * 0.5F;
+			float maxExtent = std::max({bb.GetWidth(), bb.GetHeight(), bb.GetDepth(), 1.0F});
 
 			float sw = renderer->ScreenWidth();
 			float sh = renderer->ScreenHeight();
@@ -649,30 +656,37 @@ namespace spades {
 			Vector3 side = sceneDef.viewAxis[0];
 			Vector3 up = sceneDef.viewAxis[1];
 
-			// Position rotating weapon at exact center of Mods showcase box
+			// Center rotating weapon in empty window above metadata card and scale to fit cleanly inside box
 			AABB2 previewRect = mainMenu->GetModsPreviewRect();
 			float ndcX = 0.65F;
 			float ndcY = 0.05F;
+			float dist = 3.2F;
+			float boxWorldW = 2.0F * tanHalfFovY * dist * 0.45F;
+			float boxWorldH = boxWorldW;
 			if (previewRect.GetWidth() > 10.0F && previewRect.GetHeight() > 10.0F && sw > 1.0F && sh > 1.0F) {
+				float viewH = std::max(40.0F, previewRect.GetHeight() - 104.0F);
 				float centerX = previewRect.min.x + previewRect.GetWidth() * 0.5F;
-				float centerY = previewRect.min.y + previewRect.GetHeight() * 0.44F;
+				float centerY = previewRect.min.y + 26.0F + viewH * 0.5F;
 				ndcX = (centerX / sw) * 2.0F - 1.0F;
 				ndcY = 1.0F - (centerY / sh) * 2.0F;
+				boxWorldW = (previewRect.GetWidth() / sh) * (2.0F * tanHalfFovY * dist);
+				boxWorldH = (viewH / sh) * (2.0F * tanHalfFovY * dist);
 			}
-			float dist = 3.2F;
+			float targetWorldSize = std::max(0.25F, std::min(boxWorldW * 0.75F, boxWorldH * 0.78F));
+			float autoScale = targetWorldSize / maxExtent;
 
 			float rightOffset = ndcX * tanHalfFovX * dist;
 			float upOffset = ndcY * tanHalfFovY * dist;
 			Vector3 weaponPos = orig + dir * dist + side * rightOffset + up * upOffset;
 
-			float bob = sinf(modsShowcaseTime * 2.2F) * 0.02F;
+			float bob = sinf(modsShowcaseTime * 2.2F) * 0.015F;
 			Vector3 actualPos = weaponPos + up * bob;
 
 			client::DynamicLightParam light;
 			light.type = client::DynamicLightTypePoint;
-			light.origin = actualPos + up * 0.85F - dir * 1.4F + side * 0.2F;
-			light.radius = 6.0F;
-			light.color = Mix(lightCol, MakeVector3(1.0F, 0.98F, 0.95F), 0.45F);
+			light.origin = actualPos + up * 0.6F - dir * 1.1F + side * 0.1F;
+			light.radius = 2.2F;
+			light.color = MakeVector3(0.95F, 0.95F, 0.95F);
 			renderer->AddLight(light);
 
 			client::ModelRenderParam param;
@@ -685,9 +699,12 @@ namespace spades {
 			Vector3 weapDown = Vector3::Cross(weapRightVec, weapBarrel).Normalize();
 
 			Matrix4 weapMatrix = Matrix4::FromAxis(weapRightVec, weapBarrel, weapDown, actualPos);
-			param.matrix = weapMatrix * Matrix4::Scale(scale);
+			param.matrix = weapMatrix * Matrix4::Scale(autoScale) * Matrix4::Translate(-bbCenter);
 
-			renderer->RenderModel(*curModel, param);
+			for (const auto& part : curModels) {
+				if (part)
+					renderer->RenderModel(*part, param);
+			}
 		}
 
 		void MainScreenUI::RunFrame(float dt) {

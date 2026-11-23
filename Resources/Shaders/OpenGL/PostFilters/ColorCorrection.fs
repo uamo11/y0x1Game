@@ -108,10 +108,10 @@ void main() {
 	// Apply tinting and manual exposure
 	gl_FragColor.xyz *= tint;
 
+#if USE_HDR
 	vec3 gray = vec3(dot(gl_FragColor.xyz, vec3(0.2126, 0.7152, 0.0722)));
 	gl_FragColor.xyz = mix(gray, gl_FragColor.xyz, saturation);
 
-#if USE_HDR
 	gl_FragColor.xyz *= gl_FragColor.xyz; // linearize
 	gl_FragColor.xyz = acesToneMapping(gl_FragColor.xyz * 0.8);
 	gl_FragColor.xyz = sqrt(gl_FragColor.xyz); // delinearize
@@ -120,20 +120,19 @@ void main() {
 						   enhancement);
 #else
 	if (realisticHdr > 0.5) {
-		// Ultra-Fast Realistic HDR: Film-grade ACES Tonemapping + Dynamic Range Knee (0 FPS Drop)
-		vec3 filmic = acesToneMapping(gl_FragColor.xyz * 1.08);
-		gl_FragColor.xyz = mix(gl_FragColor.xyz, filmic, 0.48);
+		vec3 gray = vec3(dot(gl_FragColor.xyz, vec3(0.2126, 0.7152, 0.0722)));
+		gl_FragColor.xyz = mix(gray, gl_FragColor.xyz, saturation);
 
-		// Crisp contrast enhancement and vibrance
+		// Clean filmic ACES curve when user explicitly enables Realistic HDR
+		vec3 filmic = acesToneMapping(gl_FragColor.xyz * 1.04);
+		gl_FragColor.xyz = mix(gl_FragColor.xyz, filmic, 0.35);
 		gl_FragColor.xyz = mix(gl_FragColor.xyz,
 							   smoothstep(0.0, 1.0, gl_FragColor.xyz),
 							   enhancement * 0.85);
-
-		// Subtle, high-performance lens vignette for cinematic depth (virtually 0 cost)
-		vec2 vigCoord = (texCoord - 0.5) * 1.25;
-		float vig = clamp(1.0 - dot(vigCoord, vigCoord) * 0.20, 0.0, 1.0);
-		gl_FragColor.xyz *= vig;
 	} else {
+		vec3 gray = vec3(dot(gl_FragColor.xyz, vec3(1. / 3.)));
+		gl_FragColor.xyz = mix(gray, gl_FragColor.xyz, saturation);
+
 		gl_FragColor.xyz = mix(gl_FragColor.xyz,
 							   smoothstep(0.0, 1.0, gl_FragColor.xyz),
 							   enhancement);

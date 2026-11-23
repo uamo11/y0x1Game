@@ -37,12 +37,11 @@ float VisibilityOfSunLight() {
 }
 
 vec3 EvaluateSunLight() {
-	const vec3 sunColor = vec3(0.66, 0.63, 0.56);
 	float vis = VisibilityOfSunLight();
 	if (realisticShadows > 0.5) {
-		return sunColor * (0.05 + 1.05 * vis);
+		return vec3(0.64, 0.62, 0.58) * (0.04 + 0.98 * vis);
 	}
-	return sunColor * (1.1 * vis);
+	return vec3(0.6) * vis;
 }
 
 vec3 EvaluateAmbientLight(float detailAmbientOcclusion) {

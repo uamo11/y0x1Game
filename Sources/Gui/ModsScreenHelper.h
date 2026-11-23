@@ -65,7 +65,7 @@ namespace spades {
 			int GetModPakCount(std::string modName);
 			int64_t GetModTotalSize(std::string modName);
 			std::vector<std::string> GetModContents(std::string modName);
-			Handle<VoxelModel> LoadModPreviewVoxelModel(const std::string& modName);
+			std::vector<Handle<VoxelModel>> LoadModPreviewVoxelModels(const std::string& modName);
 
 			// The enabled set: ordered mod names, top applied first, bottom wins
 			// conflicts. Toggling persists immediately; the change takes effect

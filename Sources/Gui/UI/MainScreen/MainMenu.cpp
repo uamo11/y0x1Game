@@ -761,8 +761,8 @@ namespace spades {
 				float modsLeft = (sw - modsContentsWidth) * 0.5F;
 				float listW = std::min(580.0F, modsContentsWidth * 0.62F);
 				float modsScale = listW / 580.0F;
-				modsCheckColWidth = 44.0F * modsScale;
-				modsOrderColWidth = 52.0F * modsScale;
+				modsCheckColWidth = 54.0F * modsScale;
+				modsOrderColWidth = 42.0F * modsScale;
 				modsTagColWidth = 48.0F * modsScale;
 				modsNameColWidth = 180.0F * modsScale;
 				modsAuthorColWidth = 130.0F * modsScale;
@@ -859,7 +859,7 @@ namespace spades {
 					{
 						Handle<ModListHeader> header = Handle<ModListHeader>::New(manager);
 						header->SetBounds(AABB2(x, modsHeaderPos, modsOrderColWidth, headerHeight));
-						header->text = _Tr("MainScreen", "Order");
+						header->text = "#";
 						modsPanel->AddChild(header.GetPointerOrNull());
 						x += modsOrderColWidth;
 					}
@@ -1743,8 +1743,7 @@ namespace spades {
 			UIElement::Render();
 
 			// Render Mods 3D Preview frame & live info when Mods tab is visible
-			// Note: center of modsPreviewRect stays transparent so the 3D weapon
-			// rendered behind the UI during EndScene() shows with full brightness!
+			// Native OpenSpades style (GuiFont 1.0x, neutral outline, transparent center)
 			if (IsModsTabActive() && modsPreviewRect.GetWidth() > 40.0F) {
 				client::IRenderer& r = GetManager().GetRenderer();
 				client::IFont* font = GetFont();
@@ -1753,32 +1752,25 @@ namespace spades {
 				float pw = modsPreviewRect.GetWidth();
 				float ph = modsPreviewRect.GetHeight();
 
-				// Frame border & corner accents
-				SetColorNP(r, MakeVector4(0.25F, 0.55F, 0.85F, 0.70F));
+				// Native subtle frame border
+				SetColorNP(r, MakeVector4(1.0F, 1.0F, 1.0F, 0.14F));
 				r.DrawOutlinedRect(px, py, px + pw, py + ph);
 
-				float tick = 10.0F;
-				SetColorNP(r, MakeVector4(0.40F, 0.85F, 1.0F, 0.95F));
-				r.DrawFilledRect(px, py, px + tick, py + 2.0F);
-				r.DrawFilledRect(px, py, px + 2.0F, py + tick);
-				r.DrawFilledRect(px + pw - tick, py, px + pw, py + 2.0F);
-				r.DrawFilledRect(px + pw - 2.0F, py, px + pw, py + tick);
+				// Top header bar (neutral dark translucent)
+				SetColorNP(r, MakeVector4(0.0F, 0.0F, 0.0F, 0.55F));
+				r.DrawFilledRect(px + 1.0F, py + 1.0F, px + pw - 1.0F, py + 26.0F);
 
-				// Top strip header inside preview box
-				SetColorNP(r, MakeVector4(0.03F, 0.05F, 0.08F, 0.78F));
-				r.DrawFilledRect(px + 1.0F, py + 1.0F, px + pw - 1.0F, py + 24.0F);
-
-				// Bottom metadata card inside preview box
-				float infoH = 74.0F;
+				// Bottom metadata card (neutral dark translucent)
+				float infoH = 78.0F;
 				float infoY = py + ph - infoH;
-				SetColorNP(r, MakeVector4(0.03F, 0.05F, 0.08F, 0.84F));
+				SetColorNP(r, MakeVector4(0.0F, 0.0F, 0.0F, 0.65F));
 				r.DrawFilledRect(px + 1.0F, infoY, px + pw - 1.0F, py + ph - 1.0F);
 
 				if (font) {
-					Vector4 shadow = MakeVector4(0.0F, 0.0F, 0.0F, 0.75F);
-					font->DrawShadow(_Tr("MainScreen", "VISTA PREVIA 3D"),
-					                 MakeVector2(px + 10.0F, py + 5.0F), 0.85F,
-					                 MakeVector4(0.45F, 0.88F, 1.0F, 0.95F), shadow);
+					Vector4 shadow = MakeVector4(0.0F, 0.0F, 0.0F, 0.55F);
+					font->DrawShadow(_Tr("MainScreen", "Vista Previa 3D"),
+					                 MakeVector2(px + 10.0F, py + 4.0F), 1.0F,
+					                 MakeVector4(1.0F, 1.0F, 1.0F, 0.90F), shadow);
 
 					std::string dispName = _Tr("MainScreen", "Sin mod seleccionado");
 					std::string typeLabel;
@@ -1794,47 +1786,47 @@ namespace spades {
 						isEnabled = (EnabledIndex(en, previewModName) >= 0);
 
 						if (cat == "SEMI" || cat == "RIFLE")
-							typeLabel = "TIPO: FUSIL SEMI-AUTOMÁTICO";
+							typeLabel = _Tr("MainScreen", "Rifle");
 						else if (cat == "SMG")
-							typeLabel = "TIPO: SUBFUSIL SMG";
+							typeLabel = "SMG";
 						else if (cat == "SHOTGUN")
-							typeLabel = "TIPO: ESCOPETA";
+							typeLabel = _Tr("MainScreen", "Shotgun");
 						else if (cat == "SPADE")
-							typeLabel = "TIPO: PALA / HERRAMIENTA";
+							typeLabel = _Tr("MainScreen", "Spade");
 						else if (cat == "GRENADE")
-							typeLabel = "TIPO: GRANADA";
+							typeLabel = _Tr("MainScreen", "Grenade");
 						else if (!cat.empty())
-							typeLabel = "TIPO: " + cat;
+							typeLabel = cat;
 						else
-							typeLabel = "TIPO: PAQUETE .PAK";
+							typeLabel = "Mod .pak";
 					} else if (!selectedModCategory.empty()) {
 						if (selectedModCategory == "SEMI" || selectedModCategory == "RIFLE") {
-							dispName = "Fusil Base";
-							typeLabel = "TIPO: FUSIL SEMI-AUTOMÁTICO";
+							dispName = _Tr("MainScreen", "Rifle");
+							typeLabel = "Base";
 						} else if (selectedModCategory == "SMG") {
-							dispName = "SMG Base";
-							typeLabel = "TIPO: SUBFUSIL SMG";
+							dispName = "SMG";
+							typeLabel = "Base";
 						} else if (selectedModCategory == "SHOTGUN") {
-							dispName = "Escopeta Base";
-							typeLabel = "TIPO: ESCOPETA";
+							dispName = _Tr("MainScreen", "Shotgun");
+							typeLabel = "Base";
 						} else if (selectedModCategory == "SPADE") {
-							dispName = "Pala Base";
-							typeLabel = "TIPO: PALA / HERRAMIENTA";
+							dispName = _Tr("MainScreen", "Spade");
+							typeLabel = "Base";
 						}
 					}
 
-					font->DrawShadow(dispName, MakeVector2(px + 12.0F, infoY + 8.0F), 0.95F,
+					font->DrawShadow(dispName, MakeVector2(px + 12.0F, infoY + 8.0F), 1.0F,
 					                 MakeVector4(1.0F, 1.0F, 1.0F, 1.0F), shadow);
 					if (!typeLabel.empty()) {
-						font->DrawShadow(typeLabel, MakeVector2(px + 12.0F, infoY + 28.0F), 0.78F,
-						                 MakeVector4(0.45F, 0.85F, 1.0F, 0.95F), shadow);
+						font->DrawShadow(typeLabel, MakeVector2(px + 12.0F, infoY + 30.0F), 1.0F,
+						                 MakeVector4(0.75F, 0.78F, 0.82F, 0.90F), shadow);
 					}
 					if (hasMod) {
-						std::string line3 = authorStr.empty() ? "" : ("Autor: " + authorStr + "  •  ");
-						line3 += isEnabled ? "ACTIVADO" : "DESACTIVADO";
-						Vector4 stCol = isEnabled ? MakeVector4(0.40F, 1.0F, 0.45F, 1.0F)
-						                          : MakeVector4(0.70F, 0.74F, 0.80F, 0.85F);
-						font->DrawShadow(line3, MakeVector2(px + 12.0F, infoY + 47.0F), 0.75F,
+						std::string line3 = authorStr.empty() ? "" : (authorStr + "  •  ");
+						line3 += isEnabled ? _Tr("MainScreen", "Activado") : _Tr("MainScreen", "Desactivado");
+						Vector4 stCol = isEnabled ? MakeVector4(0.40F, 1.0F, 0.40F, 1.0F)
+						                          : MakeVector4(0.70F, 0.70F, 0.70F, 0.85F);
+						font->DrawShadow(line3, MakeVector2(px + 12.0F, infoY + 52.0F), 1.0F,
 						                 stCol, shadow);
 					}
 				}

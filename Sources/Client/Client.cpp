@@ -83,8 +83,8 @@ DEFINE_SPADES_SETTING(cg_weatherRain, "1");
 DEFINE_SPADES_SETTING(cg_weatherLightning, "1");
 DEFINE_SPADES_SETTING(cg_weatherAudio, "1");
 DEFINE_SPADES_SETTING(cg_weatherFogDistance, "1");
-DEFINE_SPADES_SETTING(cg_realisticHdr, "1");
-DEFINE_SPADES_SETTING(cg_realisticShadows, "1");
+DEFINE_SPADES_SETTING(cg_realisticHdr, "0");
+DEFINE_SPADES_SETTING(cg_realisticShadows, "0");
 
 SPADES_SETTING(cg_playerName);
 SPADES_SETTING(cg_centerMessageSmallFont);
@@ -208,6 +208,11 @@ namespace spades {
 					if (teamId >= 0 && teamId < 2 && client->GetWorld())
 						return client->GetWorld()->GetTeamName(teamId);
 					return teamId == 0 ? "Team 1" : (teamId == 1 ? "Team 2" : "");
+				}
+				IntVector3 GetTeamColor(int teamId) override {
+					if (teamId >= 0 && teamId < 2 && client->GetWorld())
+						return client->GetWorld()->GetTeamColor(teamId);
+					return MakeIntVector3(160, 165, 170);
 				}
 				bool HasLocalPlayer() override { return client->HasLocalPlayer(); }
 			};
