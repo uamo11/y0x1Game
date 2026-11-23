@@ -54,6 +54,7 @@ namespace spades {
 
 			GLProgramUniform ssaoTexture;
 			GLProgramUniform ssaoTextureUVScale;
+			GLProgramUniform realisticShadows;
 
 		public:
 			GLShadowShader();

@@ -21,6 +21,8 @@
 #pragma once
 
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include <Client/SceneDefinition.h>
@@ -92,6 +94,8 @@ namespace spades {
 			Handle<client::IModel> smgModel;
 			Handle<client::IModel> shotgunModel;
 			Handle<client::IModel> spadeModel;
+			std::unordered_map<std::string, Handle<client::IModel>> modPreviewCache;
+			std::unordered_set<std::string> modPreviewAttempted;
 			float modsWeaponYaw = 0.0F;
 			float modsShowcaseTime = 0.0F;
 

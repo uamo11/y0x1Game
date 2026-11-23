@@ -22,7 +22,6 @@
 
 #include "MainScreenUI.h"
 #include "SkinSelectScreen.h"
-#include "ModWeaponSelectScreen.h"
 #include <Client/Fonts.h>
 #include <Client/IFont.h>
 #include <Client/IRenderer.h>
@@ -49,7 +48,6 @@ namespace spades {
 		enum class LobbyIconType {
 			Play,
 			Skins,
-			Mods,
 			Settings,
 			Quit
 		};
@@ -130,18 +128,6 @@ namespace spades {
 					r.DrawLine(MakeVector2(cx - 5.5F * s, cy + 7.5F * s), MakeVector2(cx + 5.5F * s, cy + 7.5F * s), 2.0F * s);
 					// Head
 					r.DrawImage(nullptr, AABB2(cx - 3.2F * s, cy - 10.5F * s, 6.4F * s, 4.5F * s));
-				} else if (iconType == LobbyIconType::Mods) {
-					// Draw Tactical Crosshairs / Target icon
-					float rOuter = 10.0F;
-					r.DrawLine(MakeVector2(cx - 13.0F, cy), MakeVector2(cx - 5.0F, cy), 2.2F);
-					r.DrawLine(MakeVector2(cx + 5.0F, cy), MakeVector2(cx + 13.0F, cy), 2.2F);
-					r.DrawLine(MakeVector2(cx, cy - 13.0F), MakeVector2(cx, cy - 5.0F), 2.2F);
-					r.DrawLine(MakeVector2(cx, cy + 5.0F), MakeVector2(cx, cy + 13.0F), 2.2F);
-					r.DrawLine(MakeVector2(cx - rOuter, cy - rOuter), MakeVector2(cx + rOuter, cy - rOuter), 1.5F);
-					r.DrawLine(MakeVector2(cx + rOuter, cy - rOuter), MakeVector2(cx + rOuter, cy + rOuter), 1.5F);
-					r.DrawLine(MakeVector2(cx + rOuter, cy + rOuter), MakeVector2(cx - rOuter, cy + rOuter), 1.5F);
-					r.DrawLine(MakeVector2(cx - rOuter, cy + rOuter), MakeVector2(cx - rOuter, cy - rOuter), 1.5F);
-					r.DrawFilledRect(cx - 1.5F, cy - 1.5F, cx + 1.5F, cy + 1.5F);
 				} else if (iconType == LobbyIconType::Settings) {
 					// Draw gear icon
 					// 8 teeth spokes
@@ -171,9 +157,6 @@ namespace spades {
 					} else if (iconType == LobbyIconType::Skins) {
 						tipText = _Tr("MainScreen", "SKINS");
 						tipColor = MakeVector4(0.92F, 0.65F, 1.0F, 1.0F);
-					} else if (iconType == LobbyIconType::Mods) {
-						tipText = _Tr("MainScreen", "MODS / ARMAS");
-						tipColor = MakeVector4(0.35F, 0.85F, 1.0F, 1.0F);
 					} else if (iconType == LobbyIconType::Settings) {
 						tipText = _Tr("MainScreen", "AJUSTES");
 						tipColor = MakeVector4(0.60F, 0.85F, 1.0F, 1.0F);
@@ -231,15 +214,6 @@ namespace spades {
 				AddChild(skinsButton);
 			}
 
-			// Mods / Weapons Button
-			{
-				Handle<LobbyIconButton> btn =
-				    Handle<LobbyIconButton>::New(manager, LobbyIconType::Mods);
-				btn->activated = [this](UIElement& s) { OnModsPressed(s); };
-				modsButton = btn.GetPointerOrNull();
-				AddChild(modsButton);
-			}
-
 			// Settings Button (icon only)
 			{
 				Handle<LobbyIconButton> btn =
@@ -268,10 +242,10 @@ namespace spades {
 
 			float btnSize = 56.0F;
 			float btnGap = 16.0F;
-			float totalH = 5.0F * btnSize + 4.0F * btnGap;
+			float totalH = 4.0F * btnSize + 3.0F * btnGap;
 			float startY = (sh - totalH) * 0.5F;
-			if (startY < 45.0F)
-				startY = 45.0F;
+			if (startY < 60.0F)
+				startY = 60.0F;
 
 			float btnX = 64.0F;
 			if (sw < 640.0F)
@@ -283,14 +257,11 @@ namespace spades {
 			if (skinsButton)
 				skinsButton->SetBounds(AABB2(btnX, startY + 1.0F * (btnSize + btnGap), btnSize, btnSize));
 
-			if (modsButton)
-				modsButton->SetBounds(AABB2(btnX, startY + 2.0F * (btnSize + btnGap), btnSize, btnSize));
-
 			if (settingsButton)
-				settingsButton->SetBounds(AABB2(btnX, startY + 3.0F * (btnSize + btnGap), btnSize, btnSize));
+				settingsButton->SetBounds(AABB2(btnX, startY + 2.0F * (btnSize + btnGap), btnSize, btnSize));
 
 			if (quitButton)
-				quitButton->SetBounds(AABB2(btnX, startY + 4.0F * (btnSize + btnGap), btnSize, btnSize));
+				quitButton->SetBounds(AABB2(btnX, startY + 3.0F * (btnSize + btnGap), btnSize, btnSize));
 		}
 
 		void LobbyScreen::OnPlayPressed(UIElement&) {
@@ -301,10 +272,6 @@ namespace spades {
 			Handle<SkinSelectScreen> screen =
 			    Handle<SkinSelectScreen>::New(this, &ui->GetFontManager(), ui);
 			screen->Run();
-		}
-
-		void LobbyScreen::OnModsPressed(UIElement&) {
-			ui->ShowModsBrowser();
 		}
 
 		void LobbyScreen::OnSettingsPressed(UIElement&) {

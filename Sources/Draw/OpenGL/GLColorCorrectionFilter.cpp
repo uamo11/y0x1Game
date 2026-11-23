@@ -32,6 +32,8 @@
 #include <Core/Math.h>
 #include <Core/Settings.h>
 
+SPADES_SETTING(cg_realisticHdr);
+
 namespace spades {
 	namespace draw {
 		GLColorCorrectionFilter::GLColorCorrectionFilter(GLRenderer& renderer)
@@ -91,6 +93,7 @@ namespace spades {
 			static GLProgramUniform sharpening("sharpening");
 			static GLProgramUniform sharpeningFinalGain("sharpeningFinalGain");
 			static GLProgramUniform blurPixelShift("blurPixelShift");
+			static GLProgramUniform realisticHdr("realisticHdr");
 
 			saturation(lens);
 			enhancement(lens);
@@ -98,6 +101,7 @@ namespace spades {
 			sharpening(lens);
 			sharpeningFinalGain(lens);
 			blurPixelShift(lens);
+			realisticHdr(lens);
 
 			dev.Enable(IGLDevice::Blend, false);
 
@@ -107,6 +111,7 @@ namespace spades {
 
 			lens->Use();
 
+			realisticHdr.SetValue((int)cg_realisticHdr ? 1.0F : 0.0F);
 			tint.SetValue(tintVal.x, tintVal.y, tintVal.z);
 
 			const client::SceneDefinition& def = renderer.GetSceneDef();

@@ -30,16 +30,19 @@ float EvaluteModelShadow();
 vec3 EvaluateRadiosity(float detailAmbientOcclusion, float ssao);
 vec3 EvaluateSoftReflections(float detailAmbientOcclusion, vec3 direction, float ssao);
 
+uniform float realisticShadows;
+
 float VisibilityOfSunLight() {
 	return EvaluateMapShadow() * EvaluteModelShadow();
 }
 
 vec3 EvaluateSunLight() {
-	// Natural realistic sunlight with atmospheric ambient bounce & soft penumbra
 	const vec3 sunColor = vec3(0.66, 0.63, 0.56);
 	float vis = VisibilityOfSunLight();
-	// Realistic ambient fill prevents harsh pitch-black void shadows (0 FPS overhead)
-	return sunColor * (0.04 + 1.06 * vis);
+	if (realisticShadows > 0.5) {
+		return sunColor * (0.05 + 1.05 * vis);
+	}
+	return sunColor * (1.1 * vis);
 }
 
 vec3 EvaluateAmbientLight(float detailAmbientOcclusion) {

@@ -24,7 +24,6 @@
 #include "MainMenu.h"
 #include "MainScreenUI.h"
 #include "SkinSelectScreen.h"
-#include "ModWeaponSelectScreen.h"
 #include <Client/Fonts.h>
 #include <Client/IImage.h>
 #include <Client/IRenderer.h>
@@ -758,11 +757,32 @@ namespace spades {
 				}
 
 				// --- Mods panel contents ---
+				float modsContentsWidth = std::min(960.0F, sw - 24.0F);
+				float modsLeft = (sw - modsContentsWidth) * 0.5F;
+				float listW = std::min(580.0F, modsContentsWidth * 0.62F);
+				float modsScale = listW / 580.0F;
+				modsCheckColWidth = 44.0F * modsScale;
+				modsOrderColWidth = 52.0F * modsScale;
+				modsTagColWidth = 48.0F * modsScale;
+				modsNameColWidth = 180.0F * modsScale;
+				modsAuthorColWidth = 130.0F * modsScale;
+				modsSizeColWidth = listW - (modsCheckColWidth + modsOrderColWidth + modsTagColWidth +
+				                            modsNameColWidth + modsAuthorColWidth);
+
+				float modsFilterPos = 260.0F;
+				float modsHeaderPos = 290.0F;
+				float modsListPos = modsHeaderPos + headerHeight;
+				float modsListHeight = std::max(80.0F, footerPos - modsListPos - 46.0F);
+
+				float previewX = modsLeft + listW + 16.0F;
+				float previewW = std::max(120.0F, modsContentsWidth - listW - 16.0F);
+				modsPreviewRect = AABB2(previewX, modsFilterPos, previewW, (footerPos - 46.0F) - modsFilterPos);
+
 				{
 					Handle<Button> button = Handle<Button>::New(manager);
 					modsDownloadButton = button.GetPointerOrNull();
 					modsDownloadButton->caption = _Tr("MainScreen", "Download official mods...");
-					modsDownloadButton->SetBounds(AABB2(contentsLeft, 200.0F, 240.0F, 30.0F));
+					modsDownloadButton->SetBounds(AABB2(modsLeft, 200.0F, 240.0F, 30.0F));
 					modsDownloadButton->activated = [this](UIElement& s) {
 						OnDownloadModsPressed(s);
 					};
@@ -773,7 +793,7 @@ namespace spades {
 					modsResetButton = button.GetPointerOrNull();
 					modsResetButton->caption = _Tr("MainScreen", "Disable all");
 					modsResetButton->SetBounds(
-					    AABB2(contentsLeft + contentsWidth - 300.0F, 200.0F, 130.0F, 30.0F));
+					    AABB2(modsLeft + modsContentsWidth - 300.0F, 200.0F, 130.0F, 30.0F));
 					modsResetButton->activated = [this](UIElement& s) { OnResetModsPressed(s); };
 					modsPanel->AddChild(modsResetButton);
 				}
@@ -782,15 +802,40 @@ namespace spades {
 					modsApplyButton = button.GetPointerOrNull();
 					modsApplyButton->caption = _Tr("MainScreen", "Apply changes");
 					modsApplyButton->SetBounds(
-					    AABB2(contentsLeft + contentsWidth - 160.0F, 200.0F, 160.0F, 30.0F));
+					    AABB2(modsLeft + modsContentsWidth - 160.0F, 200.0F, 160.0F, 30.0F));
 					modsApplyButton->activated = [this](UIElement& s) { OnApplyModsPressed(s); };
 					modsPanel->AddChild(modsApplyButton);
+				}
+				{
+					// Category filter buttons above the mod list
+					struct FilterDef {
+						const char* label;
+						const char* code;
+					};
+					static const FilterDef kFilters[] = {
+					    {"Todos", ""},       {"Fusil", "SEMI"}, {"SMG", "SMG"},
+					    {"Escopeta", "SHOTGUN"}, {"Pala", "SPADE"}, {"Otros", "OTHER"}};
+					const float gap = 4.0F;
+					const float btnW = (listW - gap * 5.0F) / 6.0F;
+					modsFilterButtons.clear();
+					for (int i = 0; i < 6; ++i) {
+						Handle<ProtocolButton> btn = Handle<ProtocolButton>::New(manager);
+						ProtocolButton* pBtn = btn.GetPointerOrNull();
+						pBtn->caption = _Tr("MainScreen", kFilters[i].label);
+						pBtn->toggled = (i == 0);
+						pBtn->SetBounds(AABB2(modsLeft + static_cast<float>(i) * (btnW + gap),
+						                      modsFilterPos, btnW, 24.0F));
+						std::string code = kFilters[i].code;
+						pBtn->activated = [this, code](UIElement&) { SetModsCategoryFilter(code); };
+						modsPanel->AddChild(pBtn);
+						modsFilterButtons.push_back(pBtn);
+					}
 				}
 				{
 					Handle<Label> label = Handle<Label>::New(manager);
 					modsStatusLabel = label.GetPointerOrNull();
 					modsStatusLabel->SetBounds(
-					    AABB2(contentsLeft, footerPos - 40.0F, contentsWidth, 24.0F));
+					    AABB2(modsLeft, footerPos - 40.0F, modsContentsWidth, 24.0F));
 					modsStatusLabel->text = "";
 					modsPanel->AddChild(modsStatusLabel);
 				}
@@ -798,50 +843,50 @@ namespace spades {
 					Handle<ModsProgressBar> bar = Handle<ModsProgressBar>::New(manager);
 					modsProgressBar = bar.GetPointerOrNull();
 					modsProgressBar->SetBounds(
-					    AABB2(contentsLeft, footerPos - 12.0F, contentsWidth, 6.0F));
+					    AABB2(modsLeft, footerPos - 12.0F, modsContentsWidth, 6.0F));
 					modsProgressBar->visible = false;
 					modsPanel->AddChild(modsProgressBar);
 				}
 				{
-					float x = contentsLeft;
+					float x = modsLeft;
 					{
 						Handle<ModListHeader> header = Handle<ModListHeader>::New(manager);
-						header->SetBounds(AABB2(x, headerPos, modsCheckColWidth, headerHeight));
+						header->SetBounds(AABB2(x, modsHeaderPos, modsCheckColWidth, headerHeight));
 						header->text = _Tr("MainScreen", "Status");
 						modsPanel->AddChild(header.GetPointerOrNull());
 						x += modsCheckColWidth;
 					}
 					{
 						Handle<ModListHeader> header = Handle<ModListHeader>::New(manager);
-						header->SetBounds(AABB2(x, headerPos, modsOrderColWidth, headerHeight));
-						header->text = _Tr("MainScreen", "Apply Order");
+						header->SetBounds(AABB2(x, modsHeaderPos, modsOrderColWidth, headerHeight));
+						header->text = _Tr("MainScreen", "Order");
 						modsPanel->AddChild(header.GetPointerOrNull());
 						x += modsOrderColWidth;
 					}
 					{
 						Handle<ModListHeader> header = Handle<ModListHeader>::New(manager);
-						header->SetBounds(AABB2(x, headerPos, modsTagColWidth, headerHeight));
+						header->SetBounds(AABB2(x, modsHeaderPos, modsTagColWidth, headerHeight));
 						header->text = _Tr("MainScreen", "Type");
 						modsPanel->AddChild(header.GetPointerOrNull());
 						x += modsTagColWidth;
 					}
 					{
 						Handle<ModListHeader> header = Handle<ModListHeader>::New(manager);
-						header->SetBounds(AABB2(x, headerPos, modsNameColWidth, headerHeight));
+						header->SetBounds(AABB2(x, modsHeaderPos, modsNameColWidth, headerHeight));
 						header->text = _Tr("MainScreen", "Mod");
 						modsPanel->AddChild(header.GetPointerOrNull());
 						x += modsNameColWidth;
 					}
 					{
 						Handle<ModListHeader> header = Handle<ModListHeader>::New(manager);
-						header->SetBounds(AABB2(x, headerPos, modsAuthorColWidth, headerHeight));
+						header->SetBounds(AABB2(x, modsHeaderPos, modsAuthorColWidth, headerHeight));
 						header->text = _Tr("MainScreen", "Author");
 						modsPanel->AddChild(header.GetPointerOrNull());
 						x += modsAuthorColWidth;
 					}
 					{
 						Handle<ModListHeader> header = Handle<ModListHeader>::New(manager);
-						header->SetBounds(AABB2(x, headerPos, modsSizeColWidth, headerHeight));
+						header->SetBounds(AABB2(x, modsHeaderPos, modsSizeColWidth, headerHeight));
 						header->text = _Tr("MainScreen", "Size");
 						modsPanel->AddChild(header.GetPointerOrNull());
 					}
@@ -850,7 +895,7 @@ namespace spades {
 					Handle<ListView> list = Handle<ListView>::New(manager);
 					modsList = list.GetPointerOrNull();
 					modsList->SetBounds(
-					    AABB2(contentsLeft, listPos, contentsWidth, footerPos - listPos - 44.0F));
+					    AABB2(modsLeft, modsListPos, listW, modsListHeight));
 					modsPanel->AddChild(modsList);
 				}
 
@@ -901,19 +946,6 @@ namespace spades {
 				skinsButton->SetBounds(AABB2(contentsLeft + 115.0F, footerPos, 110.0F, 30.0F));
 				skinsButton->activated = [this](UIElement& s) { OnSkinsPressed(s); };
 				AddChild(skinsButton);
-			}
-			{
-				Handle<MenuIconButton> button =
-				    Handle<MenuIconButton>::New(manager, GuiIconType::Extension);
-				modsButton = button.GetPointerOrNull();
-				modsButton->caption = _Tr("MainScreen", "Mods");
-				modsButton->SetBounds(AABB2(contentsLeft + 230.0F, footerPos, 110.0F, 30.0F));
-				modsButton->activated = [this](UIElement&) {
-					MainScreenMainMenuState st;
-					st.activeTabIndex = 1;
-					SetState(st);
-				};
-				AddChild(modsButton);
 			}
 
 			LoadServerList();
@@ -987,8 +1019,22 @@ namespace spades {
 			OnTabChanged(*this);
 		}
 
+		void MainScreenMainMenu::SetModsCategoryFilter(const std::string& filter) {
+			modsCategoryFilter = filter;
+			static const char* filterCodes[] = {"", "SEMI", "SMG", "SHOTGUN", "SPADE", "OTHER"};
+			for (size_t i = 0; i < modsFilterButtons.size() && i < 6; ++i) {
+				if (modsFilterButtons[i])
+					modsFilterButtons[i]->toggled = (modsCategoryFilter == filterCodes[i]);
+			}
+			if (filter == "SEMI" || filter == "SMG" || filter == "SHOTGUN" || filter == "SPADE") {
+				selectedModCategory = filter;
+			}
+			previewModName.clear();
+			LoadModList();
+		}
+
 		void MainScreenMainMenu::LoadModList() {
-			std::vector<std::string> names = modsHelper->GetModNames();
+			std::vector<std::string> rawNames = modsHelper->GetModNames();
 			std::vector<std::string> enabled = modsHelper->GetEnabledMods();
 
 			// Sort mods by Category / Type: weapons first (SEMI, SMG, SHOTGUN, SPADE, GRENADE), then SFX, VFX, FONT, etc.
@@ -1005,7 +1051,7 @@ namespace spades {
 				return 8;
 			};
 
-			std::sort(names.begin(), names.end(), [&](const std::string& a, const std::string& b) {
+			std::sort(rawNames.begin(), rawNames.end(), [&](const std::string& a, const std::string& b) {
 				int rankA = getCategoryRank(a);
 				int rankB = getCategoryRank(b);
 				if (rankA != rankB) return rankA < rankB;
@@ -1015,7 +1061,46 @@ namespace spades {
 				return modsHelper->GetModDisplayName(a) < modsHelper->GetModDisplayName(b);
 			});
 
-			// Displayed rows keep a fixed order: every mod on disk in its natural
+			// Filter by active category tab (Todos, Fusil, SMG, Escopeta, Pala, Otros)
+			std::vector<std::string> names;
+			for (const std::string& name : rawNames) {
+				if (modsCategoryFilter.empty()) {
+					names.push_back(name);
+					continue;
+				}
+				std::string cat = modsHelper->GetModCategory(name);
+				if (cat == "RIFLE")
+					cat = "SEMI";
+				if (modsCategoryFilter == "OTHER") {
+					if (cat != "SEMI" && cat != "SMG" && cat != "SHOTGUN" && cat != "SPADE")
+						names.push_back(name);
+				} else if (cat == modsCategoryFilter) {
+					names.push_back(name);
+				}
+			}
+
+			// Ensure a valid default preview selection from filtered list
+			bool previewPresent = !previewModName.empty() &&
+			                      std::find(names.begin(), names.end(), previewModName) != names.end();
+			if (!previewPresent) {
+				previewModName.clear();
+				if (!names.empty()) {
+					previewModName = names[0];
+					for (const std::string& n : names) {
+						if (getCategoryRank(n) <= 4) {
+							previewModName = n;
+							break;
+						}
+					}
+					selectedModCategory = modsHelper->GetModCategory(previewModName);
+				} else if (!modsCategoryFilter.empty() && modsCategoryFilter != "OTHER") {
+					selectedModCategory = modsCategoryFilter;
+				} else {
+					selectedModCategory = "";
+				}
+			}
+
+			// Displayed rows keep a fixed order: every mod on disk in its sorted
 			// order, then any enabled mod that no longer exists (orphaned entries,
 			// shown so they can be removed). Toggling only changes a row's apply
 			// number and colour, never its position.
@@ -1029,19 +1114,21 @@ namespace spades {
 				orders.push_back(idx + 1); // 0 when disabled (idx == -1)
 				exists.push_back(true);
 			}
-			// Orphaned enabled mods (enabled but no longer on disk).
-			for (size_t i = 0; i < enabled.size(); i++) {
-				bool onDisk = false;
-				for (const std::string& name : names) {
-					if (name == enabled[i]) {
-						onDisk = true;
-						break;
+			// Orphaned enabled mods (enabled but no longer on disk, only under Todos filter).
+			if (modsCategoryFilter.empty()) {
+				for (size_t i = 0; i < enabled.size(); i++) {
+					bool onDisk = false;
+					for (const std::string& name : rawNames) {
+						if (name == enabled[i]) {
+							onDisk = true;
+							break;
+						}
 					}
-				}
-				if (!onDisk) {
-					list.push_back(enabled[i]);
-					orders.push_back(static_cast<int>(i) + 1);
-					exists.push_back(false);
+					if (!onDisk) {
+						list.push_back(enabled[i]);
+						orders.push_back(static_cast<int>(i) + 1);
+						exists.push_back(false);
+					}
 				}
 			}
 
@@ -1050,7 +1137,12 @@ namespace spades {
 			    std::move(exists), modsCheckColWidth, modsOrderColWidth, modsTagColWidth,
 			    modsNameColWidth, modsAuthorColWidth, modsSizeColWidth);
 			modsList->SetModel(model.GetPointerOrNull());
+			model->itemHovered = [this](const std::string& name) {
+				previewModName = name;
+				selectedModCategory = modsHelper->GetModCategory(name);
+			};
 			model->itemActivated = [this](const std::string& name) {
+				previewModName = name;
 				selectedModCategory = modsHelper->GetModCategory(name);
 				OnModToggle(name);
 			};
@@ -1160,8 +1252,8 @@ namespace spades {
 			LoadModList();
 		}
 
-		// Clicking a row toggles the mod in the enabled set. The change is saved
-		// immediately and takes effect the next time the game starts.
+		// Clicking a row toggles the mod in the enabled set immediately without a
+		// blocking popup; the user applies & restarts when finished selecting.
 		void MainScreenMainMenu::OnModToggle(const std::string& modName) {
 			if (modsDownloading)
 				return;
@@ -1173,19 +1265,6 @@ namespace spades {
 				modsHelper->DisableMod(modName);
 			modsDirty = true;
 			LoadModList();
-
-			std::string promptMsg = enabling
-			    ? _Tr("MainScreen", "Mod activado en la lista.\n¿Deseas reiniciar ySpades ahora para que se aplique en el juego?")
-			    : _Tr("MainScreen", "Mod desactivado en la lista.\n¿Deseas reiniciar ySpades ahora para que se aplique en el juego?");
-
-			Handle<ConfirmScreen> cs = Handle<ConfirmScreen>::New(this, promptMsg, 200.0F, true);
-			cs->closed = [this](UIElement& sender) {
-				ConfirmScreen* cs = dynamic_cast<ConfirmScreen*>(&sender);
-				if (cs && cs->GetResult()) {
-					helper->RelaunchForMods();
-				}
-			};
-			cs->Run();
 		}
 
 		void MainScreenMainMenu::CheckModsRefresh() {
@@ -1615,12 +1694,6 @@ namespace spades {
 			screen->Run();
 		}
 
-		void MainScreenMainMenu::OnModsPressed(UIElement&) {
-			Handle<ModWeaponSelectScreen> screen =
-			    Handle<ModWeaponSelectScreen>::New(this, &ui->GetFontManager(), ui);
-			screen->Run();
-		}
-
 		void MainScreenMainMenu::Connect() {
 			// Pass selectedMapName if known (server clicked in list); otherwise pass empty
 			// and let ConnectServer resolve it from the cached server list on the C++ side.
@@ -1668,6 +1741,104 @@ namespace spades {
 			CheckServerList();
 			CheckModsRefresh();
 			UIElement::Render();
+
+			// Render Mods 3D Preview frame & live info when Mods tab is visible
+			// Note: center of modsPreviewRect stays transparent so the 3D weapon
+			// rendered behind the UI during EndScene() shows with full brightness!
+			if (IsModsTabActive() && modsPreviewRect.GetWidth() > 40.0F) {
+				client::IRenderer& r = GetManager().GetRenderer();
+				client::IFont* font = GetFont();
+				float px = modsPreviewRect.min.x;
+				float py = modsPreviewRect.min.y;
+				float pw = modsPreviewRect.GetWidth();
+				float ph = modsPreviewRect.GetHeight();
+
+				// Frame border & corner accents
+				SetColorNP(r, MakeVector4(0.25F, 0.55F, 0.85F, 0.70F));
+				r.DrawOutlinedRect(px, py, px + pw, py + ph);
+
+				float tick = 10.0F;
+				SetColorNP(r, MakeVector4(0.40F, 0.85F, 1.0F, 0.95F));
+				r.DrawFilledRect(px, py, px + tick, py + 2.0F);
+				r.DrawFilledRect(px, py, px + 2.0F, py + tick);
+				r.DrawFilledRect(px + pw - tick, py, px + pw, py + 2.0F);
+				r.DrawFilledRect(px + pw - 2.0F, py, px + pw, py + tick);
+
+				// Top strip header inside preview box
+				SetColorNP(r, MakeVector4(0.03F, 0.05F, 0.08F, 0.78F));
+				r.DrawFilledRect(px + 1.0F, py + 1.0F, px + pw - 1.0F, py + 24.0F);
+
+				// Bottom metadata card inside preview box
+				float infoH = 74.0F;
+				float infoY = py + ph - infoH;
+				SetColorNP(r, MakeVector4(0.03F, 0.05F, 0.08F, 0.84F));
+				r.DrawFilledRect(px + 1.0F, infoY, px + pw - 1.0F, py + ph - 1.0F);
+
+				if (font) {
+					Vector4 shadow = MakeVector4(0.0F, 0.0F, 0.0F, 0.75F);
+					font->DrawShadow(_Tr("MainScreen", "VISTA PREVIA 3D"),
+					                 MakeVector2(px + 10.0F, py + 5.0F), 0.85F,
+					                 MakeVector4(0.45F, 0.88F, 1.0F, 0.95F), shadow);
+
+					std::string dispName = _Tr("MainScreen", "Sin mod seleccionado");
+					std::string typeLabel;
+					std::string authorStr;
+					bool isEnabled = false;
+					bool hasMod = !previewModName.empty() && modsHelper;
+
+					if (hasMod) {
+						dispName = modsHelper->GetModDisplayName(previewModName);
+						std::string cat = modsHelper->GetModCategory(previewModName);
+						authorStr = modsHelper->GetModAuthor(previewModName);
+						std::vector<std::string> en = modsHelper->GetEnabledMods();
+						isEnabled = (EnabledIndex(en, previewModName) >= 0);
+
+						if (cat == "SEMI" || cat == "RIFLE")
+							typeLabel = "TIPO: FUSIL SEMI-AUTOMÁTICO";
+						else if (cat == "SMG")
+							typeLabel = "TIPO: SUBFUSIL SMG";
+						else if (cat == "SHOTGUN")
+							typeLabel = "TIPO: ESCOPETA";
+						else if (cat == "SPADE")
+							typeLabel = "TIPO: PALA / HERRAMIENTA";
+						else if (cat == "GRENADE")
+							typeLabel = "TIPO: GRANADA";
+						else if (!cat.empty())
+							typeLabel = "TIPO: " + cat;
+						else
+							typeLabel = "TIPO: PAQUETE .PAK";
+					} else if (!selectedModCategory.empty()) {
+						if (selectedModCategory == "SEMI" || selectedModCategory == "RIFLE") {
+							dispName = "Fusil Base";
+							typeLabel = "TIPO: FUSIL SEMI-AUTOMÁTICO";
+						} else if (selectedModCategory == "SMG") {
+							dispName = "SMG Base";
+							typeLabel = "TIPO: SUBFUSIL SMG";
+						} else if (selectedModCategory == "SHOTGUN") {
+							dispName = "Escopeta Base";
+							typeLabel = "TIPO: ESCOPETA";
+						} else if (selectedModCategory == "SPADE") {
+							dispName = "Pala Base";
+							typeLabel = "TIPO: PALA / HERRAMIENTA";
+						}
+					}
+
+					font->DrawShadow(dispName, MakeVector2(px + 12.0F, infoY + 8.0F), 0.95F,
+					                 MakeVector4(1.0F, 1.0F, 1.0F, 1.0F), shadow);
+					if (!typeLabel.empty()) {
+						font->DrawShadow(typeLabel, MakeVector2(px + 12.0F, infoY + 28.0F), 0.78F,
+						                 MakeVector4(0.45F, 0.85F, 1.0F, 0.95F), shadow);
+					}
+					if (hasMod) {
+						std::string line3 = authorStr.empty() ? "" : ("Autor: " + authorStr + "  •  ");
+						line3 += isEnabled ? "ACTIVADO" : "DESACTIVADO";
+						Vector4 stCol = isEnabled ? MakeVector4(0.40F, 1.0F, 0.45F, 1.0F)
+						                          : MakeVector4(0.70F, 0.74F, 0.80F, 0.85F);
+						font->DrawShadow(line3, MakeVector2(px + 12.0F, infoY + 47.0F), 0.75F,
+						                 stCol, shadow);
+					}
+				}
+			}
 
 			// check for client error message.
 			if (IsEnabled()) {

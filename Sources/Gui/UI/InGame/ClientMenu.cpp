@@ -128,9 +128,9 @@ namespace spades {
 			// winH encompasses title header + 4 buttons + spacing
 			float winH = headerH + 2.0F + (btnH + spacing) * 3.0F + btnH;
 			float winX = isSpectator ? 14.0F : (sw - winW) * 0.5F;
-			// En modo espectador, posicionar justo debajo de la tarjeta de sesión (que mide ~68px de alto)
+			// En modo espectador, posicionar justo debajo de la tarjeta de sesión (~88px de alto)
 			// para eliminar totalmente el solapamiento visual que tapaba el menú
-			float winY = isSpectator ? 96.0F : (sh - winH) * 0.5F;
+			float winY = isSpectator ? 116.0F : (sh - winH) * 0.5F;
 
 			// draw full background overlay (dim 3D gameplay) ONLY when NOT in spectator mode
 			if (!isSpectator) {

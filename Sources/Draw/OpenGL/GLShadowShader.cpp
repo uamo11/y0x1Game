@@ -31,6 +31,8 @@
 #include <Core/Exception.h>
 #include <Core/Settings.h>
 
+SPADES_SETTING(cg_realisticShadows);
+
 namespace spades {
 	namespace draw {
 		GLShadowShader::GLShadowShader()
@@ -56,7 +58,8 @@ namespace spades {
 		      minLod("minLod"),
 		      shadowMapSizeInv("shadowMapSizeInv"),
 		      ssaoTexture("ssaoTexture"),
-		      ssaoTextureUVScale("ssaoTextureUVScale") {}
+		      ssaoTextureUVScale("ssaoTextureUVScale"),
+		      realisticShadows("realisticShadows") {}
 
 		std::vector<GLShader*> GLShadowShader::RegisterShader(spades::draw::GLProgramManager* r,
 		                                                      GLSettings& settings, bool variance,
@@ -105,6 +108,8 @@ namespace spades {
 			spades::draw::GLProgram* program, int texStage) {
 			mapShadowTexture(program);
 			fogColor(program);
+			realisticShadows(program);
+			realisticShadows.SetValue((int)cg_realisticShadows ? 1.0F : 0.0F);
 
 			Vector3 fc = renderer->GetFogColorForSolidPass();
 			fc *= fc; // linearize

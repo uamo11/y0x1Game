@@ -128,7 +128,7 @@ DEFINE_SPADES_SETTING(cg_keyAutoFocus, "MiddleMouseButton");
 
 DEFINE_SPADES_SETTING(cg_keyToggleSpectatorNames, "z");
 DEFINE_SPADES_SETTING(cg_keySpectatorZoom, "e");
-DEFINE_SPADES_SETTING(cg_keyStaffSpectating, "f5");
+DEFINE_SPADES_SETTING(cg_keyStaffSpectating, "f6");
 DEFINE_SPADES_SETTING(cg_keyDemoPlayPause, "p");
 DEFINE_SPADES_SETTING(cg_keyDemoSeekForward, "Right");
 DEFINE_SPADES_SETTING(cg_keyDemoSeekBackward, "Left");
@@ -684,6 +684,23 @@ namespace spades {
 						} else if (CheckKey(cg_keySpectatorZoom, name)) {
 							spectatorZoom = down;
 							return;
+						} else if (CheckKey(cg_keyToggleThirdPerson, name)) {
+							if (down) {
+								if (spectatorZoom) {
+									spectatorZoom = false;
+									spectatorZoomState = 0.0F;
+								}
+								followedPlayerId = demoNet->GetRecordedLocalPlayerId();
+								followCameraState.firstPerson = false;
+								cg_thirdperson = 1;
+								FollowNextPlayer(false);
+								if (followCameraState.enabled) {
+									ShowAlert(_Tr("Client", "Espectador: Tercera Persona"), AlertType::Notice);
+									Handle<IAudioChunk> c = audioDevice->RegisterSound("Sounds/Misc/SwitchMapZoom.opus");
+									audioDevice->PlayLocal(c.GetPointerOrNull(), AudioParam());
+								}
+							}
+							return;
 						}
 					} else if (cameraMode == ClientCameraMode::FirstPersonFollow ||
 							   cameraMode == ClientCameraMode::ThirdPersonFollow) {
@@ -705,7 +722,7 @@ namespace spades {
 								FollowNextPlayer(true);
 							}
 							return;
-						} else if (CheckKey(cg_keyJump, name) || CheckKey(cg_keyToggleThirdPerson, name)) {
+						} else if (CheckKey(cg_keyJump, name) || CheckKey(cg_keyToggleThirdPerson, name) || CheckKey(cg_keySneak, name)) {
 							auto maybeTarget = world->GetPlayer(GetCameraTargetPlayerId());
 							if (down && maybeTarget && maybeTarget->IsAlive()) {
 								followCameraState.firstPerson = !followCameraState.firstPerson;
@@ -977,7 +994,24 @@ namespace spades {
 									FollowNextPlayer(true);
 							}
 							return;
-						} else if ((CheckKey(cg_keyJump, name) || CheckKey(cg_keyToggleThirdPerson, name)) && cameraMode != ClientCameraMode::Free) {
+						} else if (CheckKey(cg_keyToggleThirdPerson, name) && cameraMode == ClientCameraMode::Free) {
+							if (down && (localPlayerIsSpectating || time - lastAliveTime > 1.3F)) {
+								if (spectatorZoom) {
+									spectatorZoom = false;
+									spectatorZoomState = 0.0F;
+								}
+								followedPlayerId = p.GetId();
+								followCameraState.firstPerson = false;
+								cg_thirdperson = 1;
+								FollowNextPlayer(false);
+								if (followCameraState.enabled) {
+									ShowAlert(_Tr("Client", "Espectador: Tercera Persona"), AlertType::Notice);
+									Handle<IAudioChunk> c = audioDevice->RegisterSound("Sounds/Misc/SwitchMapZoom.opus");
+									audioDevice->PlayLocal(c.GetPointerOrNull(), AudioParam());
+								}
+							}
+							return;
+						} else if ((CheckKey(cg_keyJump, name) || CheckKey(cg_keyToggleThirdPerson, name) || CheckKey(cg_keySneak, name)) && cameraMode != ClientCameraMode::Free) {
 							auto maybeTarget = world->GetPlayer(GetCameraTargetPlayerId());
 							if (down && maybeTarget && maybeTarget->IsAlive()) {
 								followCameraState.firstPerson = !followCameraState.firstPerson;

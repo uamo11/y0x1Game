@@ -105,6 +105,12 @@ namespace spades {
 			}
 		}
 
+		void ModListItem::MouseEnter() {
+			ButtonBase::MouseEnter();
+			if (onHover)
+				onHover(modName);
+		}
+
 		void ModListItem::Render() {
 			client::IRenderer& r = GetManager().GetRenderer();
 			client::IFont* font = GetFont();
@@ -208,6 +214,10 @@ namespace spades {
 				    orders[row], checkColWidth, orderColWidth, tagColWidth, nameColWidth,
 				    authorColWidth, sizeColWidth);
 				item->activated = [this](UIElement& s) { OnItemClicked(s); };
+				item->onHover = [this](const std::string& hoveredMod) {
+					if (itemHovered)
+						itemHovered(hoveredMod);
+				};
 				itemElements[row] = item;
 			}
 			return itemElements[row].Cast<UIElement>();

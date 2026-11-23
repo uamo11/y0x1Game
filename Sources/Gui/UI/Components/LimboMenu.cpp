@@ -93,15 +93,15 @@ namespace spades {
 			cachedLayout.screenWidth = renderer->ScreenWidth();
 			cachedLayout.screenHeight = renderer->ScreenHeight();
 
-			// Center selection panel: 460px wide, 168px high
+			// Center selection panel: 460px wide, 204px high (clean spacing, no button overlap)
 			cachedLayout.contentsWidth = std::min(460.0F, cachedLayout.screenWidth - 16.0F);
 			cachedLayout.left = (cachedLayout.screenWidth - cachedLayout.contentsWidth) * 0.5F;
-			float panelH = 168.0F;
-			cachedLayout.top = cachedLayout.screenHeight - (panelH + 20.0F);
+			float panelH = 204.0F;
+			cachedLayout.top = cachedLayout.screenHeight - (panelH + 18.0F);
 
 			cachedLayout.menuWidth = (cachedLayout.contentsWidth - 36.0F) * 0.5F;
 			cachedLayout.menuHeight = 28.0F;
-			cachedLayout.rowHeight = 33.0F;
+			cachedLayout.rowHeight = 34.0F;
 
 			cachedLayout.teamX = cachedLayout.left + 14.0F;
 			cachedLayout.weapX = cachedLayout.left + 14.0F + cachedLayout.menuWidth + 8.0F;
@@ -161,7 +161,7 @@ namespace spades {
 						item.rect = AABB2(cachedLayout.weapX, cachedLayout.firstY + cachedLayout.rowHeight * 2.0F, cachedLayout.menuWidth, cachedLayout.menuHeight);
 						break;
 					case MenuItemType::Spawn:
-						item.rect = AABB2(cachedLayout.left + 14.0F, cachedLayout.top + 130.0F, cachedLayout.contentsWidth - 28.0F, 28.0F);
+						item.rect = AABB2(cachedLayout.left + 14.0F, cachedLayout.top + 158.0F, cachedLayout.contentsWidth - 28.0F, 32.0F);
 						break;
 					case MenuItemType::Close:
 						item.rect = AABB2(cachedLayout.left + cachedLayout.contentsWidth - 26.0F, cachedLayout.top + 6.0F, 20.0F, 20.0F);
@@ -262,11 +262,11 @@ namespace spades {
 			WeaponType selectedWeapon = host->GetSelectedWeapon();
 
 			// 1. LEFT SIDE: 3D Player Character (Soldier with Team Skin)
-			// Perfectly upright, facing the player with slight 3/4 turn towards center
+			// Perfectly upright, right-handed orthonormal basis (det = +1), brightly lit
 			{
 				float charNdcX = -0.60F;
-				float charNdcY = -0.52F;
-				float charDist = 3.6F;
+				float charNdcY = -0.18F;
+				float charDist = 4.6F;
 
 				float charRight = charNdcX * tanHalfFovX * charDist;
 				float charUp = charNdcY * tanHalfFovY * charDist;
@@ -281,9 +281,9 @@ namespace spades {
 
 				client::DynamicLightParam charLight;
 				charLight.type = client::DynamicLightTypePoint;
-				charLight.origin = charPos + up * 1.5F - dir * 1.0F - side * 0.3F;
-				charLight.radius = 6.0F;
-				charLight.color = teamColor;
+				charLight.origin = charPos + up * 1.2F - dir * 2.0F + side * 0.4F;
+				charLight.radius = 7.5F;
+				charLight.color = Mix(teamColor, MakeVector3(1.0F, 0.96F, 0.92F), 0.55F);
 				renderer->AddLight(charLight);
 
 				float breath = sinf(showcaseTime * 2.2F);
@@ -294,11 +294,9 @@ namespace spades {
 				Vector3 facing = (-dir * 0.88F + side * 0.45F).Normalize();
 				Vector3 rgt = Vector3::Cross(facing, up).Normalize();
 
-				// Basis: -rgt * (-1 from scaler) = +rgt (Right)
-				//        -facing * (-1 from scaler) = +facing (Front, towards player)
-				//        -up * (+1 from scaler) = -up (Down, so head at -1.0 is UP!)
-				Matrix4 lower = Matrix4::FromAxis(-rgt, -facing, -up, charPos);
-				Matrix4 scaler = Matrix4::Scale(0.080F) * Matrix4::Scale(-1, -1, 1);
+				// Right-handed orthonormal basis (Cross(rgt, -facing) == -up, det = +1)
+				Matrix4 lower = Matrix4::FromAxis(rgt, -facing, -up, charPos);
+				Matrix4 scaler = Matrix4::Scale(0.085F) * Matrix4::Scale(-1, -1, 1);
 
 				client::ModelRenderParam charParam;
 				charParam.depthHack = true;
@@ -331,27 +329,27 @@ namespace spades {
 			}
 
 			// 2. RIGHT SIDE: 3D Weapon Model Physically Rotating 360°
-			// Completely upright: scope/sights on TOP, grip/magazine on BOTTOM
+			// Orthonormal right-handed basis (det = +1): sights on TOP, grip on BOTTOM
 			if (selectedTeam < 2) {
 				Handle<client::IModel> curModel;
 				Vector3 lightColor;
-				float weaponScale = 0.025F;
+				float weaponScale = 0.042F;
 
 				switch (selectedWeapon) {
 					case RIFLE_WEAPON:
 						curModel = rifleModel;
 						lightColor = MakeVector3(0.65F, 0.85F, 1.0F); // Crisp ice blue
-						weaponScale = 0.023F;
+						weaponScale = 0.040F;
 						break;
 					case SMG_WEAPON:
 						curModel = smgModel;
 						lightColor = MakeVector3(0.40F, 0.95F, 0.65F); // Emerald cyan
-						weaponScale = 0.025F;
+						weaponScale = 0.048F;
 						break;
 					case SHOTGUN_WEAPON:
 						curModel = shotgunModel;
 						lightColor = MakeVector3(1.0F, 0.70F, 0.35F); // Amber orange
-						weaponScale = 0.024F;
+						weaponScale = 0.044F;
 						break;
 					default:
 						curModel = rifleModel;
@@ -361,8 +359,8 @@ namespace spades {
 
 				if (curModel) {
 					float weapNdcX = 0.60F;
-					float weapNdcY = -0.52F;
-					float weapDist = 3.6F;
+					float weapNdcY = 0.02F;
+					float weapDist = 3.2F;
 
 					float weapRight = weapNdcX * tanHalfFovX * weapDist;
 					float weapUp = weapNdcY * tanHalfFovY * weapDist;
@@ -373,23 +371,16 @@ namespace spades {
 
 					client::DynamicLightParam weapLight;
 					weapLight.type = client::DynamicLightTypePoint;
-					weapLight.origin = actualPos + up * 0.75F - dir * 0.9F + side * 0.2F;
-					weapLight.radius = 5.0F;
-					weapLight.color = lightColor;
+					weapLight.origin = actualPos + up * 0.85F - dir * 1.4F + side * 0.2F;
+					weapLight.radius = 6.0F;
+					weapLight.color = Mix(lightColor, MakeVector3(1.0F, 0.98F, 0.95F), 0.45F);
 					renderer->AddLight(weapLight);
 
-					// Smooth 360 physical rotation around Screen UP
+					// Smooth 360 physical rotation around Screen UP with orthonormal RHS basis (det = +1)
 					Vector3 rotFwd = (side * cosf(weaponYaw) - dir * sinf(weaponYaw)).Normalize();
-					Vector3 rotRight = (side * sinf(weaponYaw) + dir * cosf(weaponYaw)).Normalize();
-
-					// In KV6 weapon:
-					// +Y = Barrel (forward)
-					// +Z = Grip / Magazine (downward)
-					// -Z = Sight / Scope / Rail (upward)
-					// +X = Weapon Right Side
-					Vector3 weapBarrel = (rotFwd + up * 0.14F).Normalize();
-					Vector3 weapDown = (-up + rotFwd * 0.14F).Normalize();
-					Vector3 weapRightVec = rotRight;
+					Vector3 weapBarrel = (rotFwd + up * 0.12F).Normalize();
+					Vector3 weapRightVec = Vector3::Cross(weapBarrel, -up).Normalize();
+					Vector3 weapDown = Vector3::Cross(weapRightVec, weapBarrel).Normalize();
 
 					Matrix4 weapMatrix = Matrix4::FromAxis(weapRightVec, weapBarrel, weapDown, actualPos);
 
@@ -416,7 +407,7 @@ namespace spades {
 			const float left = cachedLayout.left;
 			const float top = cachedLayout.top;
 			const float contentsWidth = cachedLayout.contentsWidth;
-			const float height = 168.0F;
+			const float height = 204.0F;
 
 			const int selectedTeam = host->GetSelectedTeam();
 			const WeaponType selectedWeapon = host->GetSelectedWeapon();
@@ -549,8 +540,8 @@ namespace spades {
 			}
 
 			// Under the 3D character (Left side): clean glowing centered label
-			float charColX = sw * 0.20F;
-			float labelY = top + height - 20.0F;
+			float charColX = sw * 0.19F;
+			float labelY = std::min(sh - 34.0F, top + height - 24.0F);
 			std::string charText = "MODO ESPECTADOR";
 			Vector4 charColor = MakeVector4(0.7F, 0.75F, 0.8F, 1.0F);
 			if (selectedTeam == 0) {
@@ -565,7 +556,7 @@ namespace spades {
 
 			// Under the 3D weapon (Right side): clean glowing centered label
 			if (selectedTeam < 2) {
-				float weapColX = sw * 0.80F;
+				float weapColX = sw * 0.81F;
 				std::string weapText = "FUSIL DE PRECISIÓN";
 				Vector4 weapColor = MakeVector4(0.65F, 0.85F, 1.0F, 1.0F);
 				if (selectedWeapon == SMG_WEAPON) {

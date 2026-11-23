@@ -22,6 +22,7 @@
 #include "ProxyManager.h"
 
 #include <algorithm>
+#include <cctype>
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
@@ -732,6 +733,87 @@ namespace spades {
 			}
 			std::sort(out.begin(), out.end());
 			return out;
+		}
+
+		Handle<VoxelModel> ModsScreenHelper::LoadModPreviewVoxelModel(const std::string& modName) {
+			if (!modsCached)
+				RebuildModsCache();
+			const ModEntry* m = FindMod(modName);
+			if (!m)
+				return {};
+
+			auto endsWith = [](const std::string& str, const std::string& suffix) {
+				return str.size() >= suffix.size() &&
+				       str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
+			};
+			auto contains = [](const std::string& str, const char* sub) {
+				return str.find(sub) != std::string::npos;
+			};
+
+			std::string bestPakPath;
+			std::string bestEntry;
+			int bestScore = 0;
+
+			for (const std::string& pak : m->paks) {
+				std::string overlayPath = m->isFolder
+					? ("Mods/" + m->name + "/" + pak)
+					: ("Mods/" + pak);
+				try {
+					auto stream = FileManager::OpenForReading(overlayPath.c_str());
+					if (!stream)
+						continue;
+					ZipFileSystem zfs(stream.release());
+					for (const std::string& raw : zfs.GetAllFiles()) {
+						std::string f = raw;
+						for (char& c : f)
+							c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+
+						if (!endsWith(f, ".kv6"))
+							continue;
+						if (contains(f, "sight") || contains(f, "magazine") || contains(f, "/mag") ||
+						    endsWith(f, "mag.kv6") || contains(f, "casing") || contains(f, "shell") ||
+						    contains(f, "bullet") || contains(f, "hand") || contains(f, "/arm") ||
+						    contains(f, "arms.kv6") || contains(f, "torso") || contains(f, "head") ||
+						    contains(f, "/leg") || contains(f, "leg.kv6"))
+							continue;
+
+						int score = 0;
+						if (endsWith(f, "/weapon.kv6") || f == "weapon.kv6") {
+							score = 100;
+						} else if (endsWith(f, "/spade.kv6") || f == "spade.kv6" ||
+						           endsWith(f, "/grenade.kv6") || f == "grenade.kv6") {
+							score = 80;
+						} else if (contains(f, "models/weapons/")) {
+							score = 50;
+						} else if (contains(f, "models/")) {
+							score = 20;
+						}
+
+						if (score > bestScore) {
+							bestScore = score;
+							bestPakPath = overlayPath;
+							bestEntry = raw;
+						}
+					}
+				} catch (...) {
+				}
+			}
+
+			if (bestScore <= 0 || bestPakPath.empty() || bestEntry.empty())
+				return {};
+
+			try {
+				auto stream = FileManager::OpenForReading(bestPakPath.c_str());
+				if (!stream)
+					return {};
+				ZipFileSystem zfs(stream.release());
+				auto entryStream = zfs.OpenForReading(bestEntry.c_str());
+				if (!entryStream)
+					return {};
+				return VoxelModel::LoadKV6(*entryStream);
+			} catch (...) {
+				return {};
+			}
 		}
 
 		std::vector<std::string> ModsScreenHelper::GetEnabledMods() { return ReadEnabled(); }

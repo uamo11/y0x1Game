@@ -25,14 +25,19 @@ float EvaluteModelShadow();
 vec3 EvaluateRadiosity(float detailAmbientOcclusion, float ssao);
 vec3 EvaluateSoftReflections(float detailAmbientOcclusion, vec3 direction, float ssao);
 
+uniform float realisticShadows;
+
 float VisibilityOfSunLight() {
 	return EvaluateMapShadow() * EvaluteModelShadow();
 }
 
 vec3 EvaluateSunLight() {
-	// Warm natural sunlight spectrum (5800K daylight) with crisp contrast
 	const vec3 sunColor = vec3(0.66, 0.63, 0.56);
-	return sunColor * (1.1 * VisibilityOfSunLight());
+	float vis = VisibilityOfSunLight();
+	if (realisticShadows > 0.5) {
+		return sunColor * (0.05 + 1.05 * vis);
+	}
+	return sunColor * (1.1 * vis);
 }
 
 vec3 EvaluateAmbientLight(float detailAmbientOcclusion) {

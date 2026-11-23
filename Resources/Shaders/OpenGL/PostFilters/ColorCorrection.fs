@@ -29,6 +29,7 @@ uniform vec3 tint;
 uniform float sharpening;
 uniform float sharpeningFinalGain;
 uniform float blurPixelShift;
+uniform float realisticHdr;
 
 vec3 acesToneMapping(vec3 x) {
 	return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0);
@@ -118,19 +119,25 @@ void main() {
 						   smoothstep(0., 1., gl_FragColor.xyz),
 						   enhancement);
 #else
-	// Ultra-Fast Realistic HDR: Film-grade ACES Tonemapping + Dynamic Range Knee (0 FPS Drop)
-	vec3 filmic = acesToneMapping(gl_FragColor.xyz * 1.08);
-	gl_FragColor.xyz = mix(gl_FragColor.xyz, filmic, 0.48);
+	if (realisticHdr > 0.5) {
+		// Ultra-Fast Realistic HDR: Film-grade ACES Tonemapping + Dynamic Range Knee (0 FPS Drop)
+		vec3 filmic = acesToneMapping(gl_FragColor.xyz * 1.08);
+		gl_FragColor.xyz = mix(gl_FragColor.xyz, filmic, 0.48);
 
-	// Crisp contrast enhancement and vibrance
-	gl_FragColor.xyz = mix(gl_FragColor.xyz,
-						   smoothstep(0.0, 1.0, gl_FragColor.xyz),
-						   enhancement * 0.85);
+		// Crisp contrast enhancement and vibrance
+		gl_FragColor.xyz = mix(gl_FragColor.xyz,
+							   smoothstep(0.0, 1.0, gl_FragColor.xyz),
+							   enhancement * 0.85);
 
-	// Subtle, high-performance lens vignette for cinematic depth (virtually 0 cost)
-	vec2 vigCoord = (texCoord - 0.5) * 1.25;
-	float vig = clamp(1.0 - dot(vigCoord, vigCoord) * 0.20, 0.0, 1.0);
-	gl_FragColor.xyz *= vig;
+		// Subtle, high-performance lens vignette for cinematic depth (virtually 0 cost)
+		vec2 vigCoord = (texCoord - 0.5) * 1.25;
+		float vig = clamp(1.0 - dot(vigCoord, vigCoord) * 0.20, 0.0, 1.0);
+		gl_FragColor.xyz *= vig;
+	} else {
+		gl_FragColor.xyz = mix(gl_FragColor.xyz,
+							   smoothstep(0.0, 1.0, gl_FragColor.xyz),
+							   enhancement);
+	}
 #endif
 
 	gl_FragColor.w = 1.0;

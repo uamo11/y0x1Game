@@ -81,6 +81,7 @@ SPADES_SETTING(cg_keyDemoSpeedUp);
 SPADES_SETTING(cg_keyDemoSlowDown);
 SPADES_SETTING(cg_keyDemoToggleHud);
 SPADES_SETTING(cg_keyToggleThirdPerson);
+SPADES_SETTING(cg_keySneak);
 DEFINE_SPADES_SETTING(cg_stats, "0");
 DEFINE_SPADES_SETTING(cg_statsSmallFont, "0");
 DEFINE_SPADES_SETTING(cg_playerStats, "0");
@@ -2433,8 +2434,8 @@ namespace spades {
 					if (camTarget.IsAlive()) {
 						addLine(_Tr("Client", "Vista: {0}", cameraMode == ClientCameraMode::ThirdPersonFollow
 							? _Tr("Client", "Tercera Persona") : _Tr("Client", "Primera Persona")));
-						addLine(_Tr("Client", "[{0}/{1}] Alternar 1ª/3ª Persona",
-							TrKey(cg_keyToggleThirdPerson), TrKey(cg_keyJump)));
+						addLine(_Tr("Client", "[{0}/{1}/{2}] Alternar 1ª/3ª Persona",
+							TrKey(cg_keyToggleThirdPerson), TrKey(cg_keySneak), TrKey(cg_keyJump)));
 					}
 					addLine(_Tr("Client", "[{0}/{1}] Next/Prev player",
 						TrKey(cg_keyAttack), TrKey(cg_keyAltAttack)));
@@ -3259,8 +3260,8 @@ namespace spades {
 					}
 				}
 
-				// In demo mode, only show scoreboard when toggled
-				if (!isDemoMode || scoreboardVisible)
+				// In demo mode, only show scoreboard when toggled; hide default scoreboard while limbo menu is active unless Tab is held
+				if ((!isDemoMode && !IsLimboViewActive()) || scoreboardVisible)
 					scoreboard->Draw();
 
 				centerMessageView->Draw();

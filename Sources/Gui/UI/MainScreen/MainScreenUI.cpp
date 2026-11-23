@@ -50,6 +50,7 @@
 #include <Core/Settings.h>
 #include <Core/VoxelModel.h>
 #include <Gui/MainScreenHelper.h>
+#include <Gui/ModsScreenHelper.h>
 #include <Gui/UI/Components/UpdateNotice.h>
 #include <Gui/UI/Framework/UIManager.h>
 #include <Gui/UI/Widgets/DrawUtils.h>
@@ -580,6 +581,9 @@ namespace spades {
 		}
 
 		void MainScreenUI::RenderMods3DWeapon(const client::SceneDefinition& sceneDef, float dt) {
+			if (!mainMenu)
+				return;
+
 			if (!rifleModel) rifleModel = renderer->RegisterModel("Models/Weapons/Rifle/Weapon.kv6");
 			if (!smgModel) smgModel = renderer->RegisterModel("Models/Weapons/SMG/Weapon.kv6");
 			if (!shotgunModel) shotgunModel = renderer->RegisterModel("Models/Weapons/Shotgun/Weapon.kv6");
@@ -588,23 +592,47 @@ namespace spades {
 			modsWeaponYaw += dt * 1.5F;
 			modsShowcaseTime += dt;
 
-			std::string cat = mainMenu ? mainMenu->GetSelectedModCategory() : "SEMI";
-			Handle<client::IModel> curModel = rifleModel;
+			std::string previewMod = mainMenu->GetPreviewModName();
+			std::string cat = mainMenu->GetSelectedModCategory();
+
+			if (!previewMod.empty() && modPreviewAttempted.find(previewMod) == modPreviewAttempted.end()) {
+				modPreviewAttempted.insert(previewMod);
+				if (ModsScreenHelper* mh = mainMenu->GetModsHelper()) {
+					Handle<VoxelModel> vm = mh->LoadModPreviewVoxelModel(previewMod);
+					if (vm) {
+						try {
+							modPreviewCache[previewMod] = renderer->CreateModel(*vm);
+						} catch (...) {
+						}
+					}
+				}
+			}
+
+			Handle<client::IModel> curModel;
+			auto cachedIt = !previewMod.empty() ? modPreviewCache.find(previewMod) : modPreviewCache.end();
+			if (cachedIt != modPreviewCache.end() && cachedIt->second) {
+				curModel = cachedIt->second;
+			}
+
 			Vector3 lightCol = MakeVector3(0.65F, 0.85F, 1.0F);
-			float scale = 0.024F;
+			float scale = 0.042F;
 
 			if (cat == "SMG") {
-				curModel = smgModel;
+				if (!curModel) curModel = smgModel;
 				lightCol = MakeVector3(0.40F, 0.95F, 0.65F);
-				scale = 0.026F;
+				scale = 0.048F;
 			} else if (cat == "SHOTGUN") {
-				curModel = shotgunModel;
+				if (!curModel) curModel = shotgunModel;
 				lightCol = MakeVector3(1.0F, 0.70F, 0.35F);
-				scale = 0.025F;
+				scale = 0.044F;
 			} else if (cat == "SPADE") {
-				curModel = spadeModel;
+				if (!curModel) curModel = spadeModel;
 				lightCol = MakeVector3(0.95F, 0.85F, 0.45F);
-				scale = 0.025F;
+				scale = 0.044F;
+			} else if (cat == "SEMI" || cat == "RIFLE") {
+				if (!curModel) curModel = rifleModel;
+				lightCol = MakeVector3(0.65F, 0.85F, 1.0F);
+				scale = 0.040F;
 			}
 
 			if (!curModel)
@@ -621,10 +649,17 @@ namespace spades {
 			Vector3 side = sceneDef.viewAxis[0];
 			Vector3 up = sceneDef.viewAxis[1];
 
-			// Position rotating weapon in view
-			float ndcX = (sw >= 1100.0F) ? 0.72F : 0.62F;
-			float ndcY = (sw >= 1100.0F) ? 0.05F : 0.35F;
-			float dist = 3.8F;
+			// Position rotating weapon at exact center of Mods showcase box
+			AABB2 previewRect = mainMenu->GetModsPreviewRect();
+			float ndcX = 0.65F;
+			float ndcY = 0.05F;
+			if (previewRect.GetWidth() > 10.0F && previewRect.GetHeight() > 10.0F && sw > 1.0F && sh > 1.0F) {
+				float centerX = previewRect.min.x + previewRect.GetWidth() * 0.5F;
+				float centerY = previewRect.min.y + previewRect.GetHeight() * 0.44F;
+				ndcX = (centerX / sw) * 2.0F - 1.0F;
+				ndcY = 1.0F - (centerY / sh) * 2.0F;
+			}
+			float dist = 3.2F;
 
 			float rightOffset = ndcX * tanHalfFovX * dist;
 			float upOffset = ndcY * tanHalfFovY * dist;
@@ -635,20 +670,19 @@ namespace spades {
 
 			client::DynamicLightParam light;
 			light.type = client::DynamicLightTypePoint;
-			light.origin = actualPos + up * 0.8F - dir * 0.9F + side * 0.2F;
-			light.radius = 5.5F;
-			light.color = lightCol;
+			light.origin = actualPos + up * 0.85F - dir * 1.4F + side * 0.2F;
+			light.radius = 6.0F;
+			light.color = Mix(lightCol, MakeVector3(1.0F, 0.98F, 0.95F), 0.45F);
 			renderer->AddLight(light);
 
 			client::ModelRenderParam param;
 			param.depthHack = true;
 
+			// Orthonormal right-handed basis (det = +1)
 			Vector3 rotFwd = (side * cosf(modsWeaponYaw) - dir * sinf(modsWeaponYaw)).Normalize();
-			Vector3 rotRight = (side * sinf(modsWeaponYaw) + dir * cosf(modsWeaponYaw)).Normalize();
-
-			Vector3 weapBarrel = (rotFwd + up * 0.14F).Normalize();
-			Vector3 weapDown = (-up + rotFwd * 0.14F).Normalize();
-			Vector3 weapRightVec = rotRight;
+			Vector3 weapBarrel = (rotFwd + up * 0.12F).Normalize();
+			Vector3 weapRightVec = Vector3::Cross(weapBarrel, -up).Normalize();
+			Vector3 weapDown = Vector3::Cross(weapRightVec, weapBarrel).Normalize();
 
 			Matrix4 weapMatrix = Matrix4::FromAxis(weapRightVec, weapBarrel, weapDown, actualPos);
 			param.matrix = weapMatrix * Matrix4::Scale(scale);

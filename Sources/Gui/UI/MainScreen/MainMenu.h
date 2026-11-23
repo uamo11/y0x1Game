@@ -117,7 +117,6 @@ namespace spades {
 			MenuIconButton* connectButton = nullptr;
 			MenuIconButton* toggleIpButton = nullptr;
 			MenuIconButton* skinsButton = nullptr;
-			MenuIconButton* modsButton = nullptr;
 			ui::Label* goldNoticeLabel = nullptr;
 			bool showDirectConnect = false;
 
@@ -184,6 +183,10 @@ namespace spades {
 			bool modsDownloading = false;
 			bool modsDirty = false; // enabled set changed this session; restart to apply
 			std::string selectedModCategory = "SEMI";
+			std::string modsCategoryFilter;
+			std::string previewModName;
+			AABB2 modsPreviewRect;
+			std::vector<ProtocolButton*> modsFilterButtons;
 			float modsCheckColWidth;
 			float modsOrderColWidth;
 			float modsTagColWidth;
@@ -194,6 +197,7 @@ namespace spades {
 			void OnTabChanged(ui::UIElement& sender);
 			int EnabledIndex(const std::vector<std::string>& enabled, const std::string& name);
 			void UpdateModsStatus();
+			void SetModsCategoryFilter(const std::string& filter);
 			void OnDownloadModsPressed(ui::UIElement& sender);
 			void OnDownloadConfirmed(ui::UIElement& sender);
 			void OnApplyModsPressed(ui::UIElement& sender);
@@ -223,7 +227,6 @@ namespace spades {
 			void SetProtocolVersion(int ver);
 
 			void OnSkinsPressed(ui::UIElement& sender);
-			void OnModsPressed(ui::UIElement& sender);
 			void Connect();
 
 		public:
@@ -231,6 +234,9 @@ namespace spades {
 
 			bool IsModsTabActive() const { return modsPanel && modsPanel->visible; }
 			std::string GetSelectedModCategory() const { return selectedModCategory; }
+			std::string GetPreviewModName() const { return previewModName; }
+			AABB2 GetModsPreviewRect() const { return modsPreviewRect; }
+			ModsScreenHelper* GetModsHelper() const { return modsHelper.GetPointerOrNull(); }
 
 			void LoadServerList();
 			void LoadDemoList();

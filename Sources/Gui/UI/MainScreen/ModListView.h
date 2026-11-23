@@ -60,12 +60,14 @@ namespace spades {
 
 		public:
 			std::string modName;
+			ModListItemEventHandler onHover;
 
 			ModListItem(ui::UIManager* manager, const std::string& modName,
 			            const std::string& category, const std::string& displayName,
 			            const std::string& author, std::int64_t totalSize, bool enabled, bool exists,
 			            int orderNum, float checkColWidth, float orderColWidth, float tagColWidth,
 			            float nameColWidth, float authorColWidth, float sizeColWidth);
+			void MouseEnter() override;
 			void Render() override;
 		};
 
@@ -88,6 +90,7 @@ namespace spades {
 
 		public:
 			ModListItemEventHandler itemActivated;
+			ModListItemEventHandler itemHovered;
 
 			ModListModel(ui::UIManager* manager, ModsScreenHelper* helper,
 			             std::vector<std::string> list, std::vector<int> orders,
